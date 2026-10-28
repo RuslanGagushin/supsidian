@@ -20,11 +20,11 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Find the app folder
         shell: bash
         run: if [ -d app/src-tauri ]; then echo "APP=app" >> "$GITHUB_ENV"; else echo "APP=." >> "$GITHUB_ENV"; fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
@@ -41,7 +41,7 @@ jobs:
       - name: Build Windows installers
         working-directory: ${{ env.APP }}
         run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Supsidian-Windows
           path: |
@@ -52,11 +52,11 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Find the app folder
         shell: bash
         run: if [ -d app/src-tauri ]; then echo "APP=app" >> "$GITHUB_ENV"; else echo "APP=." >> "$GITHUB_ENV"; fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
@@ -73,29 +73,29 @@ jobs:
       - name: Build universal app (Apple Silicon + Intel)
         working-directory: ${{ env.APP }}
         run: npm run tauri build -- --target universal-apple-darwin
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Supsidian-macOS
           path: ${{ env.APP }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NDK_VERSION: 27.2.12479018
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Find the app folder
         shell: bash
         run: if [ -d app/src-tauri ]; then echo "APP=app" >> "$GITHUB_ENV"; else echo "APP=." >> "$GITHUB_ENV"; fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - name: Install Android SDK parts
         run: |
           sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "ndk;${NDK_VERSION}"
@@ -143,7 +143,7 @@ jobs:
         if: steps.sign.outputs.signed != 'true'
         working-directory: ${{ env.APP }}
         run: npx tauri android build --apk --debug --target aarch64
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Supsidian-Android
           path: ${{ env.APP }}/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
@@ -152,12 +152,12 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [windows, macos, android]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: out
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: out/**/*
           generate_release_notes: true
