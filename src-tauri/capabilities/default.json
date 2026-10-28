@@ -1,0 +1,31 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the Supsidian window may do: open the vault folder, read and write inside it, open links outside the app.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "vault:default",
+    "dialog:default",
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "obsidian://*"
+        },
+        {
+          "url": "https://*"
+        },
+        {
+          "url": "http://*"
+        },
+        {
+          "url": "mailto:*"
+        }
+      ]
+    }
+  ]
+}
