@@ -2232,6 +2232,20 @@ function resolveAttachment(name, source) {
   const cands = vault.files.get(lower.split("/").pop()) || [];
   return cands.find((p) => p.toLowerCase().endsWith(lower)) || cands[0] || null;
 }
+/** A wikilink to a non-note file ([[doc.pdf]]): the vault file it points at, if any. */
+function resolveFileLink(lp, source) {
+  if (!lp || !/\.[a-z0-9]{1,8}$/i.test(lp) || /\.md$/i.test(lp)) return null;
+  return resolveAttachment(lp, source);
+}
+async function openAttachment(path) {
+  try {
+    if (IS_NATIVE && vault.fs.root && !IS_ANDROID) { await TAURI.invoke("plugin:opener|open_path", { path: vault.fs.root.replace(/\/$/, "") + "/" + path }); return; }
+    const url = await attachmentUrl(path);
+    const a = h("a", { href: url, target: "_blank", rel: "noopener" });
+    if (IS_NATIVE) a.download = baseName(path);
+    document.body.append(a); a.click(); a.remove();
+  } catch (e) { notice(String(e?.message || e)); }
+}
 function linkText(path) {
   const name = baseName(path);
   return (vault.byName.get(name.toLowerCase()) || []).length > 1 ? path.replace(/\.md$/i, "") : name;
@@ -2790,7 +2804,8 @@ function renderMarkdown(md, sourcePath, opts = {}) {
   });
   s = s.replace(/\[\[([^\]]+)\]\]/g, (m, inner) => {
     const [target, alias] = inner.split("|");
-    const res = resolveLink(extractLinkpath(`[[${target}]]`), sourcePath);
+    const lpath = extractLinkpath(`[[${target}]]`);
+    const res = resolveLink(lpath, sourcePath) || resolveFileLink(lpath, sourcePath);
     const shown = alias || target.replace(/#\^?/, " › ");
     return `<a class="internal-link${res ? "" : " is-unresolved"}" data-href="${esc(target)}">${esc(shown)}</a>`;
   });
@@ -2846,7 +2861,9 @@ function wireRendered(el, sourcePath) {
       e.preventDefault(); e.stopPropagation();
       const lp = extractLinkpath(`[[${a.dataset.href}]]`);
       const p = resolveLink(lp, sourcePath);
-      if (p) { if (isMod(e) || !graph.has(p)) openEditor(p); else setTarget(p); }
+      const file = p ? null : resolveFileLink(lp, sourcePath);
+      if (file) openAttachment(file);
+      else if (p) { if (isMod(e) || !graph.has(p)) openEditor(p); else setTarget(p); }
       else createCard(lp || a.textContent, null, "", undefined, { open: true });
       return;
     }
@@ -7716,7 +7733,19 @@ window.addEventListener("focus", () => pollChanges(true));
 window.addEventListener("beforeunload", (e) => { if (editor.dirty) { saveEditor(); e.preventDefault(); } sync.engine?.persist(); });
 window.addEventListener("resize", debounce(() => { for (const m of masonries) m.relayout(false); }, 100));
 window.SupsidianApp = { loadVault, HandleFS, MemoryFS, demoVault, vault, board, get graph() { return graph; } };
-if (!window.__SN_NO_AUTOSTART) showWelcome();
+/** On launch, go straight back into the last vault when that needs no prompt; the welcome screen stays as the fallback. */
+async function autoReopen() {
+  try {
+    if (IS_NATIVE) {
+      const ln = lastNative();
+      if (ln && (await vinvoke("exists", { root: ln.root, path: "" }))) await loadVault(new NativeFS(ln.root, ln.name));
+    } else if (hasFsApi) {
+      const last = await idb.get("lastVault");
+      if (last && (await last.queryPermission({ mode: "readwrite" })) === "granted") await loadVault(new HandleFS(last));
+    }
+  } catch (e) { /* keep the welcome screen */ }
+}
+if (!window.__SN_NO_AUTOSTART) showWelcome().then(autoReopen);
 
 </script>
 </body>
