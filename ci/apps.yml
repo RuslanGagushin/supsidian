@@ -137,7 +137,10 @@ jobs:
           fi
       - name: Build release APK
         working-directory: ${{ env.APP }}
-        run: npx tauri android build --apk --target aarch64
+        # openssl-src (libgit2's TLS) calls aarch64-linux-android-ranlib, which lives in the NDK's bin folder
+        run: |
+          export PATH="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          npx tauri android build --apk --target aarch64
       - uses: actions/upload-artifact@v4
         with:
           name: Supsidian-Android
