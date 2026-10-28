@@ -7,7 +7,14 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.util.Base64
+import android.webkit.WebView
 import androidx.activity.result.ActivityResult
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.webkit.ScriptHandler
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -77,6 +84,60 @@ class VaultPlugin(private val activity: Activity) : Plugin(activity) {
                 invoke.reject(e.message ?: e.toString())
             }
         }
+    }
+
+    // ---------- system bars
+
+    private var insetsScript: ScriptHandler? = null
+    private var lastInsets: Insets? = null
+
+    /**
+     * Android 15+ draws the app edge to edge, under the status bar and the gesture bar, and the
+     * WebView reports env(safe-area-inset-*) as 0. So the bar sizes are measured here and handed
+     * to the page as CSS: on every new document, and on the current one whenever they change.
+     */
+    override fun load(webView: WebView) {
+        super.load(webView)
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            if (bars != lastInsets) {
+                lastInsets = bars
+                val d = v.resources.displayMetrics.density
+                val js = insetsJs(bars.top / d, bars.right / d, bars.bottom / d, bars.left / d)
+                if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+                    insetsScript?.remove()
+                    insetsScript = WebViewCompat.addDocumentStartJavaScript(webView, js, setOf("*"))
+                }
+                webView.evaluateJavascript(js, null)
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(webView)
+    }
+
+    private fun insetsJs(top: Float, right: Float, bottom: Float, left: Float): String {
+        val css = """
+            :root { --sn-inset-top: ${top}px; --sn-inset-right: ${right}px; --sn-inset-bottom: ${bottom}px; --sn-inset-left: ${left}px; }
+            #app { padding: calc(10px + var(--sn-inset-top)) max(16px, var(--sn-inset-right)) var(--sn-inset-bottom) max(16px, var(--sn-inset-left)) !important; }
+            .notice-container { top: calc(var(--size-4-4) + var(--sn-inset-top)) !important; }
+            .sn-welcome { padding-top: calc(var(--size-4-4) + var(--sn-inset-top)) !important; padding-bottom: calc(var(--size-4-4) + var(--sn-inset-bottom)) !important; }
+            .sn-welcome-corner { top: calc(var(--size-4-3) + var(--sn-inset-top)) !important; right: calc(var(--size-4-3) + var(--sn-inset-right)) !important; }
+            @media (max-width: 820px) {
+              #app { padding: calc(8px + var(--sn-inset-top)) calc(8px + var(--sn-inset-right)) var(--sn-inset-bottom) calc(8px + var(--sn-inset-left)) !important; }
+              .sn-side { padding-top: calc(14px + var(--sn-inset-top)) !important; padding-bottom: calc(16px + var(--sn-inset-bottom)) !important; padding-left: calc(12px + var(--sn-inset-left)) !important; }
+              .sn-editor.win { inset: calc(8px + var(--sn-inset-top)) calc(8px + var(--sn-inset-right)) var(--sn-inset-bottom) calc(8px + var(--sn-inset-left)) !important; }
+            }
+        """.trimIndent().replace("\n", " ").replace("'", "\\'")
+        return """
+            (function () {
+              var put = function () {
+                var s = document.getElementById('sn-insets');
+                if (!s) { s = document.createElement('style'); s.id = 'sn-insets'; (document.head || document.documentElement).appendChild(s); }
+                s.textContent = '$css';
+              };
+              if (document.documentElement) put(); else document.addEventListener('DOMContentLoaded', put);
+            })();
+        """.trimIndent()
     }
 
     // ---------- picking the vault
