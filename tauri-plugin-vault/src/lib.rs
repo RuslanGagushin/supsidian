@@ -8,6 +8,7 @@ use tauri::{
 
 mod commands;
 mod error;
+mod git;
 mod models;
 
 #[cfg(desktop)]
@@ -45,6 +46,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::remove_dir,
             commands::list_dir,
             commands::exists,
+            commands::git_sync,
+            commands::git_info,
         ])
         .setup(|app, api| {
             #[cfg(mobile)]

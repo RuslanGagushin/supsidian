@@ -47,3 +47,17 @@ pub(crate) async fn list_dir<R: Runtime>(app: AppHandle<R>, root: String, path: 
 pub(crate) async fn exists<R: Runtime>(app: AppHandle<R>, root: String, path: String) -> Result<bool> {
     app.vault().exists(root, path)
 }
+
+#[command]
+pub(crate) async fn git_sync<R: Runtime>(app: AppHandle<R>, root: String, config: crate::git::GitConfig) -> Result<crate::git::GitReport> {
+    tauri::async_runtime::spawn_blocking(move || crate::git::sync(&app, root, config))
+        .await
+        .map_err(|e| crate::Error::Msg(e.to_string()))?
+}
+
+#[command]
+pub(crate) async fn git_info<R: Runtime>(app: AppHandle<R>, root: String) -> Result<crate::git::GitInfo> {
+    tauri::async_runtime::spawn_blocking(move || crate::git::info(&app, root))
+        .await
+        .map_err(|e| crate::Error::Msg(e.to_string()))?
+}

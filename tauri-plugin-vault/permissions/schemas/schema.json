@@ -307,6 +307,30 @@
           "markdownDescription": "Denies the exists command without any pre-configured scope."
         },
         {
+          "description": "Enables the git_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-git-info",
+          "markdownDescription": "Enables the git_info command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the git_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-git-info",
+          "markdownDescription": "Denies the git_info command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the git_sync command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-git-sync",
+          "markdownDescription": "Enables the git_sync command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the git_sync command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-git-sync",
+          "markdownDescription": "Denies the git_sync command without any pre-configured scope."
+        },
+        {
           "description": "Enables the list command without any pre-configured scope.",
           "type": "string",
           "const": "allow-list",
@@ -391,10 +415,10 @@
           "markdownDescription": "Denies the write command without any pre-configured scope."
         },
         {
-          "description": "Pick a vault folder, then list, read, write and delete files inside it.\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-remove-dir`\n- `allow-list-dir`\n- `allow-exists`",
+          "description": "Pick a vault folder, then list, read, write and delete files inside it, and sync it with a git remote.\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-remove-dir`\n- `allow-list-dir`\n- `allow-exists`\n- `allow-git-sync`\n- `allow-git-info`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Pick a vault folder, then list, read, write and delete files inside it.\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-remove-dir`\n- `allow-list-dir`\n- `allow-exists`"
+          "markdownDescription": "Pick a vault folder, then list, read, write and delete files inside it, and sync it with a git remote.\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-remove-dir`\n- `allow-list-dir`\n- `allow-exists`\n- `allow-git-sync`\n- `allow-git-info`"
         }
       ]
     }

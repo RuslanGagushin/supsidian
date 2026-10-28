@@ -1,6 +1,6 @@
 # Supsidian
 
-**Supsidian shows an Obsidian vault as a board of nested cards, with Org-style TODOs, an agenda, and peer-to-peer sync between your devices.**
+**Supsidian shows an Obsidian vault as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
 
 Every card is an ordinary Markdown note in your vault. Supsidian adds nothing to your files except the frontmatter it needs to link cards together, so Obsidian, Git, Syncthing and any other tool keep working on the same folder.
 
@@ -38,9 +38,10 @@ This repository wraps the Supsidian page into native apps with [Tauri 2](https:/
 - `Ctrl+O` opens any card by name; `Ctrl+P` opens the command list.
 
 ### Sync
-- **Peer-to-peer sync between your devices**, with no server and no account: devices share a **sync key** and exchange changes directly.
-- The key is compatible with the **P2Sidian** Obsidian plugin, so a phone running Supsidian and a desktop running Obsidian can sync the same vault. If both would sync the same folder, Supsidian notices and offers to stop its own sync.
-- Without a key (the `no sync key` button), the app simply edits the folder. External sync (Obsidian Sync, Syncthing, iCloud, Git) works as usual.
+- **Git sync:** the vault folder is a git repository. **Sync now** (or the automatic sync, after edits and every few minutes) commits your changes, merges the remote branch and pushes. Set the remote URL (HTTPS) and a personal access token in the sync button's panel.
+- If a note changed on two devices, your text stays in place and the other version is saved next to it as `Note (conflict …).md`, so nothing is lost.
+- The access token is kept in the app, not in the vault, so it is never committed. A `.gitignore` is created on the first sync for Obsidian workspace files and `.trash`.
+- On Android the repository lives in the app's private storage and is copied to and from the folder you picked on every sync, so the vault takes up space twice there.
 
 ### Look and keyboard
 - Light and dark themes; English and Russian interface.
@@ -180,4 +181,3 @@ All platforms need **Rust** (<https://rustup.rs>) and **Node.js 20+** (<https://
 
 - **iPhone and iPad** aren't supported yet. Tauri can build for iOS, but the vault plugin has no iOS side.
 - The macOS app isn't notarized, hence the right-click → **Open** the first time.
-- Let only one tool sync a given vault folder peer-to-peer: either Supsidian or P2Sidian in Obsidian, not both.

@@ -18,3 +18,9 @@ impl Serialize for Error {
         serializer.serialize_str(self.to_string().as_ref())
     }
 }
+
+impl From<git2::Error> for Error {
+    fn from(e: git2::Error) -> Self {
+        Error::Msg(e.message().to_string())
+    }
+}

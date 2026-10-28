@@ -1,7 +1,7 @@
 "$schema" = "schemas/schema.json"
 
 [default]
-description = "Pick a vault folder, then list, read, write and delete files inside it."
+description = "Pick a vault folder, then list, read, write and delete files inside it, and sync it with a git remote."
 permissions = [
   "allow-pick",
   "allow-list",
@@ -11,4 +11,6 @@ permissions = [
   "allow-remove-dir",
   "allow-list-dir",
   "allow-exists",
+  "allow-git-sync",
+  "allow-git-info",
 ]

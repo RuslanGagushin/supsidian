@@ -1,6 +1,6 @@
 ## Default Permission
 
-Pick a vault folder, then list, read, write and delete files inside it.
+Pick a vault folder, then list, read, write and delete files inside it, and sync it with a git remote.
 
 #### This default permission set includes the following:
 
@@ -12,6 +12,8 @@ Pick a vault folder, then list, read, write and delete files inside it.
 - `allow-remove-dir`
 - `allow-list-dir`
 - `allow-exists`
+- `allow-git-sync`
+- `allow-git-info`
 
 ## Permission Table
 
@@ -44,6 +46,58 @@ Enables the exists command without any pre-configured scope.
 <td>
 
 Denies the exists command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`vault:allow-git-info`
+
+</td>
+<td>
+
+Enables the git_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`vault:deny-git-info`
+
+</td>
+<td>
+
+Denies the git_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`vault:allow-git-sync`
+
+</td>
+<td>
+
+Enables the git_sync command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`vault:deny-git-sync`
+
+</td>
+<td>
+
+Denies the git_sync command without any pre-configured scope.
 
 </td>
 </tr>
