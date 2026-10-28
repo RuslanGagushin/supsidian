@@ -119,9 +119,9 @@ jobs:
       # Optional: add these repository secrets to get a signed release APK that you can update later
       #   ANDROID_KEYSTORE_BASE64  — base64 of a .jks file (scripts/android-signing.mjs makes one)
       #   ANDROID_KEY_PASSWORD     — its password (key alias must be "supsidian")
-      # Without them you get a debug APK, which installs fine on your own phone.
+      # Without them the release APK is signed with a one-off key made for that run: it installs fine,
+      # but the next build can't update it in place (uninstall first), since every run has a new key.
       - name: Signing key
-        id: sign
         working-directory: ${{ env.APP }}
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -131,18 +131,13 @@ jobs:
             echo "$KEYSTORE_B64" | base64 -d > src-tauri/gen/android/supsidian.jks
             printf 'password=%s\nkeyAlias=supsidian\nstoreFile=%s\n' "$KEY_PASSWORD" "$PWD/src-tauri/gen/android/supsidian.jks" > src-tauri/gen/android/keystore.properties
             node scripts/android-signing.mjs
-            echo "signed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "signed=false" >> "$GITHUB_OUTPUT"
+            node scripts/android-signing.mjs
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: the APK is signed with a one-off key, so it can't update an earlier install."
           fi
-      - name: Build signed release APK
-        if: steps.sign.outputs.signed == 'true'
+      - name: Build release APK
         working-directory: ${{ env.APP }}
         run: npx tauri android build --apk --target aarch64
-      - name: Build debug APK
-        if: steps.sign.outputs.signed != 'true'
-        working-directory: ${{ env.APP }}
-        run: npx tauri android build --apk --debug --target aarch64
       - uses: actions/upload-artifact@v4
         with:
           name: Supsidian-Android
