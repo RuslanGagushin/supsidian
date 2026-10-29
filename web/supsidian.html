@@ -660,7 +660,7 @@ button.sn-color-dot:hover { transform: scale(1.1); }
   border-right: var(--border-width) solid var(--background-modifier-border);
 }
 #app.side-closed .sn-side, #app.side-closed .sn-resizer.is-side { display: none; }
-#app.side-closed .sn-editor { max-width: calc(100vw - 440px); }
+@media (min-width: 821px) { #app.side-closed .sn-editor { max-width: calc(100vw - 440px); } }
 .sn-side-head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--size-2-2); height: var(--header-height); padding: 0 var(--size-4-2) 0 var(--size-4-3); border-bottom: var(--border-width) solid var(--background-modifier-border); }
 .sn-vault-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--size-2-3); font-size: var(--font-ui-small); font-weight: var(--font-semibold); color: var(--text-normal); padding: var(--size-2-2) var(--size-2-3); border-radius: var(--radius-s); cursor: var(--cursor, default); }
 .sn-vault-name:hover { background: var(--background-modifier-hover); }
@@ -679,7 +679,6 @@ button.sn-color-dot:hover { transform: scale(1.1); }
 /* ---------- Editor pane (the note, as in an Obsidian tab) */
 .sn-editor {
   flex: 0 0 var(--editor-w, 540px); width: var(--editor-w, 540px); min-width: 0;
-  max-width: calc(100vw - var(--side-w, 280px) - 440px); /* always leave the board ~440px */
   display: flex; flex-direction: column;
   background: var(--background-primary);
   border-left: var(--border-width) solid var(--background-modifier-border);
@@ -861,7 +860,11 @@ kbd.sn-k { display: inline-block; padding: 1px 6px; border-radius: var(--radius-
   .sn-side-scrim { position: fixed; inset: 0; z-index: 29; background: var(--background-modifier-cover); }
   #app.side-closed .sn-side-scrim { display: none; }
 }
-@media (min-width: 821px) { .sn-side-scrim { display: none; } }
+@media (min-width: 821px) {
+  .sn-side-scrim { display: none; }
+  .sn-editor { max-width: calc(100vw - var(--side-w, 280px) - 440px); } /* always leave the board ~440px */
+  #app.editor-wide .sn-editor { max-width: none; }
+}
 
 
 /* ==========================================================

@@ -1,6 +1,6 @@
 [package]
 name = "supsidian"
-version = "0.5.1"
+version = "0.5.2"
 description = "Supsidian — a card board and Org-style agenda for Obsidian vaults"
 edition = "2021"
 publish = false
