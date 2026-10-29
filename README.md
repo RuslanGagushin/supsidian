@@ -92,6 +92,7 @@ tauri-plugin-vault/         vault file access: pick the folder, list, read, writ
 .github/workflows/apps.yml  builds all three apps on GitHub
 scripts/android-signing.mjs creates an Android signing key and wires it into Gradle
 icon.png                    source of every app icon (`npm run icons` regenerates them)
+tests/                      page tests: the real page in headless Chrome on an in-memory vault (`npm test`)
 ```
 
 `scripts/web.mjs` works in two layouts. Next to a full Supsidian checkout (a `../standalone` folder), it rebuilds `standalone/supsidian.html` and refreshes `web/supsidian.html` from it. On its own, as in this repository, it uses `web/supsidian.html` as is. Inside the app, the page switches its file access to the vault plugin and opens `http(s)://` and `obsidian://` links in the system browser or in Obsidian.
@@ -131,6 +132,8 @@ All platforms need **Rust** (<https://rustup.rs>) and **Node.js 20+** (<https://
 | `npm run android:dev` | runs the app on a phone connected by USB |
 | `npm run android:build` | builds a release APK for 64-bit ARM |
 | `npm run icons` | regenerates every icon from `icon.png` |
+| `npm test` | runs the page tests in `tests/` with headless Chrome (set `CHROME_PATH` to use another Chromium) |
+| `npm run test:rust` | runs the vault plugin's Rust tests (file access, git sync) |
 
 ### Windows
 1. Install **Microsoft C++ Build Tools** (<https://visualstudio.microsoft.com/visual-cpp-build-tools/>) with **Desktop development with C++**. WebView2 is already part of Windows 10 and 11.

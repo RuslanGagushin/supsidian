@@ -502,6 +502,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn civil_dates() {
+        assert_eq!(civil(0), (1970, 1, 1));
+        assert_eq!(civil(-1), (1969, 12, 31));
+        assert_eq!(civil(19_782), (2024, 2, 29), "leap day");
+        assert_eq!(civil(20_755), (2026, 10, 29));
+        assert_eq!(civil(11_016), (2000, 2, 29), "a leap century");
+    }
+
+    #[test]
+    fn conflict_names_keep_folder_and_extension() {
+        let re = |p: &str| {
+            let c = conflict_path(p);
+            let at = c.find(" (conflict ").unwrap_or_else(|| panic!("{c}"));
+            (c[..at].to_string(), c[at + 11..at + 30].len(), c[at + 30..].to_string())
+        };
+        assert_eq!(re("Cards/Note.md"), ("Cards/Note".into(), 19, ").md".into()));
+        assert_eq!(re("Note.md"), ("Note".into(), 19, ").md".into()));
+        assert_eq!(re("a/b/archive.tar.gz"), ("a/b/archive.tar".into(), 19, ").gz".into()));
+        assert_eq!(re(".gitignore"), (".gitignore".into(), 19, ")".into()), "a leading dot is not an extension");
+        assert_eq!(re("dir.v2/README"), ("dir.v2/README".into(), 19, ")".into()));
+    }
+
     #[cfg(not(windows))]
     #[test]
     fn mozilla_roots_parse() {
