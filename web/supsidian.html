@@ -1059,6 +1059,18 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .markdown-rendered .callout[data-callout="example"] { --cc: var(--l3); }
 .markdown-rendered .callout[data-callout="quote"], .markdown-rendered .callout[data-callout="cite"] { --cc: var(--muted); }
 .markdown-rendered .internal-embed { border-inline-start: 2px solid var(--accent); background: var(--code-bg); }
+.markdown-rendered .sn-pdf { display: block; margin-block: 0 1em; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.markdown-rendered .sn-pdf-head { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 12.5px; }
+.markdown-rendered .sn-pdf-head .internal-link { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.markdown-rendered .sn-pdf-meta { margin-inline-start: auto; color: var(--faint); white-space: nowrap; }
+.markdown-rendered .sn-pdf-icon { display: inline-flex; color: var(--faint); }
+.markdown-rendered .sn-pdf-icon svg { width: 14px; height: 14px; }
+.markdown-rendered .sn-pdf-chip { display: inline-flex; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.markdown-rendered .sn-pdf-view { position: relative; height: 600px; overflow: auto; background: var(--win); }
+.markdown-rendered .sn-pdf-view iframe { display: block; width: 100%; height: 100%; border: 0; }
+.markdown-rendered .sn-pdf-view.is-canvas { padding: 8px; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
+.markdown-rendered .sn-pdf-page { display: block; width: 100%; height: auto; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.markdown-rendered .sn-pdf-msg { padding: 16px; color: var(--faint); font-size: 13px; }
 
 /* ---------- Editor window */
 .sn-editor-head { height: 40px; padding: 0 6px; }
@@ -1611,6 +1623,7 @@ const STR = {
     renameExists: "A note named “{name}” already exists", renamed: "Renamed to “{name}”", closeEditor: "Close (Esc)", expandEditor: "Full width",
     collapseEditor: "Beside the board", emptyBody: "Start writing…", noteGone: "This note no longer exists.",
     fmError: "The frontmatter could not be parsed: {msg}. Fix it in source mode.",
+    pdfLoading: "Loading PDF…", pdfFailed: "Couldn't show this PDF: {msg}", pdfPages: "{n} pages",
     settings: "Settings", setLanguage: "Language", setTheme: "Theme", themeAuto: "System", themeLight: "Light", themeDark: "Dark",
     setFont: "Font", fontMono: "JetBrains Mono everywhere", fontPlex: "IBM Plex Sans text, mono details",
     echoHint: "C-p commands · C-o open card · C-f search · C-z undo · ? keys",
@@ -1693,6 +1706,7 @@ const STR = {
     renameExists: "Заметка «{name}» уже существует", renamed: "Переименовано в «{name}»", closeEditor: "Закрыть (Esc)", expandEditor: "На всю ширину",
     collapseEditor: "Рядом с доской", emptyBody: "Начните писать…", noteGone: "Этой заметки больше нет.",
     fmError: "Не удалось разобрать frontmatter: {msg}. Исправьте в режиме исходника.",
+    pdfLoading: "Загрузка PDF…", pdfFailed: "Не удалось показать PDF: {msg}", pdfPages: "Страниц: {n}",
     settings: "Настройки", setLanguage: "Язык", setTheme: "Тема", themeAuto: "Системная", themeLight: "Светлая", themeDark: "Тёмная",
     setFont: "Шрифт", fontMono: "JetBrains Mono везде", fontPlex: "IBM Plex Sans для текста, моно для деталей",
     echoHint: "C-p команды · C-o открыть карточку · C-f поиск · C-z отмена · ? клавиши",
@@ -2722,6 +2736,77 @@ async function attachmentUrl(path) {
   blobUrls.set(path, p);
   return p;
 }
+/* PDF embeds (![[doc.pdf#page=3&height=400]]): the platform's own viewer where the webview has one,
+   pdf.js pages otherwise (Android's WebView and mobile browsers show nothing for a PDF in a frame). */
+const PDF_EXT = /\.pdf$/i;
+const PDFJS_VERSION = "4.10.38";
+let pdfjsLoad = null;
+function loadPdfjs() {
+  pdfjsLoad ||= (async () => {
+    // The app ships pdf.js next to the page (scripts/web.mjs); the plain web page falls back to the CDN.
+    let err;
+    for (const base of ["./pdfjs/", `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/legacy/build/`]) {
+      try {
+        const lib = await import(new URL(base + "pdf.min.mjs", location.href).href);
+        lib.GlobalWorkerOptions.workerSrc = new URL(base + "pdf.worker.min.mjs", location.href).href;
+        return lib;
+      } catch (e) { err = e; }
+    }
+    pdfjsLoad = null;
+    throw err;
+  })();
+  return pdfjsLoad;
+}
+const hasPdfViewer = () => !IS_ANDROID && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) && (IS_NATIVE || navigator.pdfViewerEnabled !== false);
+const openPdfs = new Set();
+function pdfEmbed(target, sourcePath, full) {
+  const [file, frag = ""] = target.split("#");
+  const q = new URLSearchParams(frag);
+  const page = Math.max(1, parseInt(q.get("page"), 10) || 1);
+  const height = parseInt(q.get("height"), 10) || 0;
+  const path = resolveAttachment(file, sourcePath);
+  const meta = h("span", { cls: "sn-pdf-meta" });
+  const head = h(full && path ? "div" : "span", { cls: "sn-pdf-head" + (full && path ? "" : " sn-pdf-chip") }, ic("sn-pdf-icon", "file-text"),
+    h("a", { cls: "internal-link" + (path ? "" : " is-unresolved"), dataset: { href: file.trim() }, text: file.split("/").pop().trim() }), meta);
+  if (!full || !path) return head;
+  const view = h("div", { cls: "sn-pdf-view" });
+  if (height) view.style.height = height + "px";
+  if (hasPdfViewer()) attachmentUrl(path).then((u) => view.append(h("iframe", { src: `${u}#page=${page}&view=FitH`, title: file.trim() }))).catch((e) => pdfMessage(view, e));
+  else renderPdfPages(view, meta, path, page);
+  return h("div", { cls: "sn-pdf" }, head, view);
+}
+function pdfMessage(view, e) { view.replaceChildren(h("div", { cls: "sn-pdf-msg", text: t("pdfFailed", { msg: String(e?.message || e) }) })); }
+async function renderPdfPages(view, meta, path, start) {
+  for (const d of openPdfs) if (!d.view.isConnected) { openPdfs.delete(d); d.doc.destroy(); }
+  view.classList.add("is-canvas");
+  view.append(h("div", { cls: "sn-pdf-msg", text: t("pdfLoading") }));
+  let doc;
+  try {
+    const lib = await loadPdfjs();
+    const data = new Uint8Array(await (await vault.fs.readFile(path)).arrayBuffer());
+    doc = await lib.getDocument({ data, isEvalSupported: false }).promise;
+  } catch (e) { pdfMessage(view, e); return; }
+  if (!view.isConnected) { doc.destroy(); return; }
+  openPdfs.add({ view, doc });
+  meta.textContent = t("pdfPages", { n: doc.numPages });
+  const first = (await doc.getPage(1)).getViewport({ scale: 1 });
+  const canvases = [];
+  for (let i = 1; i <= doc.numPages; i++) canvases.push(h("canvas", { cls: "sn-pdf-page", style: `aspect-ratio: ${first.width} / ${first.height}`, dataset: { page: i } }));
+  view.replaceChildren(...canvases);
+  const draw = async (c) => {
+    const p = await doc.getPage(+c.dataset.page);
+    const base = p.getViewport({ scale: 1 });
+    c.style.aspectRatio = `${base.width} / ${base.height}`;
+    const vp = p.getViewport({ scale: Math.min(4, ((c.clientWidth || 600) * (window.devicePixelRatio || 1)) / base.width) });
+    c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+    await p.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+  };
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { io.unobserve(e.target); draw(e.target).catch(() => {}); }
+  }, { root: view, rootMargin: "300px 0px" });
+  canvases.forEach((c) => io.observe(c));
+  if (start > 1 && canvases[start - 1]) view.scrollTop = canvases[start - 1].offsetTop - 8;
+}
 const CALLOUT_ICONS = { note: "pencil", abstract: "clipboard-list", summary: "clipboard-list", tldr: "clipboard-list", info: "info", todo: "check-circle-2", tip: "flame", hint: "flame", important: "flame", success: "check", check: "check", done: "check", question: "help-circle", help: "help-circle", faq: "help-circle", warning: "alert-triangle", caution: "alert-triangle", attention: "alert-triangle", failure: "x", fail: "x", missing: "x", danger: "zap", error: "zap", bug: "bug", example: "list", quote: "quote", cite: "quote" };
 function renderMarkdown(md, sourcePath, opts = {}) {
   const codes = [];
@@ -2734,6 +2819,7 @@ function renderMarkdown(md, sourcePath, opts = {}) {
       const w = alias && /^\d+(x\d+)?$/.test(alias.trim()) ? ` width="${alias.trim().split("x")[0]}"` : "";
       return `<img class="sn-embed-img" data-embed="${esc(tpath)}" alt="${esc(alias && !w ? alias : tpath)}"${w}>`;
     }
+    if (PDF_EXT.test(tpath)) return `<span class="sn-embed-pdf" data-embed="${esc(target.trim())}"></span>`;
     return `<span class="internal-embed"><a class="internal-link" data-href="${esc(target)}">${esc(alias || target)}</a></span>`;
   });
   s = s.replace(/\[\[([^\]]+)\]\]/g, (m, inner) => {
@@ -2776,6 +2862,19 @@ function renderMarkdown(md, sourcePath, opts = {}) {
     const href = a.getAttribute("href") || "";
     if (/^[a-z][\w+.-]*:/i.test(href)) { a.target = "_blank"; a.rel = "noopener"; }
     else if (/\.md(#.*)?$/i.test(href) || !/^#/.test(href)) { a.classList.add("internal-link"); a.dataset.href = decodeURIComponent(href.replace(/\.md(#.*)?$/i, "")); a.removeAttribute("href"); }
+  }
+  for (const d of el.querySelectorAll("span.sn-embed-pdf[data-embed]")) {
+    const box = pdfEmbed(d.dataset.embed, sourcePath, !!opts.pdf);
+    // A block viewer cannot sit inside a paragraph: split the paragraph around it
+    const p = d.parentElement?.tagName === "P" ? d.parentElement : null;
+    if (!p || !box.classList.contains("sn-pdf")) { d.replaceWith(box); continue; }
+    const rest = h("p");
+    while (d.nextSibling) rest.append(d.nextSibling);
+    d.remove();
+    p.after(box, rest);
+    while (p.lastChild && (p.lastChild.nodeName === "BR" || !p.lastChild.textContent.trim() && p.lastChild.nodeType === 3)) p.lastChild.remove();
+    while (rest.firstChild && (rest.firstChild.nodeName === "BR" || !rest.firstChild.textContent.trim() && rest.firstChild.nodeType === 3)) rest.firstChild.remove();
+    for (const x of [p, rest]) if (!x.childNodes.length) x.remove();
   }
   for (const img of el.querySelectorAll("img")) {
     const src = img.getAttribute("src");
@@ -4155,7 +4254,7 @@ function renderEditor() {
   }
   if (editor.mode === "read") {
     const rd = h("div", { cls: "sn-reading markdown-rendered" });
-    renderMarkdown(n.body, path, { into: rd });
+    renderMarkdown(n.body, path, { into: rd, pdf: true });
     wireRendered(rd, path);
     rd.addEventListener("dblclick", (e) => { if (!e.target.closest("a, input")) { editor.mode = "edit"; renderEditor(); $(".sn-editor-text")?.focus(); } });
     page.append(rd);

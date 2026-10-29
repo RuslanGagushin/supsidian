@@ -1,4 +1,4 @@
-// Puts the single-file app into dist/index.html for Tauri.
+// Puts the single-file app into dist/index.html for Tauri, with pdf.js beside it in dist/pdfjs/.
 // - Inside the full supsidian repository: rebuilds ../standalone/supsidian.html (when its dependencies
 //   are installed) and keeps a copy in web/supsidian.html.
 // - When the app folder is on its own (for example its own GitHub repository): uses web/supsidian.html.
@@ -29,4 +29,10 @@ if (!existsSync(html)) {
 }
 mkdirSync(join(app, "dist"), { recursive: true });
 copyFileSync(html, join(app, "dist", "index.html"));
+// pdf.js for PDF embeds on webviews without a PDF viewer of their own (Android); the page finds it at ./pdfjs/
+const pdfjs = join(app, "node_modules", "pdfjs-dist", "legacy", "build");
+if (existsSync(pdfjs)) {
+  mkdirSync(join(app, "dist", "pdfjs"), { recursive: true });
+  for (const f of ["pdf.min.mjs", "pdf.worker.min.mjs"]) copyFileSync(join(pdfjs, f), join(app, "dist", "pdfjs", f));
+} else console.warn("pdfjs-dist is not installed: PDF embeds on Android will load pdf.js from the CDN.");
 console.log(`dist/index.html ready (from ${html === bundled ? "web/supsidian.html" : "standalone/supsidian.html"})`);
