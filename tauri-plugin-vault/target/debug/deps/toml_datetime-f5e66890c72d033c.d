@@ -1,0 +1,10 @@
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/toml_datetime-f5e66890c72d033c.d: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/datetime.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/de.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/ser.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libtoml_datetime-f5e66890c72d033c.rlib: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/datetime.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/de.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/ser.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libtoml_datetime-f5e66890c72d033c.rmeta: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/datetime.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/de.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/ser.rs
+
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/lib.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/datetime.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/de.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/toml_datetime-1.1.2+spec-1.1.0/src/ser.rs:

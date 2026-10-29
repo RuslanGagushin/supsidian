@@ -82,6 +82,9 @@ class VaultPlugin(private val activity: Activity) : Plugin(activity) {
                 invoke.resolve(block())
             } catch (e: Exception) {
                 invoke.reject(e.message ?: e.toString())
+            } catch (e: OutOfMemoryError) {
+                // a huge file must fail the call, not take the whole app down
+                invoke.reject("out of memory")
             }
         }
     }

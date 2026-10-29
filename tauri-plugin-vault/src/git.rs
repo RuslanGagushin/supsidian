@@ -53,6 +53,37 @@ pub struct GitInfo {
     pub is_repo: bool,
     pub remote: Option<String>,
     pub branch: Option<String>,
+    /// where the previous sync died, when it never finished
+    pub previous_crash: Option<String>,
+}
+
+static TRACE: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
+/// Breadcrumbs of the sync in progress, so a crash that kills the process leaves a hint about where it happened.
+pub(crate) fn trace(msg: &str) {
+    use std::io::Write;
+    let Some(path) = TRACE.lock().ok().and_then(|g| g.clone()) else { return };
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(f, "{msg}");
+    }
+}
+
+/// The unfinished trace of an earlier run: its last lines, or None when it ended with "done" or an error.
+fn unfinished(path: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let last = text.lines().last()?;
+    if last == "done" || last.starts_with("error:") {
+        return None;
+    }
+    let lines: Vec<_> = text.lines().collect();
+    Some(lines[lines.len().saturating_sub(4)..].join(" → "))
+}
+
+fn begin_trace(path: &Path) {
+    let _ = std::fs::write(path, "");
+    if let Ok(mut g) = TRACE.lock() {
+        *g = Some(path.to_path_buf());
+    }
 }
 
 /// Android keeps its trusted roots in a format OpenSSL does not read, so libgit2 is handed the Mozilla roots directly.
@@ -84,10 +115,14 @@ pub(crate) fn install_roots() -> Result<usize> {
 
 pub fn info<R: Runtime>(app: &AppHandle<R>, root: String) -> Result<GitInfo> {
     let dir = workdir(app, &root)?;
-    let Ok(repo) = Repository::open(&dir) else { return Ok(GitInfo::default()) };
+    #[cfg(mobile)]
+    let previous_crash = dir.parent().and_then(|b| unfinished(&b.join("sync-trace.log")));
+    #[cfg(desktop)]
+    let previous_crash = None;
+    let Ok(repo) = Repository::open(&dir) else { return Ok(GitInfo { previous_crash, ..GitInfo::default() }) };
     let remote = repo.find_remote("origin").ok().and_then(|r| r.url().map(str::to_owned));
     let branch = repo.head().ok().and_then(|h| h.shorthand().map(str::to_owned));
-    Ok(GitInfo { is_repo: true, remote, branch })
+    Ok(GitInfo { is_repo: true, remote, branch, previous_crash })
 }
 
 pub fn sync<R: Runtime>(app: &AppHandle<R>, root: String, cfg: GitConfig) -> Result<GitReport> {
@@ -101,7 +136,16 @@ pub fn sync<R: Runtime>(app: &AppHandle<R>, root: String, cfg: GitConfig) -> Res
     }
     #[cfg(mobile)]
     {
-        mirror::sync(app, root, cfg)
+        let base = workdir(app, &root)?;
+        if let Some(base) = base.parent() {
+            begin_trace(&base.join("sync-trace.log"));
+        }
+        let r = mirror::sync(app, root, cfg);
+        trace(&match &r {
+            Ok(_) => "done".to_string(),
+            Err(e) => format!("error: {e}"),
+        });
+        r
     }
 }
 
@@ -251,6 +295,7 @@ pub(crate) fn sync_repo(dir: &Path, cfg: &GitConfig) -> Result<GitReport> {
     let name = if cfg.author_name.is_empty() { "Supsidian" } else { cfg.author_name.as_str() };
     let email = if cfg.author_email.is_empty() { "supsidian@localhost" } else { cfg.author_email.as_str() };
     let sig = Signature::now(name, email)?;
+    trace("fetch");
     let mut fo = FetchOptions::new();
     fo.remote_callbacks(callbacks(cfg));
     repo.find_remote("origin")?.fetch(&["+refs/heads/*:refs/remotes/origin/*"], Some(&mut fo), None)?;
@@ -262,8 +307,10 @@ pub(crate) fn sync_repo(dir: &Path, cfg: &GitConfig) -> Result<GitReport> {
             std::fs::write(&ignore, DEFAULT_IGNORE)?;
         }
     }
+    trace("commit");
     let mut report = GitReport { committed: commit_local(&repo, &sig)?, ..Default::default() };
 
+    trace("merge");
     if let Ok(r) = repo.find_reference(&remote_ref) {
         let their = repo.reference_to_annotated_commit(&r)?;
         if repo.head().is_err() {
@@ -288,6 +335,7 @@ pub(crate) fn sync_repo(dir: &Path, cfg: &GitConfig) -> Result<GitReport> {
         }
     }
 
+    trace("push");
     let Ok(head) = repo.head() else { return Ok(report) };
     let local = head.peel_to_commit()?.id();
     let remote_id = repo.find_reference(&remote_ref).ok().and_then(|r| r.target());
@@ -387,6 +435,7 @@ mod mirror {
         let manifest = load_manifest(&manifest_path);
 
         // 1. the picked folder → the clone, so git sees the edits made since the last sync
+        super::trace("list");
         let listing = vault.list(root.clone())?;
         let mut present = HashSet::new();
         for e in &listing {
@@ -395,6 +444,7 @@ mod mirror {
             if manifest.get(&e.path) == Some(&(e.mtime, e.size)) && dest.exists() {
                 continue;
             }
+            super::trace(&format!("copy-in {} ({} bytes)", e.path, e.size));
             let bytes = STANDARD.decode(vault.read(root.clone(), e.path.clone(), true)?.data).map_err(|e| Error::Msg(e.to_string()))?;
             if fs::read(&dest).map_or(true, |old| old != bytes) {
                 if let Some(parent) = dest.parent() {
@@ -410,6 +460,7 @@ mod mirror {
         }
 
         // 2. git
+        super::trace("git");
         let before = snapshot(&work);
         let report = sync_repo(&work, &cfg)?;
         let after = snapshot(&work);
@@ -417,6 +468,7 @@ mod mirror {
         // 3. what git changed in the clone → the picked folder
         for (path, stamp) in &after {
             if before.get(path) != Some(stamp) {
+                super::trace(&format!("copy-out {path}"));
                 let bytes = fs::read(work.join(path))?;
                 vault.write(root.clone(), path.clone(), None, Some(STANDARD.encode(bytes)))?;
             }
@@ -427,6 +479,7 @@ mod mirror {
             }
         }
 
+        super::trace("manifest");
         let fresh: HashMap<String, (f64, u64)> = vault.list(root)?.into_iter().map(|e| (e.path, (e.mtime, e.size))).collect();
         fs::write(&manifest_path, serde_json::to_string(&fresh).unwrap_or_default())?;
         Ok(report)

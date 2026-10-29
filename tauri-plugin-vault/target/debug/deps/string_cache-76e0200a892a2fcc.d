@@ -1,0 +1,11 @@
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/string_cache-76e0200a892a2fcc.d: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/atom.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/dynamic_set.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/static_sets.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/trivial_impls.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libstring_cache-76e0200a892a2fcc.rlib: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/atom.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/dynamic_set.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/static_sets.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/trivial_impls.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libstring_cache-76e0200a892a2fcc.rmeta: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/atom.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/dynamic_set.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/static_sets.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/trivial_impls.rs
+
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/lib.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/atom.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/dynamic_set.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/static_sets.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/string_cache-0.9.0/src/trivial_impls.rs:

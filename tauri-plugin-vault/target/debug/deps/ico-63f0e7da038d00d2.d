@@ -1,0 +1,12 @@
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/ico-63f0e7da038d00d2.d: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libico-63f0e7da038d00d2.rlib: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libico-63f0e7da038d00d2.rmeta: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs
+
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs:

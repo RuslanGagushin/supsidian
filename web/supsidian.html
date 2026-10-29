@@ -4853,7 +4853,7 @@ async function showWelcome() {
    ========================================================= */
 const GIT_DEFAULTS = { remote: "", branch: "main", username: "git", token: "", authorName: "", authorEmail: "", auto: true, minutes: 5 };
 let SS = { ...GIT_DEFAULTS };
-const sync = { busy: false, last: null, error: "", report: null, timer: null, debounce: null, dirty: false, info: null };
+const sync = { crash: "", busy: false, last: null, error: "", report: null, timer: null, debounce: null, dirty: false, info: null };
 
 const SYNC_STR = {
   en: {
@@ -4874,6 +4874,8 @@ const SYNC_STR = {
     conflictsNotice: "Sync conflicts: {n} (see “conflict” files)",
     note: "Add a .gitignore to keep files out of the repository. The first sync creates one for .obsidian workspace files and .trash.",
     never: "Not synced yet",
+    crashed: "The last sync stopped unexpectedly — automatic sync is paused. Details are in the Git panel.",
+    crashNote: "The previous sync did not finish. Last steps: {steps}",
   },
   ru: {
     unavailable: "Git-синхронизация работает в приложении Supsidian с папкой хранилища, открытой с диска.",
@@ -4893,6 +4895,8 @@ const SYNC_STR = {
     conflictsNotice: "Конфликтов при синхронизации: {n} (файлы «conflict»)",
     note: "Чтобы исключить файлы из репозитория, добавьте .gitignore. Первая синхронизация создаёт его для рабочих файлов .obsidian и .trash.",
     never: "Ещё не синхронизировано",
+    crashed: "Прошлая синхронизация оборвалась — автосинхронизация приостановлена. Подробности в панели Git.",
+    crashNote: "Прошлая синхронизация не завершилась. Последние шаги: {steps}",
   },
 };
 const st = (k, v = {}) => (SYNC_STR[LANG]?.[k] ?? SYNC_STR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
@@ -4920,16 +4924,18 @@ async function syncBoot() {
   if (!syncAvailable()) { syncChanged(); return; }
   loadSyncSettings();
   sync.last = null; sync.error = ""; sync.report = null; sync.dirty = false;
-  if (!SS.remote) {
+  sync.crash = "";
+  try {
+    const info = await vinvoke("git_info", { root: vault.fs.root });
+    sync.crash = info.previousCrash || "";
     // a vault that is already a repository: take its remote
-    try {
-      const info = await vinvoke("git_info", { root: vault.fs.root });
-      if (info.remote) { SS.remote = info.remote; if (info.branch) SS.branch = info.branch; lsSet(gitKey(), SS); }
-    } catch { /* not a repository yet */ }
-  }
+    if (!SS.remote && info.remote) { SS.remote = info.remote; if (info.branch) SS.branch = info.branch; lsSet(gitKey(), SS); }
+  } catch { /* not a repository yet */ }
   scheduleAuto();
   syncChanged();
-  if (SS.auto && gitConfigured()) runSync({ quiet: true });
+  // after a crash, wait for the user instead of crashing again at every launch
+  if (sync.crash) notice(st("crashed"));
+  else if (SS.auto && gitConfigured()) runSync({ quiet: true });
 }
 async function stopSync() {
   clearInterval(sync.timer); clearTimeout(sync.debounce);
@@ -4939,7 +4945,7 @@ async function stopSync() {
 async function runSync({ quiet = false } = {}) {
   if (sync.busy || !syncAvailable()) return;
   if (!gitConfigured()) { if (!quiet) syncSettingsModal(); return; }
-  sync.busy = true; sync.error = "";
+  sync.busy = true; sync.error = ""; sync.crash = "";
   syncChanged();
   try {
     if (editor.dirty) await saveEditor();
@@ -4961,6 +4967,7 @@ async function runSync({ quiet = false } = {}) {
 function syncStatus() {
   if (!syncAvailable()) return { text: st("unavailable"), short: st("unavailableShort"), icon: "cloud-off", state: "off" };
   if (sync.busy) return { text: st("syncing"), short: st("syncingShort"), icon: "refresh-cw", state: "busy", spin: true };
+  if (sync.crash) return { text: st("crashed"), short: st("failedShort"), icon: "alert-triangle", state: "warn" };
   if (sync.error) return { text: st("failed", { msg: sync.error }), short: st("failedShort"), icon: "alert-triangle", state: "warn" };
   if (!gitConfigured()) return { text: st("noRemote"), short: st("noRemoteShort"), icon: "git-branch", state: "warn" };
   if (!sync.last) return { text: st("never"), short: st("never"), icon: "git-branch", state: "off" };
@@ -5002,7 +5009,7 @@ function syncSettingsModal() {
     status.className = `sn-sync-status is-${s.state}` + (s.spin ? " is-spin" : "");
     status.replaceChildren(ic("", s.icon), h("span", { text: s.text }));
     const r = sync.report;
-    result.textContent = !r ? "" : r.conflicts.length ? st("conflicts", { n: r.conflicts.length }) : [r.pulled && st("pulled"), r.pushed && st("pushed")].filter(Boolean).join(", ") || st("upToDate");
+    result.textContent = sync.crash && !sync.busy ? st("crashNote", { steps: sync.crash }) : !r ? "" : r.conflicts.length ? st("conflicts", { n: r.conflicts.length }) : [r.pulled && st("pulled"), r.pushed && st("pushed")].filter(Boolean).join(", ") || st("upToDate");
     syncBtn.disabled = sync.busy;
   };
   sync.panel = { render };

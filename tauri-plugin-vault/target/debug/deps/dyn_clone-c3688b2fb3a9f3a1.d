@@ -1,0 +1,8 @@
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/dyn_clone-c3688b2fb3a9f3a1.d: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/macros.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libdyn_clone-c3688b2fb3a9f3a1.rlib: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/macros.rs
+
+/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/deps/libdyn_clone-c3688b2fb3a9f3a1.rmeta: /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/lib.rs /Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/macros.rs
+
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/lib.rs:
+/Users/ruslan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dyn-clone-1.0.20/src/macros.rs:

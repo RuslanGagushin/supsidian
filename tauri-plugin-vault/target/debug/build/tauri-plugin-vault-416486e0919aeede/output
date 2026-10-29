@@ -1,0 +1,6 @@
+cargo:rerun-if-changed=permissions
+cargo:PERMISSION_FILES_PATH=/Users/ruslan/git/supsidian/tauri-plugin-vault/target/debug/build/tauri-plugin-vault-416486e0919aeede/out/tauri-plugin-vault-permission-files
+cargo:rerun-if-env-changed=REMOVE_UNUSED_COMMANDS
+cargo:rustc-check-cfg=cfg(mobile)
+cargo:rustc-check-cfg=cfg(desktop)
+cargo:rustc-cfg=desktop
