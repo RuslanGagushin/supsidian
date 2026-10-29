@@ -92,6 +92,9 @@ fn begin_trace(path: &Path) {
 #[cfg_attr(desktop, allow(dead_code))]
 pub(crate) fn install_roots() -> Result<usize> {
     use std::os::raw::{c_int, c_long, c_void};
+    // the raw option call below needs an initialized libgit2 (and OpenSSL on Linux and Android);
+    // git2 does this on its first call, which may not have happened yet
+    libgit2_sys::init();
     let mut added = 0;
     for cert in webpki_root_certs::TLS_SERVER_ROOT_CERTS {
         let der: &[u8] = cert.as_ref();
