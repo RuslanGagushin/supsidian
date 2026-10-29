@@ -660,6 +660,7 @@ button.sn-color-dot:hover { transform: scale(1.1); }
   border-right: var(--border-width) solid var(--background-modifier-border);
 }
 #app.side-closed .sn-side, #app.side-closed .sn-resizer.is-side { display: none; }
+#app.side-closed .sn-editor { max-width: calc(100vw - 440px); }
 .sn-side-head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--size-2-2); height: var(--header-height); padding: 0 var(--size-4-2) 0 var(--size-4-3); border-bottom: var(--border-width) solid var(--background-modifier-border); }
 .sn-vault-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--size-2-3); font-size: var(--font-ui-small); font-weight: var(--font-semibold); color: var(--text-normal); padding: var(--size-2-2) var(--size-2-3); border-radius: var(--radius-s); cursor: var(--cursor, default); }
 .sn-vault-name:hover { background: var(--background-modifier-hover); }
@@ -678,13 +679,14 @@ button.sn-color-dot:hover { transform: scale(1.1); }
 /* ---------- Editor pane (the note, as in an Obsidian tab) */
 .sn-editor {
   flex: 0 0 var(--editor-w, 540px); width: var(--editor-w, 540px); min-width: 0;
+  max-width: calc(100vw - var(--side-w, 280px) - 440px); /* always leave the board ~440px */
   display: flex; flex-direction: column;
   background: var(--background-primary);
   border-left: var(--border-width) solid var(--background-modifier-border);
 }
 #app:not(.editor-open) .sn-editor, #app:not(.editor-open) .sn-resizer.is-editor { display: none; }
 #app.editor-wide .sn-main, #app.editor-wide .sn-resizer.is-editor { display: none; }
-#app.editor-wide .sn-editor { flex: 1 1 auto; width: auto; border-left: 0; }
+#app.editor-wide .sn-editor { flex: 1 1 auto; width: auto; max-width: none; border-left: 0; }
 .sn-editor-head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--size-2-1); height: var(--header-height); padding: 0 var(--size-4-2); border-bottom: var(--border-width) solid var(--background-modifier-border); }
 .sn-editor-path { flex: 1; min-width: 0; font-size: var(--font-ui-small); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
 .sn-editor-path b { color: var(--text-normal); font-weight: var(--font-normal); }
@@ -854,7 +856,7 @@ kbd.sn-k { display: inline-block; padding: 1px 6px; border-radius: var(--radius-
   .sn-filterbar { padding: var(--size-4-3) var(--size-4-4) 0; }
   .sn-side { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(300px, 86vw); box-shadow: var(--shadow-l); }
   .sn-resizer { display: none !important; }
-  .sn-editor { position: fixed; z-index: 35; inset: 0; width: auto; border-left: 0; }
+  .sn-editor { position: fixed; z-index: 35; inset: 0; width: auto; max-width: none; border-left: 0; }
   .sn-editor-page { padding: var(--size-4-5) var(--size-4-4) 40vh; }
   .sn-side-scrim { position: fixed; inset: 0; z-index: 29; background: var(--background-modifier-cover); }
   #app.side-closed .sn-side-scrim { display: none; }
@@ -1530,11 +1532,16 @@ button.cap-cal-btn svg { width: 15px; height: 15px; }
 .markdown-rendered button.org-fold, .markdown-rendered button.org-fold:not(.clickable-icon) { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin: 0 2px 0 -2px; padding: 0; border: 0; border-radius: 4px; background: transparent; box-shadow: none; color: var(--faint); vertical-align: -3px; cursor: pointer; }
 .markdown-rendered button.org-fold svg { width: 14px; height: 14px; transition: transform .12s ease; }
 .markdown-rendered button.org-fold:hover { background: var(--panel); color: var(--fg); }
-.markdown-rendered .org-entry.is-folded > button.org-fold svg, .markdown-rendered .org-entry.is-folded > p > button.org-fold svg { transform: rotate(-90deg); }
+.markdown-rendered .org-foldable.is-folded > button.org-fold svg, .markdown-rendered .org-foldable.is-folded > p > button.org-fold svg { transform: rotate(-90deg); }
 .markdown-rendered button.org-ellipsis, .markdown-rendered button.org-ellipsis:not(.clickable-icon) { display: none; height: auto; margin-left: 4px; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); box-shadow: none; font-family: var(--font-mono); font-size: .8em; font-weight: 400; line-height: 1.3; color: var(--muted); cursor: pointer; vertical-align: .1em; }
-.markdown-rendered .org-entry.is-folded > button.org-ellipsis, .markdown-rendered .org-entry.is-folded > p > button.org-ellipsis { display: inline-block; }
+.markdown-rendered .org-foldable.is-folded > button.org-ellipsis, .markdown-rendered .org-foldable.is-folded > p > button.org-ellipsis { display: inline-block; }
 .markdown-rendered button.org-ellipsis:hover { color: var(--fg); border-color: var(--faint); }
 .markdown-rendered li.org-entry { list-style-position: outside; }
+/* plain headings fold too; their chevron shows on hover (always when folded or on touch screens) */
+.markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry) { position: relative; }
+.markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry) > button.org-fold { position: absolute; left: -22px; top: .35em; margin: 0; opacity: 0; transition: opacity .12s ease; }
+.markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry):hover > button.org-fold, .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry).is-folded > button.org-fold, .markdown-rendered :is(h1, h2, h3, h4, h5, h6) > button.org-fold:focus-visible { opacity: 1; }
+@media (hover: none) { .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry) > button.org-fold { opacity: 1; } }
 
 </style>
 </head>
@@ -2119,7 +2126,7 @@ const board = {
   history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
 };
 const tree = { expanded: new Set() };
-const editor = { path: null, mode: "edit", dirty: false, saving: false, wide: false, propsCollapsed: false };
+const editor = { path: null, mode: "edit", dirty: false, saving: false, wide: false, propsCollapsed: true };
 const undoStack = [];
 let currentTxn = null;
 
@@ -2737,7 +2744,7 @@ async function attachmentUrl(path) {
   return p;
 }
 /* PDF embeds (![[doc.pdf#page=3&height=400]]): the platform's own viewer where the webview has one,
-   pdf.js pages otherwise (Android's WebView and mobile browsers show nothing for a PDF in a frame). */
+   pdf.js pages otherwise (Android's WebView, mobile browsers and the desktop app's webview show nothing for a PDF in a frame). */
 const PDF_EXT = /\.pdf$/i;
 const PDFJS_VERSION = "4.10.38";
 let pdfjsLoad = null;
@@ -2757,7 +2764,8 @@ function loadPdfjs() {
   })();
   return pdfjsLoad;
 }
-const hasPdfViewer = () => !IS_ANDROID && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) && (IS_NATIVE || navigator.pdfViewerEnabled !== false);
+// The macOS app's WKWebView shows a blank frame for a blob: PDF, so the native app always uses the pdf.js it ships.
+const hasPdfViewer = () => !IS_NATIVE && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) && navigator.pdfViewerEnabled !== false;
 const openPdfs = new Set();
 function pdfEmbed(target, sourcePath, full) {
   const [file, frag = ""] = target.split("#");
@@ -4116,6 +4124,7 @@ const scheduleSave = debounce(() => saveEditor(), 600);
 function openEditor(path, o = {}) {
   if (!vault.notes.has(path)) return;
   if (editor.path && editor.path !== path && editor.dirty) saveEditor();
+  if (editor.path !== path) editor.propsCollapsed = true;
   editor.path = path;
   if (o.wide !== undefined) editor.wide = o.wide;
   if (editor.mode === "source" && o.keepMode !== true) editor.mode = "edit";
@@ -4784,7 +4793,7 @@ function renderAll() {
   makeResizer(sideRes, (dx, start) => { UI.sideW = Math.max(180, Math.min(520, start + dx)); document.documentElement.style.setProperty("--side-w", UI.sideW + "px"); }, () => UI.sideW);
   const main = h("div", { cls: "sn-main win" }, h("div", { cls: "sn-board-host" }, h("div", { id: "board", cls: "sn-board", tabindex: "0" })));
   const edRes = h("div", { cls: "sn-resizer is-editor" });
-  makeResizer(edRes, (dx, start) => { UI.editorW = Math.max(340, Math.min(innerWidth - 420, start - dx)); document.documentElement.style.setProperty("--editor-w", UI.editorW + "px"); }, () => UI.editorW);
+  makeResizer(edRes, (dx, start) => { UI.editorW = Math.max(340, Math.min(innerWidth - 440 - (document.getElementById("app").classList.contains("side-closed") ? 0 : UI.sideW), start - dx)); document.documentElement.style.setProperty("--editor-w", UI.editorW + "px"); }, () => UI.editorW);
   const ed = h("div", { cls: "sn-editor win", id: "editor" });
   const scrim = h("div", { cls: "sn-side-scrim", onClick: () => setSide(false) });
   const frame = h("div", { cls: "wb-frame" }, side, scrim, sideRes, main, edRes, ed);
@@ -6557,12 +6566,12 @@ function orgDecorate(el, path) {
 /* ---------- folding TODO entries in the reading view and card previews (like Org's TAB) */
 const ORG_FOLD = new Map(Object.entries(lsGet("sn-fold", {})));
 const saveFold = debounce(() => { const o = {}; [...ORG_FOLD.entries()].slice(-600).forEach(([k, v]) => { if (v) o[k] = 1; }); lsSet("sn-fold", o); }, 300);
-const FSTR = { en: { fold: "Fold (Shift+click: all in this note)", unfold: "Unfold (Shift+click: all in this note)", foldAll: "Fold all TODO entries", unfoldAll: "Unfold all TODO entries", hidden: "{n} hidden" },
+const FSTR = { en: { fold: "Fold (Shift+click: all in this note)", unfold: "Unfold (Shift+click: all in this note)", foldAll: "Fold all headings and TODO entries", unfoldAll: "Unfold all headings and TODO entries", hidden: "{n} hidden" },
   ru: { fold: "Свернуть (Shift+клик — все в заметке)", unfold: "Развернуть (Shift+клик — все в заметке)", foldAll: "Свернуть все TODO", unfoldAll: "Развернуть все TODO", hidden: "скрыто: {n}" } };
 const ft = (k, v = {}) => (FSTR[LANG]?.[k] ?? FSTR.en[k]).replace(/\{(\w+)\}/g, (m, x) => (v[x] ?? m));
 const HLEVEL = (x) => (x?.nodeType === 1 && /^H[1-6]$/.test(x.tagName) ? +x.tagName[1] : 0);
 function orgFoldSetup(el, path) {
-  const entries = [...el.querySelectorAll(".org-entry")];
+  const entries = [...el.querySelectorAll(".org-entry, h1, h2, h3, h4, h5, h6")].filter((x) => !x.closest("pre, code"));
   if (!entries.length) return;
   const seen = new Map();
   for (const blk of entries) {
