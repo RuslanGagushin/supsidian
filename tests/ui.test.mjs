@@ -185,6 +185,29 @@ describe("rendering", () => {
     await H.page.waitForFunction(() => [...document.querySelectorAll("img")].some((i) => i.src.startsWith("blob:") && i.naturalWidth === 40));
   });
 
+  test("code blocks get a language header, line numbers and syntax colours", async () => {
+    await render('```ts\n// note\nconst a = "<b>";\n```\n\n```\nplain <i>\n```\n\n```brainfuck\n+-\n```');
+    const blocks = await ev(() => [...document.querySelectorAll(".code-block")].map((b) => ({
+      head: b.querySelector(".code-head").textContent,
+      lines: b.querySelectorAll(".code-gutter span").length,
+      code: b.querySelector("pre > code").textContent,
+      tokens: [...b.querySelectorAll("code span")].map((s) => [s.className, s.textContent]),
+    })));
+    assert.deepEqual(blocks, [
+      { head: "TSTypeScript", lines: 2, code: '// note\nconst a = "<b>";', tokens: [["tok-com", "// note"], ["tok-kw", "const"], ["tok-str", '"<b>"']] },
+      { head: "Plain text", lines: 1, code: "plain <i>", tokens: [] },
+      { head: "brainfuck", lines: 1, code: "+-", tokens: [] },
+    ]);
+  });
+
+  test("callouts have a title bar, and no body when there is no text", async () => {
+    await render("> [!tip] Full\n> body\n\n> [!note] Bare");
+    assert.deepEqual(await ev(() => [...document.querySelectorAll(".callout")].map((c) => [c.dataset.callout, c.querySelector(".callout-title").textContent, c.querySelector(".callout-content")?.textContent.trim() ?? null])), [
+      ["tip", "Full", "body"],
+      ["note", "Bare", null],
+    ]);
+  });
+
   test("scripts and event handlers are removed", async () => {
     const html = await render('<script>window.x=1</script><img src=x onerror="window.y=1"><a href="javascript:alert(1)">l</a>');
     assert.doesNotMatch(html, /<script|onerror|javascript:/);

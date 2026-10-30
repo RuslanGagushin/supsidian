@@ -1049,6 +1049,22 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .markdown-rendered a.tag { font-family: var(--font-mono); font-size: 11px; padding: 1px 5px; border-radius: 3px; background: var(--panel); color: var(--tag); }
 .markdown-rendered code { font-size: .92em; background: var(--code-bg); padding: 0 3px; border-radius: 3px; }
 .markdown-rendered pre { background: var(--code-bg); border: 0; border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+.markdown-rendered .code-block { margin-block: 0 1em; border: 1px solid var(--line); border-radius: 8px; background: var(--win); overflow: hidden; }
+.markdown-rendered .code-head { display: flex; align-items: center; gap: 7px; padding: 8px 12px 4px; color: var(--fg); font-family: var(--font-ui); font-size: 12.5px; }
+.markdown-rendered .code-badge { flex: none; display: flex; align-items: flex-end; justify-content: flex-end; width: 14px; height: 14px; padding: 0 1px; border-radius: 2px; font-family: var(--font-ui); font-size: 7.5px; font-weight: 600; line-height: 1.2; }
+.markdown-rendered .code-icon { flex: none; display: inline-flex; color: var(--faint); }
+.markdown-rendered .code-icon svg { width: 14px; height: 14px; }
+.markdown-rendered .code-body { display: flex; padding-block: 4px 10px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
+.markdown-rendered .code-gutter { flex: none; min-width: 34px; padding: 0 10px 0 12px; color: var(--faint); text-align: end; user-select: none; -webkit-user-select: none; counter-reset: code-line; }
+.markdown-rendered .code-gutter span { display: block; counter-increment: code-line; }
+.markdown-rendered .code-gutter span::before { content: counter(code-line); }
+.markdown-rendered .code-body pre { flex: 1; min-width: 0; margin: 0; padding: 0 12px 0 4px; border: 0; border-radius: 0; background: none; font-size: inherit; line-height: inherit; }
+.markdown-rendered .code-body code { display: block; width: max-content; min-width: 100%; font-size: inherit; line-height: inherit; }
+.markdown-rendered .tok-com { color: var(--faint); }
+.markdown-rendered .tok-kw { color: var(--l3); }
+.markdown-rendered .tok-str, .markdown-rendered .tok-type { color: var(--l7); }
+.markdown-rendered .tok-tag { color: var(--l2); }
+.markdown-rendered .tok-num { color: var(--l8); }
 .markdown-rendered blockquote { border-inline-start: 2px solid var(--line); color: var(--muted); font-style: italic; padding-left: 12px; }
 .markdown-rendered table { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .markdown-rendered th, .markdown-rendered td { border: 0; border-bottom: 1px solid var(--line); padding: 3px 10px 3px 0; }
@@ -1058,8 +1074,11 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .markdown-rendered input[type="checkbox"] { accent-color: var(--l3); }
 .markdown-rendered li.is-checked { color: var(--faint); }
 .markdown-rendered mark, .sn-mark { background: var(--flash); color: inherit; }
-.markdown-rendered .callout { --cc: var(--l1); background: color-mix(in srgb, var(--cc) 9%, transparent); border-left: 2px solid var(--cc); border-radius: 0 6px 6px 0; padding: 8px 12px 8px 14px; }
-.markdown-rendered .callout-title { color: var(--cc); margin-inline-start: 0; font-family: var(--font-mono); font-size: .92em; }
+.markdown-rendered .callout { --cc: var(--l1); background: color-mix(in srgb, var(--cc) 4%, transparent); border: 1px solid color-mix(in srgb, var(--cc) 50%, transparent); border-radius: 6px; padding: 0; }
+.markdown-rendered .callout-title { padding: 7px 12px; background: color-mix(in srgb, var(--cc) 14%, transparent); border-bottom: 1px dashed color-mix(in srgb, var(--cc) 50%, transparent); color: var(--fg); margin-inline-start: 0; font-family: var(--font-ui); font-weight: 600; }
+.markdown-rendered .callout-title:last-child { border-bottom: 0; }
+.markdown-rendered .callout-icon { display: inline-flex; color: var(--cc); }
+.markdown-rendered .callout-content { margin-top: 0; padding: 8px 12px; }
 .markdown-rendered .callout[data-callout="tip"], .markdown-rendered .callout[data-callout="hint"], .markdown-rendered .callout[data-callout="important"] { --cc: var(--l8); }
 .markdown-rendered .callout[data-callout="success"], .markdown-rendered .callout[data-callout="check"], .markdown-rendered .callout[data-callout="done"] { --cc: var(--done); }
 .markdown-rendered .callout[data-callout="question"], .markdown-rendered .callout[data-callout="help"], .markdown-rendered .callout[data-callout="faq"], .markdown-rendered .callout[data-callout="warning"], .markdown-rendered .callout[data-callout="caution"], .markdown-rendered .callout[data-callout="attention"] { --cc: var(--next); }
@@ -1679,7 +1698,7 @@ const STR = {
     menuNewChild: "New child card", menuAddParent: "Add parent…", menuRemoveParent: "Remove parent…",
     menuRemoveFrom: "Remove from “{name}”", menuMoveTo: "Move to…", menuIcon: "Icon…", pin: "Pin", unpin: "Unpin",
     menuSetTemplate: "Template for new children…", menuChangeTemplate: "Child template: {name}", menuRemoveTemplate: "Remove child template",
-    menuCopyLink: "Copy link", menuDelete: "Delete card", linkCopied: "Link copied",
+    menuCopyLink: "Copy link", menuDelete: "Delete card", linkCopied: "Link copied", codePlain: "Plain text",
     confirmDeleteTitle: "Delete card", confirmDelete: "Delete “{name}”? The file goes to the vault trash (.trash). Child cards are not deleted.",
     confirmDeleteMany: "Delete {n} cards? The files go to the vault trash (.trash). Child cards are not deleted.",
     deleted: "Deleted “{name}”", deletedMany: ["Deleted {n} card", "Deleted {n} cards"],
@@ -1762,7 +1781,7 @@ const STR = {
     menuNewChild: "Новая дочерняя карточка", menuAddParent: "Добавить родителя…", menuRemoveParent: "Убрать родителя…",
     menuRemoveFrom: "Убрать из «{name}»", menuMoveTo: "Переместить в…", menuIcon: "Иконка…", pin: "Закрепить", unpin: "Открепить",
     menuSetTemplate: "Шаблон для новых детей…", menuChangeTemplate: "Шаблон детей: {name}", menuRemoveTemplate: "Убрать шаблон детей",
-    menuCopyLink: "Копировать ссылку", menuDelete: "Удалить карточку", linkCopied: "Ссылка скопирована",
+    menuCopyLink: "Копировать ссылку", menuDelete: "Удалить карточку", linkCopied: "Ссылка скопирована", codePlain: "Текст",
     confirmDeleteTitle: "Удаление карточки", confirmDelete: "Удалить «{name}»? Файл попадёт в корзину хранилища (.trash). Дочерние карточки не удаляются.",
     confirmDeleteMany: "Удалить карточки ({n})? Файлы попадут в корзину хранилища (.trash). Дочерние карточки не удаляются.",
     deleted: "Удалено: «{name}»", deletedMany: ["Удалена {n} карточка", "Удалено {n} карточки", "Удалено {n} карточек"],
@@ -2892,6 +2911,89 @@ async function renderPdfPages(view, meta, path, start) {
   if (start > 1 && canvases[start - 1]) view.scrollTop = canvases[start - 1].offsetTop - 8;
 }
 const CALLOUT_ICONS = { note: "pencil", abstract: "clipboard-list", summary: "clipboard-list", tldr: "clipboard-list", info: "info", todo: "check-circle-2", tip: "flame", hint: "flame", important: "flame", success: "check", check: "check", done: "check", question: "help-circle", help: "help-circle", faq: "help-circle", warning: "alert-triangle", caution: "alert-triangle", attention: "alert-triangle", failure: "x", fail: "x", missing: "x", danger: "zap", error: "zap", bug: "bug", example: "list", quote: "quote", cite: "quote" };
+/* Code blocks: a header with the language, line numbers and light syntax colours */
+const CODE_LANGS = {};
+for (const [names, label, badge, bg, fg, family] of [
+  ["js javascript mjs cjs", "JavaScript", "JS", "#f7df1e", "#1b221f", "c"],
+  ["ts typescript", "TypeScript", "TS", "#3178c6", "#fff", "c"],
+  ["jsx", "JSX", "JSX", "#61dafb", "#1b221f", "sfc"],
+  ["tsx", "TSX", "TSX", "#3178c6", "#fff", "sfc"],
+  ["svelte", "Svelte", "S", "#ff3e00", "#fff", "sfc"],
+  ["vue", "Vue", "V", "#42b883", "#fff", "sfc"],
+  ["html htm", "HTML", "<>", "#e34f26", "#fff", "markup"],
+  ["xml svg", "XML", "<>", "#8a6d3b", "#fff", "markup"],
+  ["css scss less", "CSS", "#", "#663399", "#fff", "css"],
+  ["json jsonc", "JSON", "{}", "#5b6761", "#fff", "json"],
+  ["py python", "Python", "Py", "#3776ab", "#ffd43b", "hash"],
+  ["rb ruby", "Ruby", "Rb", "#cc342d", "#fff", "hash"],
+  ["sh bash zsh shell", "Shell", "$", "#2e3632", "#fff", "hash"],
+  ["yml yaml", "YAML", "Y", "#cb171e", "#fff", "hash"],
+  ["toml", "TOML", "T", "#9c4221", "#fff", "hash"],
+  ["rs rust", "Rust", "Rs", "#b7410e", "#fff", "c"],
+  ["go golang", "Go", "Go", "#00add8", "#fff", "c"],
+  ["c h", "C", "C", "#555d9b", "#fff", "c"],
+  ["cpp c++ cc hpp", "C++", "C+", "#00599c", "#fff", "c"],
+  ["cs csharp", "C#", "C#", "#68217a", "#fff", "c"],
+  ["java", "Java", "J", "#b07219", "#fff", "c"],
+  ["kt kotlin", "Kotlin", "K", "#7f52ff", "#fff", "c"],
+  ["swift", "Swift", "Sw", "#f05138", "#fff", "c"],
+  ["php", "PHP", "P", "#777bb4", "#fff", "c"],
+  ["sql", "SQL", "Q", "#336791", "#fff", "sql"],
+  ["md markdown", "Markdown", "M", "#5b6761", "#fff", null],
+]) for (const name of names.split(" ")) CODE_LANGS[name] = { label, badge, bg, fg, family };
+const CODE_KEYWORDS = new Set("abstract as async await break case catch class const continue crate debugger def default defer del do done echo elif else elsif end enum esac except export extends extern false fi final finally fn for foreach from func function go if impl implements import in instanceof interface is lambda let loop match mod module mut namespace new nil None not null or override package pass private protected public pub raise return self static struct super switch then this throw throws trait true True False try type typeof undefined use val var void where while with yield".split(" "));
+const CODE_SQL_KEYWORDS = new Set("add alter and as asc between by case create delete desc distinct drop else end exists false from group having if in index inner insert into is join key left like limit not null on or order outer primary references right select set table then true union unique update values when where".split(" "));
+const CODE_STR = { dq: String.raw`"(?:[^"\\\n]|\\.)*"`, sq: String.raw`'(?:[^'\\\n]|\\.)*'`, bt: "`(?:[^`\\\\]|\\\\[^])*`" };
+const CODE_C_COMMENT = String.raw`//.*|/\*[^]*?\*/`, CODE_TAG = String.raw`</?[A-Za-z][\w:.-]*|/?>`;
+const CODE_FAMILIES = {
+  c: { com: CODE_C_COMMENT, str: `${CODE_STR.dq}|${CODE_STR.sq}|${CODE_STR.bt}`, kw: CODE_KEYWORDS },
+  sfc: { com: `<!--[^]*?-->|${CODE_C_COMMENT}`, str: `${CODE_STR.dq}|${CODE_STR.sq}|${CODE_STR.bt}`, tag: CODE_TAG, kw: CODE_KEYWORDS },
+  markup: { com: "<!--[^]*?-->", str: CODE_STR.dq, tag: CODE_TAG },
+  css: { com: String.raw`/\*[^]*?\*/`, str: `${CODE_STR.dq}|${CODE_STR.sq}` },
+  json: { str: CODE_STR.dq, kw: new Set(["true", "false", "null"]) },
+  hash: { com: String.raw`(?:^|[ \t])#.*`, str: `"""[^]*?"""|'''[^]*?'''|${CODE_STR.dq}|${CODE_STR.sq}`, kw: CODE_KEYWORDS },
+  sql: { com: String.raw`--.*|/\*[^]*?\*/`, str: `${CODE_STR.dq}|${CODE_STR.sq}`, kw: CODE_SQL_KEYWORDS, nocase: true, notypes: true },
+};
+for (const f of Object.values(CODE_FAMILIES)) {
+  const part = (name, src) => (src ? `(?<${name}>${src})|` : "");
+  f.re = new RegExp(`${part("com", f.com)}${part("str", f.str)}${part("tag", f.tag)}(?<num>\\b0x[\\da-fA-F]+|\\b\\d[\\d_]*(?:\\.\\d+)?)|(?<word>[\\p{L}_$][\\p{L}\\p{N}_$]*)`, "gmu");
+}
+function highlightCode(text, family) {
+  const frag = document.createDocumentFragment();
+  let pos = 0;
+  for (const m of text.matchAll(family.re)) {
+    const g = m.groups;
+    let cls = g.com ? "tok-com" : g.str ? "tok-str" : g.tag ? "tok-tag" : g.num ? "tok-num" : null;
+    if (g.word) {
+      if (family.kw?.has(family.nocase ? g.word.toLowerCase() : g.word)) cls = "tok-kw";
+      else if (family.kw && !family.notypes && /^\p{Lu}/u.test(g.word)) cls = "tok-type";
+    }
+    if (!cls) continue;
+    frag.append(text.slice(pos, m.index), h("span", { cls, text: m[0] }));
+    pos = m.index + m[0].length;
+  }
+  frag.append(text.slice(pos));
+  return frag;
+}
+const CODE_HIGHLIGHT_LIMIT = 30000; // a huge block stays plain instead of slowing the render
+function decorateCodeBlocks(el) {
+  for (const pre of el.querySelectorAll("pre")) {
+    const code = pre.firstElementChild;
+    if (code?.tagName !== "CODE") continue;
+    const lang = (/\blanguage-(\S+)/.exec(code.className)?.[1] || "").toLowerCase();
+    const known = Object.hasOwn(CODE_LANGS, lang) ? CODE_LANGS[lang] : null;
+    const text = code.textContent.replace(/\n$/, "");
+    const family = CODE_FAMILIES[known?.family];
+    code.replaceChildren(family && text.length <= CODE_HIGHLIGHT_LIMIT ? highlightCode(text, family) : text);
+    const mark = known ? h("span", { cls: "code-badge", text: known.badge }) : ic("code-icon", "code");
+    if (known) Object.assign(mark.style, { background: known.bg, color: known.fg });
+    const gutter = h("div", { cls: "code-gutter", "aria-hidden": "true" });
+    gutter.append(...text.split("\n").map(() => h("span")));
+    const box = h("div", { cls: "code-block" }, h("div", { cls: "code-head" }, mark, h("span", { text: known?.label || lang || t("codePlain") })));
+    pre.replaceWith(box);
+    box.append(h("div", { cls: "code-body" }, gutter, pre));
+  }
+}
 function renderMarkdown(md, sourcePath, opts = {}) {
   const codes = [];
   let s = md.replace(/(^|\n)(```|~~~)[\s\S]*?(\n\2[^\n]*|$)|`[^`\n]+`/g, (m) => { codes.push(m); return `${codes.length - 1}`; });
@@ -2932,6 +3034,7 @@ function renderMarkdown(md, sourcePath, opts = {}) {
     const c = h("div", { cls: "callout", dataset: { callout: type } },
       h("div", { cls: "callout-title" }, ic("callout-icon", CALLOUT_ICONS[type] || "pencil"), h("span", { text: m[3].trim() || type[0].toUpperCase() + type.slice(1) })),
       h("div", { cls: "callout-content" }, ...bq.childNodes));
+    if (!c.lastChild.textContent.trim() && !c.lastChild.children.length) c.lastChild.remove();
     bq.replaceWith(c);
   }
   // Tasks: clickable checkboxes toggle the line in the file
@@ -2969,6 +3072,7 @@ function renderMarkdown(md, sourcePath, opts = {}) {
     if (path) attachmentUrl(path).then((u) => { img.src = u; }).catch(() => {});
   }
   try { orgDecorate(el, sourcePath); } catch (err) { console.warn(err); }
+  decorateCodeBlocks(el);
   return el;
 }
 function wireRendered(el, sourcePath) {
