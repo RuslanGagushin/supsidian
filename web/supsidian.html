@@ -733,6 +733,8 @@ button.sn-color-dot:hover { transform: scale(1.1); }
   tab-size: 4;
 }
 .sn-editor-text.is-source { font-family: var(--font-monospace); font-size: calc(var(--font-text-size) * .9); }
+/* caret on a table row: lines stop wrapping and the editor scrolls sideways (editorTableWrap) */
+.sn-editor-text.is-nowrap { white-space: pre; overflow-wrap: normal; overflow-x: auto; }
 .sn-editor-text::placeholder { color: var(--text-faint); }
 .sn-reading { font-size: var(--font-text-size); min-height: 30vh; }
 .sn-reading > :first-child { margin-top: 0; }
@@ -917,6 +919,7 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .minibuf .preview { color: var(--l3); white-space: nowrap; }
 .minibuf .echo { flex: 0 1 auto; min-width: 0; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; border-radius: 3px; }
 .minibuf .echo.is-hint { color: var(--faint); }
+.minibuf.is-blank { display: none; }
 .minibuf.flash .echo:not(.is-hint) { animation: wb-flash .9s ease-out; }
 @keyframes wb-flash { from { background: var(--flash); } to { background: transparent; } }
 .minibuf .wb-btn.mini { height: 22px; padding: 0 8px; font-size: 11.5px; }
@@ -1544,7 +1547,7 @@ button.cap-cal-btn svg { width: 15px; height: 15px; }
 .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry) { position: relative; }
 .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry) > button.org-fold { position: absolute; left: -22px; top: .35em; margin: 0; opacity: 0; transition: opacity .12s ease; }
 .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry):hover > button.org-fold, .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry).is-folded > button.org-fold, .markdown-rendered :is(h1, h2, h3, h4, h5, h6) > button.org-fold:focus-visible { opacity: 1; }
-@media (hover: none) { .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry) > button.org-fold { opacity: 1; } }
+@media (hover: none), (max-width: 820px) { .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.org-entry) > button.org-fold { position: static; margin: 0 4px 0 -2px; opacity: 1; } }
 
 /* Files view: every attachment in the vault, list + preview */
 button.wb-btn.wb-files.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
@@ -3064,7 +3067,8 @@ let echoTimer = null, mbBusy = false, pendingEcho = null;
 function defaultEcho() {
   if (vault.fs?.kind === "demo") return t("demoBanner");
   if (vault.fs?.kind === "copy") return t("volatileBanner");
-  return t("echoHint");
+  // the hint lists keyboard shortcuts — no use on a touch screen, where the line stays hidden until there is a message
+  return matchMedia("(hover: none)").matches ? "" : t("echoHint");
 }
 function echo(text, o = {}) {
   const mb = $("#minibuf");
@@ -3073,13 +3077,14 @@ function echo(text, o = {}) {
   clearTimeout(echoTimer);
   const isHint = o.hint || text === defaultEcho();
   mb.replaceChildren(h("span", { cls: "echo" + (isHint ? " is-hint" : ""), text, title: text }));
+  mb.classList.toggle("is-blank", !text && !o.undo);
   if (o.undo) mb.append(h("button", { cls: "wb-btn mini", type: "button", onClick: () => undo() }, t("undo"), h("kbd", { text: "C-z" })));
   if (!isHint) { mb.classList.remove("flash"); void mb.offsetWidth; mb.classList.add("flash"); }
   if (o.hint) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), 7000);
   else if (!o.keep && !isHint) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), o.undo ? 9000 : 6000);
   return true;
 }
-function mbBegin() { clearTimeout(echoTimer); mbBusy = true; modalStack++; }
+function mbBegin() { clearTimeout(echoTimer); mbBusy = true; modalStack++; $("#minibuf")?.classList.remove("is-blank"); }
 function mbEnd() {
   mbBusy = false; modalStack--;
   const pe = pendingEcho; pendingEcho = null;
@@ -4282,7 +4287,21 @@ function syncEditorFromDisk() {
   renderEditorProps();
   if (editor.mode === "read") renderEditor();
 }
-function autosize(ta) { const sc = $(".sn-editor-scroll")?.scrollTop; ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; if (sc != null) $(".sn-editor-scroll").scrollTop = sc; }
+/** A textarea wraps all lines or none, so wide Markdown tables get no wrapping only while the caret is on a table row. */
+function editorTableWrap(ta) {
+  const pos = ta.selectionStart, v = ta.value;
+  const line = v.slice(v.lastIndexOf("\n", pos - 1) + 1, (v.indexOf("\n", pos) + 1 || v.length + 1) - 1);
+  const want = document.activeElement === ta && /^\s*\|.*\|/.test(line);
+  if (want === ta.classList.contains("is-nowrap")) return;
+  // keep the caret line where it is on screen while the text reflows
+  const sc = $(".sn-editor-scroll"), before = caretRect(ta, pos).top;
+  ta.classList.toggle("is-nowrap", want);
+  ta.wrap = want ? "off" : "soft";
+  autosize(ta);
+  if (sc) sc.scrollTop += caretRect(ta, pos).top - before;
+  if (!want) ta.scrollLeft = 0;
+}
+function autosize(ta) { const sc = $(".sn-editor-scroll")?.scrollTop; ta.style.height = "auto"; ta.style.height = ta.scrollHeight + ta.offsetHeight - ta.clientHeight + "px"; /* + a sideways scrollbar */ if (sc != null) $(".sn-editor-scroll").scrollTop = sc; }
 function renderEditor() {
   const host = $("#editor");
   if (!host) return;
@@ -4355,10 +4374,11 @@ function renderEditor() {
     });
     ta.addEventListener("keydown", editorKeys);
     ta.addEventListener("blur", () => { if (editor.dirty) saveEditor(); });
-    ta.addEventListener("keyup", (e) => { editorModeline(); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
-    ta.addEventListener("mouseup", () => updateEdToolbar());
-    ta.addEventListener("input", () => updateEdToolbar());
-    ta.addEventListener("focus", () => updateEdToolbar());
+    ta.addEventListener("keyup", (e) => { editorTableWrap(ta); editorModeline(); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
+    ta.addEventListener("mouseup", () => { editorTableWrap(ta); updateEdToolbar(); });
+    ta.addEventListener("input", () => { editorTableWrap(ta); updateEdToolbar(); });
+    ta.addEventListener("focus", () => { editorTableWrap(ta); updateEdToolbar(); });
+    ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) editorTableWrap(ta); }, 150));
     ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) acClose(); }, 120));
     wireEditorFiles(ta);
     ta.addEventListener("click", editorModeline);
@@ -5295,7 +5315,8 @@ function caretRect(ta, pos) {
   const cs = getComputedStyle(ta);
   const div = document.createElement("div");
   for (const p of ["boxSizing", "width", "fontFamily", "fontSize", "fontWeight", "fontStyle", "letterSpacing", "lineHeight", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "borderTopWidth", "borderLeftWidth", "borderRightWidth", "tabSize", "textTransform", "wordSpacing", "textIndent", "fontVariantLigatures"]) div.style[p] = cs[p];
-  Object.assign(div.style, { position: "absolute", visibility: "hidden", whiteSpace: "pre-wrap", overflowWrap: "break-word", top: "0", left: "-9999px" });
+  const nowrap = cs.whiteSpace === "pre";
+  Object.assign(div.style, { position: "absolute", visibility: "hidden", whiteSpace: nowrap ? "pre" : "pre-wrap", overflowWrap: nowrap ? "normal" : "break-word", top: "0", left: "-9999px" });
   div.textContent = ta.value.slice(0, pos);
   const mark = document.createElement("span");
   mark.textContent = ta.value.slice(pos) || ".";
