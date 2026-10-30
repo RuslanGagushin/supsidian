@@ -873,7 +873,16 @@ kbd.sn-k { display: inline-block; padding: 1px 6px; border-radius: var(--radius-
    Workbench skin (Emacs-style frame: windows, mode-lines, minibuffer)
    ========================================================== */
 #app { flex-direction: column; gap: 8px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); background: var(--bg); }
-.wb-top { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 34px; }
+.wb-top { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 34px; min-width: 0; }
+.wb-top > :not(.wb-spacer) { flex: none; }
+/* When the bar runs out of room, fitTopBar() adds these one by one */
+.wb-top.fit-1 :is(.wb-btn kbd, .wb-brand small) { display: none; }
+.wb-top.fit-2 :is(.wb-files, .wb-today, .wb-commands) .wb-label { display: none; }
+.wb-top.fit-2 :is(.wb-vault-btn, .wb-sync) { max-width: 130px; }
+.wb-top.fit-3 .wb-brand { display: none; }
+.wb-top.fit-4 .wb-btn .wb-label { display: none; }
+.wb-top.fit-5 { gap: 4px; }
+.wb-top.fit-5 .wb-theme { display: none; }
 .wb-brand { font-family: var(--font-display); font-size: 21px; font-weight: 500; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 0; white-space: nowrap; min-width: 0; color: var(--fg); margin: 0 4px 0 2px; }
 .wb-brand i { font-style: italic; color: var(--l1); }
 .wb-brand small { font-family: var(--font-mono); font-size: 11px; color: var(--faint); font-weight: 400; letter-spacing: 0; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; }
@@ -4963,6 +4972,22 @@ function wbBtn(iconName, label, onClick, cls = "", kbd = null) {
   if (onClick) b.addEventListener("click", onClick);
   return b;
 }
+/* The bar's width depends on the language, the vault name and the sync status, so it is measured, not guessed from the window width */
+const TOP_FIT_STEPS = [1, 2, 3, 4, 5];
+function fitTopBar(top) {
+  for (const i of TOP_FIT_STEPS) top.classList.remove(`fit-${i}`);
+  for (const i of TOP_FIT_STEPS) { if (top.scrollWidth <= top.clientWidth) break; top.classList.add(`fit-${i}`); }
+}
+let topBarWatch = null;
+function watchTopBar(top) {
+  topBarWatch?.();
+  const fit = () => fitTopBar(top);
+  const resize = new ResizeObserver(fit), changes = new MutationObserver(fit);
+  resize.observe(top);
+  changes.observe(top, { childList: true, subtree: true, characterData: true });
+  document.fonts?.ready.then(() => { if (top.isConnected) fit(); });
+  topBarWatch = () => { resize.disconnect(); changes.disconnect(); };
+}
 function renderAll() {
   applyLanguage();
   const app = $("#app");
@@ -4989,9 +5014,9 @@ function renderAll() {
     filesButton(),
     wbBtn("calendar-days", wt("today"), () => openToday(), "hide-narrow wb-today", null),
     wbBtn("search", t("openShort"), () => quickOpen(), "", "C-o"),
-    wbBtn("terminal", t("commands"), () => commandPalette(), "hide-narrow", "C-p"),
+    wbBtn("terminal", t("commands"), () => commandPalette(), "hide-narrow wb-commands", "C-p"),
     wbBtn("plus", t("newShort"), async () => { const title = await promptModal(t("newCard")); if (title) createCard(title, board.target, "", undefined, { open: true }); }, "primary"),
-    iconBtn("sun-moon", t("toggleTheme"), () => { const dark = document.body.classList.contains("theme-dark"); UI.theme = dark ? "light" : "dark"; saveUI(); applyTheme(); }, "wb-icon"),
+    iconBtn("sun-moon", t("toggleTheme"), () => { const dark = document.body.classList.contains("theme-dark"); UI.theme = dark ? "light" : "dark"; saveUI(); applyTheme(); }, "wb-icon wb-theme"),
     iconBtn("settings", t("settings"), () => settingsModal(), "wb-icon"));
   const side = h("div", { cls: "sn-side" }, h("div", { cls: "sn-outline", id: "tree" }));
   const sideRes = h("div", { cls: "sn-resizer is-side" });
@@ -5003,6 +5028,7 @@ function renderAll() {
   const scrim = h("div", { cls: "sn-side-scrim", onClick: () => setSide(false) });
   const frame = h("div", { cls: "wb-frame" }, side, scrim, sideRes, main, edRes, ed);
   app.append(top, frame, h("div", { cls: "minibuf", id: "minibuf" }));
+  watchTopBar(top);
   echo(defaultEcho(), { keep: true });
   renderTree();
   renderBoard(true);

@@ -293,6 +293,39 @@ describe("palettes, settings, language and themes", () => {
   });
 });
 
+describe("top bar", () => {
+  const state = () => ev(async () => {
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const top = $(".wb-top");
+    return { fits: top.scrollWidth <= top.clientWidth, step: TOP_FIT_STEPS.filter((i) => top.classList.contains(`fit-${i}`)).length, brand: getComputedStyle($(".wb-brand")).display !== "none" };
+  });
+
+  for (const lang of ["en", "ru"]) test(`always fits, and gets its details back when the window widens (${lang})`, async () => {
+    await openVault({ viewport: { width: 1700, height: 800 }, lang });
+    assert.deepEqual(await state(), { fits: true, step: 0, brand: true });
+    for (const width of [1250, 1100, 1000, 850, 821, 700, 500, 390, 320]) {
+      await H.page.setViewportSize({ width, height: 800 });
+      assert.equal((await state()).fits, true, `overflows at ${width}px`);
+    }
+    await H.page.setViewportSize({ width: 1700, height: 800 });
+    assert.equal((await state()).step, 0);
+  });
+
+  test("drops the details before the logo, and the logo before the labels", async () => {
+    await openVault({ viewport: { width: 1100, height: 800 } });
+    assert.equal((await state()).brand, true);
+    await H.page.setViewportSize({ width: 850, height: 800 });
+    assert.deepEqual(await state(), { fits: true, step: 3, brand: false });
+  });
+
+  test("refits when a button's text changes", async () => {
+    await openVault({ viewport: { width: 1250, height: 800 } });
+    const before = (await state()).step;
+    await ev(() => { $("#files-btn .wb-label").textContent = "A very long label ".repeat(6); });
+    assert.ok((await state()).step > before);
+  });
+});
+
 describe("phone layout", () => {
   beforeEach(() => openVault({ viewport: { width: 390, height: 800 } }));
 
