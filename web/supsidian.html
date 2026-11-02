@@ -1106,6 +1106,13 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .markdown-rendered .callout[data-callout="failure"], .markdown-rendered .callout[data-callout="fail"], .markdown-rendered .callout[data-callout="missing"], .markdown-rendered .callout[data-callout="danger"], .markdown-rendered .callout[data-callout="error"], .markdown-rendered .callout[data-callout="bug"] { --cc: var(--todo); }
 .markdown-rendered .callout[data-callout="example"] { --cc: var(--l3); }
 .markdown-rendered .callout[data-callout="quote"], .markdown-rendered .callout[data-callout="cite"] { --cc: var(--muted); }
+/* foldable callouts: [!type]+ open, [!type]- folded; the title toggles them */
+.markdown-rendered .callout.is-collapsible > .callout-title { cursor: pointer; user-select: none; -webkit-user-select: none; }
+.markdown-rendered .callout-fold { display: inline-flex; color: var(--muted); transition: transform 120ms; }
+.markdown-rendered .callout-fold svg { width: 15px; height: 15px; }
+.markdown-rendered .callout.is-collapsed > .callout-title { border-bottom: 0; }
+.markdown-rendered .callout.is-collapsed > .callout-title .callout-fold { transform: rotate(-90deg); }
+.markdown-rendered .callout.is-collapsed > .callout-content { display: none; }
 .markdown-rendered .internal-embed { border-inline-start: 2px solid var(--accent); background: var(--code-bg); }
 .markdown-rendered .sn-pdf { display: block; margin-block: 0 1em; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); }
 .markdown-rendered .sn-pdf-head { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 12.5px; }
@@ -1343,6 +1350,20 @@ body.write-serif .sn-editor-page, body.write-sans .sn-editor-page, body.write-in
 .sn-live-block.is-dragged { opacity: .35; }
 .sn-live-block.is-drop-before { box-shadow: 0 -2px 0 var(--accent); }
 .sn-live-block.is-drop-after { box-shadow: 0 2px 0 var(--accent); }
+/* a rendered table in live preview: + buttons under it (a row) and on its right (a column), shown on hover */
+.sn-table-host { position: relative; margin-block: 0 1em; }
+.markdown-rendered .sn-table-host > .sn-table-wrap { margin-bottom: 0; }
+.sn-table-host :is(td, th) { cursor: text; }
+.sn-table-add-row, .sn-table-add-col {
+  position: absolute; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px;
+  background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--faint); cursor: pointer; opacity: 0; transition: opacity 120ms;
+}
+.sn-table-add-row { left: 0; right: 0; bottom: -15px; height: 13px; }
+.sn-table-add-col { top: 0; bottom: 0; right: -17px; width: 13px; }
+.sn-table-add-row svg, .sn-table-add-col svg { width: 12px; height: 12px; }
+.sn-table-host:hover > :is(.sn-table-add-row, .sn-table-add-col), .sn-table-host > :focus-visible { opacity: 1; }
+.sn-table-add-row:hover, .sn-table-add-col:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+@media (hover: none) { .sn-table-add-row, .sn-table-add-col { opacity: .5; } }
 /* the floating format bar over a text selection */
 .sn-fmtbar {
   position: fixed; z-index: 74; display: flex; align-items: center; gap: 1px; padding: 3px;
@@ -3240,6 +3261,12 @@ async function renderPdfPages(view, meta, path, start) {
   canvases.forEach((c) => io.observe(c));
   if (start > 1 && canvases[start - 1]) view.scrollTop = canvases[start - 1].offsetTop - 8;
 }
+const calloutFolds = new Map();
+const calloutFoldKey = (path, type, title) => [path || "", type, title].join("\u0001");
+function toggleCallout(c) {
+  const folded = c.classList.toggle("is-collapsed");
+  if (c.dataset.fold) calloutFolds.set(c.dataset.fold, folded);
+}
 const CALLOUT_ICONS = { note: "pencil", abstract: "clipboard-list", summary: "clipboard-list", tldr: "clipboard-list", info: "info", todo: "check-circle-2", tip: "flame", hint: "flame", important: "flame", success: "check", check: "check", done: "check", question: "help-circle", help: "help-circle", faq: "help-circle", warning: "alert-triangle", caution: "alert-triangle", attention: "alert-triangle", failure: "x", fail: "x", missing: "x", danger: "zap", error: "zap", bug: "bug", example: "list", quote: "quote", cite: "quote" };
 /* Code blocks: a header with the language, line numbers and light syntax colours */
 const CODE_LANGS = {};
@@ -3358,13 +3385,21 @@ function renderMarkdown(md, sourcePath, opts = {}) {
     if (!p || p.tagName !== "P") continue;
     const m = /^\[!([\w-]+)\]([+-]?)[ \t]*([^\n<]*)(?:<br>\n?|\n|$)/.exec(p.innerHTML);
     if (!m) continue;
-    const type = m[1].toLowerCase();
+    const type = m[1].toLowerCase(), title = m[3].trim() || type[0].toUpperCase() + type.slice(1);
     p.innerHTML = p.innerHTML.slice(m[0].length);
     if (!p.innerHTML.trim()) p.remove();
     const c = h("div", { cls: "callout", dataset: { callout: type } },
-      h("div", { cls: "callout-title" }, ic("callout-icon", CALLOUT_ICONS[type] || "pencil"), h("span", { text: m[3].trim() || type[0].toUpperCase() + type.slice(1) })),
+      h("div", { cls: "callout-title" }, ic("callout-icon", CALLOUT_ICONS[type] || "pencil"), h("span", { cls: "callout-title-inner", text: title })),
       h("div", { cls: "callout-content" }, ...bq.childNodes));
     if (!c.lastChild.textContent.trim() && !c.lastChild.children.length) c.lastChild.remove();
+    else if (m[2]) {
+      // [!type]+ starts open, [!type]- folded; a fold the reader toggled stays while the note is open
+      const key = calloutFoldKey(sourcePath, type, title);
+      c.dataset.fold = key;
+      c.classList.add("is-collapsible");
+      c.classList.toggle("is-collapsed", calloutFolds.get(key) ?? m[2] === "-");
+      c.firstChild.append(ic("callout-fold", "chevron-down"));
+    }
     bq.replaceWith(c);
   }
   for (const tb of el.querySelectorAll("table")) { const wrap = h("div", { cls: "sn-table-wrap" }); tb.replaceWith(wrap); wrap.append(tb); }
@@ -3420,7 +3455,9 @@ function wireRendered(el, sourcePath) {
       return;
     }
     const tg = e.target.closest("a.tag");
-    if (tg) { e.preventDefault(); e.stopPropagation(); openTagView(tg.dataset.tag); }
+    if (tg) { e.preventDefault(); e.stopPropagation(); openTagView(tg.dataset.tag); return; }
+    const ct = e.target.closest(".callout.is-collapsible > .callout-title");
+    if (ct) { e.preventDefault(); e.stopPropagation(); toggleCallout(ct.parentElement); }
   });
   el.addEventListener("change", (e) => {
     const cb = e.target.closest('input[type="checkbox"][data-task]');
@@ -4850,6 +4887,12 @@ function editorTextarea(value, live = false) {
   ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) editorTableWrap(ta); }, 150));
   ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) acClose(); }, 120));
   wireEditorFiles(ta);
+  ta.addEventListener("contextmenu", (e) => {
+    // a selection keeps the system menu (copy, paste); a caret in a table gets the table menu
+    if (ta.selectionStart !== ta.selectionEnd) return;
+    const at = editorTable(ta);
+    if (at) tableMenu((op) => editorTableOp(ta, op, at), at.row).showAtEvent(e);
+  });
   ta.addEventListener("click", editorModeline);
   requestAnimationFrame(() => autosize(ta));
   return ta;
@@ -4921,6 +4964,7 @@ function renderLive() {
     if (L.start >= 0 && !placed && b.start >= L.end) place();
     const el = h("div", { cls: "sn-live-block", dataset: { start: b.start, end: b.end } });
     renderMarkdown(L.body.slice(b.start, b.end), editor.path, { into: el, pdf: true });
+    liveTableButtons(el);
     el.append(ic("sn-live-handle", "grip-vertical"));
     el.lastChild.title = wt("dragBlock");
     box.append(el);
@@ -5002,13 +5046,19 @@ function wireLive(box, path) {
     cb.dataset.task = String(liveTaskCount(liveText().slice(0, liveBlockStart(el))) + local);
   }, true);
   box.addEventListener("click", (e) => {
-    if (e.target.closest("a, input, button, textarea, summary, .code-head, .sn-pdf, .org-fold, [data-org-act], .sn-live-handle")) return;
+    if (e.target.closest("a, input, button, textarea, summary, .code-head, .sn-pdf, .org-fold, [data-org-act], .sn-live-handle, .callout.is-collapsible > .callout-title")) return;
     const sel = getSelection();
     if (sel && !sel.isCollapsed && box.contains(sel.anchorNode)) return; // selecting text to copy
+    const cell = e.target.closest("td, th"), at = cell && liveTableAt(cell);
+    if (at) { liveActivate(at.s + at.tb.from + tableCellEnd(at.tb, at.row, at.col)); return; }
     const el = e.target.closest(".sn-live-block");
     if (el) { const s = liveBlockStart(el), src = liveText().slice(s, s + (+el.dataset.end - +el.dataset.start)); liveActivate(s + liveClickOffset(el, e, src)); return; }
     const last = box.lastElementChild;
     if (!last || e.clientY > last.getBoundingClientRect().bottom) liveActivateEnd();
+  });
+  box.addEventListener("contextmenu", (e) => {
+    const cell = e.target.closest("td, th"), at = cell && liveTableAt(cell);
+    if (at) tableMenu((op) => liveTableOp(cell, op, { edit: /^(row|col)(Above|Below|Left|Right)$/.test(op) }), at.row).showAtEvent(e);
   });
   box.addEventListener("pointerdown", (e) => { const hd = e.target.closest(".sn-live-handle"); if (hd && e.button === 0) liveDrag(box, hd.parentElement, e); });
 }
@@ -5064,6 +5114,201 @@ function moveBlock(body, from, to, after) {
   const at = after ? shift(dst.end) : shift(dst.start);
   const out = rest.slice(0, at) + (after ? gap + text : text + gap) + rest.slice(at);
   return out === body ? null : out;
+}
+/* ---------- Tables, edited like Obsidian's: Tab and Enter move between cells, the source stays aligned in columns,
+   and a menu (right click, the toolbar's table button, the + buttons on a rendered table) adds, moves, sorts, aligns and deletes rows and columns.
+   A parsed table is { rows: [[cell text]], align: ["" | "left" | "center" | "right"] }; rows[0] is the header. */
+const TABLE_SEP_RE = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+/** [start, end) of each cell's trimmed text in a row; pipes escaped as \| stay in their cell. */
+function tableSpans(line) {
+  const spans = [];
+  let start = 0;
+  for (let i = 0; i <= line.length; i++) {
+    if (line[i] === "\\") { i++; continue; }
+    if (i >= line.length || line[i] === "|") { spans.push([start, Math.min(i, line.length)]); start = i + 1; }
+  }
+  if (/^\s*\|/.test(line)) spans.shift();
+  if (spans.length > 1 && !line.slice(spans.at(-1)[0]).trim()) spans.pop();
+  return spans.map(([a, b]) => { while (a < b && /\s/.test(line[a])) a++; while (b > a && /\s/.test(line[b - 1])) b--; return [a, b]; });
+}
+const tableCells = (line) => tableSpans(line).map(([a, b]) => line.slice(a, b));
+/** Tables in Markdown text, outside code blocks and quotes: [{ from, to, lines }], `to` at the end of the last row. */
+function findTables(text) {
+  const out = [], lines = text.split("\n");
+  let pos = 0, fence = null;
+  const starts = lines.map((l) => { const p = pos; pos += l.length + 1; return p; });
+  const row = (l) => l?.includes("|") && l.trim() && !/^\s*>/.test(l);
+  for (let i = 0; i < lines.length; i++) {
+    const f = /^\s*(`{3,}|~{3,})/.exec(lines[i]);
+    if (f) { fence = !fence ? f[1] : lines[i].trim().startsWith(fence) ? null : fence; continue; }
+    if (fence || !row(lines[i]) || !row(lines[i + 1]) || !TABLE_SEP_RE.test(lines[i + 1])) continue;
+    let j = i + 2;
+    while (j < lines.length && row(lines[j])) j++;
+    out.push({ from: starts[i], to: starts[j - 1] + lines[j - 1].length, lines: lines.slice(i, j) });
+    i = j - 1;
+  }
+  return out;
+}
+function parseTable(lines) {
+  const sep = tableCells(lines[1]);
+  const rows = [lines[0], ...lines.slice(2)].map(tableCells);
+  const n = Math.max(sep.length, ...rows.map((r) => r.length));
+  const align = Array.from({ length: n }, (_, i) => { const c = sep[i] || ""; return c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : c.startsWith(":") ? "left" : ""; });
+  return { rows: rows.map((r) => Array.from({ length: n }, (_, i) => r[i] ?? "")), align };
+}
+/** Columns line up as on screen: wide (CJK) characters and emoji take two. */
+const strWidth = (s) => [...s].reduce((w, ch) => w + (/[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦\u{1F300}-\u{1FAFF}]/u.test(ch) ? 2 : 1), 0);
+/** The table as aligned Markdown; cell(r, c) is the [start, end) of a cell's text in it. */
+function formatTable(t) {
+  const w = t.align.map((a, i) => Math.max(3, ...t.rows.map((r) => strWidth(r[i]))));
+  const pos = [];
+  let text = "";
+  t.rows.forEach((cells, r) => {
+    if (r) text += "\n";
+    pos[r] = [];
+    text += "|";
+    cells.forEach((c, i) => { text += " "; pos[r][i] = [text.length, text.length + c.length]; text += c + " ".repeat(w[i] - strWidth(c)) + " |"; });
+    if (!r) text += "\n|" + t.align.map((a, i) => {
+      const l = a === "left" || a === "center", rt = a === "right" || a === "center";
+      return " " + (l ? ":" : "") + "-".repeat(w[i] - l - rt) + (rt ? ":" : "") + " |";
+    }).join("");
+  });
+  return { text, cell: (r, c) => pos[Math.max(0, Math.min(r, pos.length - 1))][Math.max(0, Math.min(c, t.align.length - 1))] };
+}
+/** The cell at an offset in a table's text; row 0 is the header (its separator line too). */
+function tableCellAt(tb, off) {
+  let li = 0, start = 0;
+  for (; li < tb.lines.length - 1 && off > start + tb.lines[li].length; li++) start += tb.lines[li].length + 1;
+  const line = tb.lines[li], upto = Math.max(0, off - start);
+  let pipes = 0;
+  for (let i = 0; i < upto && i < line.length; i++) { if (line[i] === "\\") i++; else if (line[i] === "|") pipes++; }
+  if (/^\s*\|/.test(line)) pipes--;
+  return { row: li < 2 ? 0 : li - 1, col: Math.max(0, Math.min(pipes, parseTable(tb.lines).align.length - 1)) };
+}
+/** Offset in a table's text of the end of a cell's text. */
+function tableCellEnd(tb, row, col) {
+  const li = row ? row + 1 : 0, start = tb.lines.slice(0, li).reduce((n, l) => n + l.length + 1, 0);
+  const sp = tableSpans(tb.lines[li])[col];
+  return start + (sp ? sp[1] : tb.lines[li].length);
+}
+/** Each op changes the table and returns the cell to put the caret in ([row, col]), or "delete" for no table left. */
+const TABLE_OPS = {
+  rowAbove: (t, r, c) => { t.rows.splice(Math.max(1, r), 0, t.align.map(() => "")); return [Math.max(1, r), c]; },
+  rowBelow: (t, r, c) => { t.rows.splice(r + 1, 0, t.align.map(() => "")); return [r + 1, c]; },
+  rowUp: (t, r, c) => { if (r < 2) return [r, c]; [t.rows[r - 1], t.rows[r]] = [t.rows[r], t.rows[r - 1]]; return [r - 1, c]; },
+  rowDown: (t, r, c) => { if (r < 1 || r >= t.rows.length - 1) return [r, c]; [t.rows[r + 1], t.rows[r]] = [t.rows[r], t.rows[r + 1]]; return [r + 1, c]; },
+  rowDelete: (t, r, c) => { if (t.rows.length < 2) return "delete"; t.rows.splice(r, 1); return [Math.min(r, t.rows.length - 1), c]; },
+  colLeft: (t, r, c) => { t.rows.forEach((x) => x.splice(c, 0, "")); t.align.splice(c, 0, ""); return [r, c]; },
+  colRight: (t, r, c) => { t.rows.forEach((x) => x.splice(c + 1, 0, "")); t.align.splice(c + 1, 0, ""); return [r, c + 1]; },
+  colMoveLeft: (t, r, c) => { if (c < 1) return [r, c]; for (const x of [...t.rows, t.align]) [x[c - 1], x[c]] = [x[c], x[c - 1]]; return [r, c - 1]; },
+  colMoveRight: (t, r, c) => { if (c >= t.align.length - 1) return [r, c]; for (const x of [...t.rows, t.align]) [x[c + 1], x[c]] = [x[c], x[c + 1]]; return [r, c + 1]; },
+  colDelete: (t, r, c) => { if (t.align.length < 2) return "delete"; t.rows.forEach((x) => x.splice(c, 1)); t.align.splice(c, 1); return [r, Math.min(c, t.align.length - 1)]; },
+  alignLeft: (t, r, c) => { t.align[c] = "left"; return [r, c]; },
+  alignCenter: (t, r, c) => { t.align[c] = "center"; return [r, c]; },
+  alignRight: (t, r, c) => { t.align[c] = "right"; return [r, c]; },
+  // sorting keeps the header and puts empty cells last; numbers sort as numbers
+  sortAsc: (t, r, c) => { t.rows = [t.rows[0], ...t.rows.slice(1).sort((a, b) => !a[c] - !b[c] || a[c].localeCompare(b[c], undefined, { numeric: true, sensitivity: "base" }))]; return [r, c]; },
+  sortDesc: (t, r, c) => { t.rows = [t.rows[0], ...t.rows.slice(1).sort((a, b) => !a[c] - !b[c] || b[c].localeCompare(a[c], undefined, { numeric: true, sensitivity: "base" }))]; return [r, c]; },
+  format: (t, r, c) => [r, c],
+};
+/** TABLE_OPS[op] on table `tb` of `text`: replace [from, to) with `insert`; `sel` is the caret cell's text in the new text. */
+function tableEdit(text, tb, op, row, col) {
+  const t = parseTable(tb.lines), res = TABLE_OPS[op](t, row, col);
+  if (res === "delete") return { from: tb.from, to: text[tb.to] === "\n" ? tb.to + 1 : tb.to, insert: "", sel: [tb.from, tb.from] };
+  const f = formatTable(t), [s, e] = f.cell(...res);
+  return { from: tb.from, to: tb.to, insert: f.text, sel: [tb.from + s, tb.from + e] };
+}
+function tableMenu(run, row) {
+  const m = new Menu();
+  m.label(wt("tblRow"));
+  if (row > 0) m.add(wt("tblRowAbove"), "arrow-up-to-line", () => run("rowAbove"));
+  m.add(wt("tblRowBelow"), "arrow-down-to-line", () => run("rowBelow"));
+  if (row > 1) m.add(wt("tblRowUp"), "chevron-up", () => run("rowUp"));
+  if (row > 0) m.add(wt("tblRowDown"), "chevron-down", () => run("rowDown"));
+  if (row > 0) m.add(wt("tblRowDelete"), "trash-2", () => run("rowDelete"), { warning: true });
+  m.sep().label(wt("tblCol"));
+  m.add(wt("tblColLeft"), "arrow-left-to-line", () => run("colLeft"));
+  m.add(wt("tblColRight"), "arrow-right-to-line", () => run("colRight"));
+  m.add(wt("tblColMoveLeft"), "chevron-left", () => run("colMoveLeft"));
+  m.add(wt("tblColMoveRight"), "chevron-right", () => run("colMoveRight"));
+  m.add(wt("tblAlignLeft"), "align-left", () => run("alignLeft"));
+  m.add(wt("tblAlignCenter"), "align-center", () => run("alignCenter"));
+  m.add(wt("tblAlignRight"), "align-right", () => run("alignRight"));
+  m.add(wt("tblSortAsc"), "arrow-down-a-z", () => run("sortAsc"));
+  m.add(wt("tblSortDesc"), "arrow-up-z-a", () => run("sortDesc"));
+  m.add(wt("tblColDelete"), "trash-2", () => run("colDelete"), { warning: true });
+  m.sep().add(wt("tblFormat"), "wand-sparkles", () => run("format"));
+  return m;
+}
+/** The table under the caret of a textarea, with the caret's cell. */
+function editorTable(ta) {
+  const s = ta.selectionStart, tb = findTables(ta.value).find((x) => s >= x.from && s <= x.to);
+  return tb ? { tb, ...tableCellAt(tb, s - tb.from) } : null;
+}
+function editorTableOp(ta, op, at = editorTable(ta)) {
+  if (!at) return;
+  const out = tableEdit(ta.value, at.tb, op, at.row, at.col);
+  edInsert(ta, out.from, out.to, out.insert, ...out.sel);
+}
+/** Table keys in the editor (true when the key was used): Tab / Shift+Tab to the next / previous cell (a new row after the last),
+   Enter to the cell below (a new row after the last; on an empty last row the table ends), Shift+Enter a line break in the cell,
+   Alt+arrows move the row or column. */
+function editorTableKey(e, ta) {
+  if (e.isComposing || isMod(e) || !(e.key === "Tab" || e.key === "Enter" || (e.altKey && !e.shiftKey && /^Arrow/.test(e.key)))) return false;
+  if (e.key === "Enter" && ta.selectionStart !== ta.selectionEnd) return false;
+  const at = editorTable(ta);
+  if (!at) return false;
+  e.preventDefault();
+  const t = parseTable(at.tb.lines), last = t.rows.length - 1, cols = t.align.length;
+  const go = (row, col, op = "format") => { editorTableOp(ta, op, { ...at, row, col }); return true; };
+  if (e.altKey) return go(at.row, at.col, { ArrowUp: "rowUp", ArrowDown: "rowDown", ArrowLeft: "colMoveLeft", ArrowRight: "colMoveRight" }[e.key]);
+  if (e.key === "Tab" && e.shiftKey) return at.col > 0 ? go(at.row, at.col - 1) : go(Math.max(0, at.row - 1), at.row ? cols - 1 : 0);
+  if (e.key === "Tab") return at.col < cols - 1 ? go(at.row, at.col + 1) : at.row < last ? go(at.row + 1, 0) : go(at.row, 0, "rowBelow");
+  if (e.shiftKey) { edInsert(ta, ta.selectionStart, ta.selectionStart, "<br>"); return true; }
+  if (at.row === last && at.row > 0 && t.rows[last].every((c) => !c)) {
+    // a line right under a table would be one more row, so the text goes on after a blank line
+    t.rows.pop();
+    const f = formatTable(t).text + "\n\n";
+    edInsert(ta, at.tb.from, at.tb.to, f, at.tb.from + f.length);
+    return true;
+  }
+  return at.row < last ? go(at.row + 1, at.col) : go(at.row, at.col, "rowBelow");
+}
+/** A rendered table in a live preview block: the block's offset, the table in its text and the cell `x` is in. */
+function liveTableAt(x) {
+  const el = x.closest(".sn-live-block"), tbl = x.closest(".sn-table-host, .sn-table-wrap")?.querySelector("table") || x.closest("table");
+  if (!el || !tbl || tbl.closest("blockquote, .callout")) return null;
+  const idx = $$("table", el).filter((t) => !t.closest("blockquote, .callout")).indexOf(tbl);
+  const s = liveBlockStart(el), tb = findTables(liveText().slice(s, s + (+el.dataset.end - +el.dataset.start)))[idx];
+  const cell = x.closest("td, th");
+  return tb ? { s, tb, tbl, row: cell ? cell.parentElement.rowIndex : 0, col: cell ? cell.cellIndex : 0 } : null;
+}
+/** Run a table op on a rendered table; o.edit then edits the block with the caret's cell selected. */
+function liveTableOp(x, op, o = {}) {
+  const L = editor.live, at = liveTableAt(x);
+  if (!L || !at) return;
+  liveCommit();
+  const tb = { ...at.tb, from: at.tb.from + at.s, to: at.tb.to + at.s };
+  const out = tableEdit(L.body, tb, op, o.row ?? at.row, o.col ?? at.col);
+  L.body = L.body.slice(0, out.from) + out.insert + L.body.slice(out.to);
+  Object.assign(L, { start: -1, end: -1, pre: "", post: "" });
+  editor.dirty = true; setSaveState(); scheduleSave();
+  renderLive();
+  if (!o.edit || !out.insert) return;
+  const ta = liveActivate(out.sel[0]);
+  if (ta) ta.setSelectionRange(ta.selectionStart, ta.selectionStart + out.sel[1] - out.sel[0]);
+}
+/** In live preview a rendered table gets + buttons for a new row (below) and a new column (on the right). */
+function liveTableButtons(el) {
+  for (const wrap of $$(".sn-table-wrap", el)) {
+    if (wrap.closest("blockquote, .callout")) continue;
+    const host = h("div", { cls: "sn-table-host" });
+    const add = (cls, title, fn) => { const b = h("button", { type: "button", cls, title, "aria-label": title }, ic("", "plus")); b.addEventListener("click", (e) => { e.stopPropagation(); fn(b); }); return b; };
+    wrap.replaceWith(host);
+    host.append(wrap,
+      add("sn-table-add-row", wt("tblRowBelow"), (b) => liveTableOp(b, "rowBelow", { row: host.querySelector("table").rows.length - 1, col: 0, edit: true })),
+      add("sn-table-add-col", wt("tblColRight"), (b) => liveTableOp(b, "colRight", { row: 0, col: host.querySelector("table").rows[0].cells.length - 1, edit: true })));
+  }
 }
 /** Keys that move between blocks; editorKeys handles everything else. */
 function liveKeys(e) {
@@ -5206,6 +5451,7 @@ function editorKeys(e) {
     return;
   }
   if (isMod(e) && e.key.toLowerCase() === "s") { e.preventDefault(); saveEditor(); return; }
+  if (editorTableKey(e, ta)) return;
   if (isMod(e) && e.key.toLowerCase() === "l") { e.preventDefault(); edLinkStart(ta); return; }
   if (isMod(e) && (e.key.toLowerCase() === "b" || e.key.toLowerCase() === "i")) {
     e.preventDefault();
@@ -5328,6 +5574,13 @@ function renderEdToolbar() {
   btn(g, "list-ordered", t("tbNum"), (el) => edPrefix(el, "1. "));
   btn(g, "list-checks", t("tbTask"), (el) => edPrefix(el, "- [ ] "));
   btn(g, "text-quote", t("tbQuote"), (el) => edPrefix(el, "> "));
+  btn(g, "table", wt("c_table"), (el, e) => {
+    const at = editorTable(el);
+    if (at) { tableMenu((op) => editorTableOp(el, op, at), at.row).showBelow(e.currentTarget); return; }
+    const s0 = el.selectionStart, v = el.value, pre = s0 > 0 && v[s0 - 1] !== "\n" ? "\n\n" : "";
+    const f = formatTable({ rows: [["", ""], ["", ""]], align: ["", ""] });
+    edInsert(el, s0, el.selectionEnd, pre + f.text + "\n", s0 + pre.length + f.cell(0, 0)[0]);
+  });
   sep(); g = group();
   orgToolbar(btn, g);
   sep(); g = group();
@@ -6093,6 +6346,9 @@ const WSTR = {
     c_h1: "Heading 1", c_h2: "Heading 2", c_h3: "Heading 3", c_text: "Plain text",
     c_bullet: "Bulleted list", c_num: "Numbered list", c_task: "Task", c_quote: "Quote",
     c_callout: "Callout", c_code: "Code block", c_table: "Table", c_divider: "Divider",
+    tblRow: "Row", tblCol: "Column", tblRowAbove: "Add row above", tblRowBelow: "Add row below", tblRowUp: "Move row up", tblRowDown: "Move row down", tblRowDelete: "Delete row",
+    tblColLeft: "Add column before", tblColRight: "Add column after", tblColMoveLeft: "Move column left", tblColMoveRight: "Move column right", tblColDelete: "Delete column",
+    tblAlignLeft: "Align left", tblAlignCenter: "Align center", tblAlignRight: "Align right", tblSortAsc: "Sort A → Z", tblSortDesc: "Sort Z → A", tblFormat: "Format table",
     c_link: "Link to a card", c_image: "Image or file…", c_today: "Today's date", c_now: "Current time",
     c_template: "Insert template…", c_child: "New child card from selection",
     attached: "Attached {name}", attachFailed: "Couldn't save {name}: {msg}",
@@ -6112,6 +6368,9 @@ const WSTR = {
     c_h1: "Заголовок 1", c_h2: "Заголовок 2", c_h3: "Заголовок 3", c_text: "Обычный текст",
     c_bullet: "Маркированный список", c_num: "Нумерованный список", c_task: "Задача", c_quote: "Цитата",
     c_callout: "Выноска", c_code: "Блок кода", c_table: "Таблица", c_divider: "Разделитель",
+    tblRow: "Строка", tblCol: "Столбец", tblRowAbove: "Добавить строку выше", tblRowBelow: "Добавить строку ниже", tblRowUp: "Переместить строку вверх", tblRowDown: "Переместить строку вниз", tblRowDelete: "Удалить строку",
+    tblColLeft: "Добавить столбец слева", tblColRight: "Добавить столбец справа", tblColMoveLeft: "Переместить столбец влево", tblColMoveRight: "Переместить столбец вправо", tblColDelete: "Удалить столбец",
+    tblAlignLeft: "По левому краю", tblAlignCenter: "По центру", tblAlignRight: "По правому краю", tblSortAsc: "Сортировать А → Я", tblSortDesc: "Сортировать Я → А", tblFormat: "Выровнять таблицу",
     c_link: "Ссылка на карточку", c_image: "Картинка или файл…", c_today: "Сегодняшняя дата", c_now: "Текущее время",
     c_template: "Вставить шаблон…", c_child: "Новая дочерняя карточка из выделения",
     attached: "Добавлено: {name}", attachFailed: "Не удалось сохранить {name}: {msg}",

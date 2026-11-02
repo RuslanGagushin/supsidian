@@ -322,6 +322,85 @@ describe("live preview", () => {
   });
 });
 
+describe("table editing", () => {
+  const body = "Intro\n\n| a | b |\n|---|:-:|\n| 1 | 22 |\n| 3 |  |";
+  beforeEach(async () => { await openVault({ demo: false, notes: { "T.md": body } }); await ev(() => openEditor("T.md", { focus: true })); });
+  const ta = ".sn-editor-text.is-live";
+  const value = () => page().inputValue(ta);
+  const sel = () => ev(() => { const t = $(".sn-editor-text.is-live"); return t.value.slice(t.selectionStart, t.selectionEnd); });
+  const op = (text, o, row, col) => ev(([text, o, r, c]) => { const tb = findTables(text)[0], out = tableEdit(text, tb, o, r, c); return text.slice(0, out.from) + out.insert + text.slice(out.to); }, [text, o, row, col]);
+
+  test("tables are found outside code and quotes, and cells keep escaped pipes", async () => {
+    const r = await ev(() => findTables("```\n| a | b |\n|---|---|\n```\n> | q | w |\n> |---|---|\n\nx | y\n--|--\n1 | 2\nafter").map((t) => t.lines));
+    assert.deepEqual(r, [["x | y", "--|--", "1 | 2"]]);
+    assert.deepEqual(await ev(() => tableCells("| a\\|b | | c |")), ["a\\|b", "", "c"]);
+    assert.deepEqual(await ev(() => parseTable(["| a | b | c |", "| :- | :-: | -: |", "| 1 |"])), { rows: [["a", "b", "c"], ["1", "", ""]], align: ["left", "center", "right"] });
+  });
+
+  test("formatTable lines up the columns, wide characters included", async () => {
+    assert.equal(await ev(() => formatTable({ rows: [["Name", "N"], ["日本", "1"]], align: ["center", "right"] }).text), "| Name | N   |\n| :--: | --: |\n| 日本 | 1   |");
+  });
+
+  test("row and column operations", async () => {
+    const t = "| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n\nnext";
+    assert.equal(await op(t, "rowAbove", 2, 0), "| a   | b   |\n| --- | --- |\n| 1   | 2   |\n|     |     |\n| 3   | 4   |\n\nnext");
+    assert.equal(await op(t, "rowUp", 2, 0), "| a   | b   |\n| --- | --- |\n| 3   | 4   |\n| 1   | 2   |\n\nnext");
+    assert.equal(await op(t, "colMoveRight", 0, 0), "| b   | a   |\n| --- | --- |\n| 2   | 1   |\n| 4   | 3   |\n\nnext");
+    assert.equal(await op(t, "colDelete", 1, 1), "| a   |\n| --- |\n| 1   |\n| 3   |\n\nnext");
+    assert.equal(await op(t, "alignCenter", 1, 1), "| a   | b   |\n| --- | :-: |\n| 1   | 2   |\n| 3   | 4   |\n\nnext");
+    assert.equal(await op(t, "sortDesc", 1, 0), "| a   | b   |\n| --- | --- |\n| 3   | 4   |\n| 1   | 2   |\n\nnext");
+    assert.equal(await op("| a |\n|---|\n| x |\n| 10 |\n| 9 |\n|  |", "sortAsc", 1, 0), "| a   |\n| --- |\n| 9   |\n| 10  |\n| x   |\n|     |", "numbers as numbers, empty cells last");
+    assert.equal(await op("| a |\n|---|\n| 1 |\nnext", "colDelete", 0, 0), "next", "the last column takes the table with it");
+  });
+
+  test("clicking a rendered cell edits it; Tab and Enter move between cells and add rows", async () => {
+    await page().click("#editor .sn-live p");
+    await page().click("#editor .sn-live tbody tr:first-child td:nth-child(2)");
+    assert.equal(await value(), "| a | b |\n|---|:-:|\n| 1 | 22 |\n| 3 |  |");
+    assert.equal(await ev(() => $(".sn-editor-text.is-live").selectionStart), 28, "after 22");
+    await page().keyboard.press("Tab");
+    assert.equal(await value(), "| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   |     |", "the table lines up");
+    assert.equal(await sel(), "3");
+    await page().keyboard.press("Shift+Tab");
+    assert.equal(await sel(), "22");
+    await page().keyboard.press("Tab"); await page().keyboard.press("Tab");
+    await page().keyboard.type("4");
+    await page().keyboard.press("Tab");
+    assert.match(await value(), /\| 3   \| 4   \|\n\|     \|     \|$/, "Tab in the last cell adds a row");
+    await page().keyboard.type("5");
+    await page().keyboard.press("Enter");
+    await page().keyboard.press("Enter");
+    await page().keyboard.type("After");
+    await page().keyboard.press("Control+s");
+    await page().waitForFunction(() => vault.notes.get("T.md").raw.includes("After"));
+    assert.equal(await raw("T.md"), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   | 4   |\n| 5   |     |\n\nAfter");
+    noErrors();
+  });
+
+  test("Alt+arrows move rows and columns", async () => {
+    await page().click("#editor .sn-live p");
+    await page().click("#editor .sn-live tbody tr:last-child td:first-child");
+    await page().keyboard.press("Alt+ArrowUp");
+    await page().keyboard.press("Alt+ArrowRight");
+    assert.equal(await value(), "| b   | a   |\n| --- | --- |\n|     | 3   |\n| 22  | 1   |".replace("| --- | --- |", "| :-: | --- |"));
+  });
+
+  test("the + buttons and the menu of a rendered table", async () => {
+    await page().click("#editor .sn-live p");
+    await ev(() => $("#editor .sn-table-add-row").click());
+    assert.equal(await value(), "| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   |     |\n|     |     |", "a new row, being edited");
+    await page().click("#editor .sn-live p");
+    await page().click("#editor .sn-live tbody tr:first-child td:first-child", { button: "right" });
+    await page().click(".menu-item:has-text('Delete row')");
+    assert.equal(await ev(() => $$("#editor .sn-live tbody tr").length), 2);
+    await page().click("#editor .sn-live thead th:first-child", { button: "right" });
+    assert.equal(await page().locator(".menu-item:has-text('Delete row')").count(), 0, "the header row stays");
+    await page().click(".menu-item:has-text('Add column before')");
+    assert.match(await value(), /^\|     \| a   \| b   \|/);
+    noErrors();
+  });
+});
+
 describe("rendering", () => {
   beforeEach(() => openVault({ demo: false, notes: { "Target.md": "x", "A.md": "" }, files: { "img/p.svg": H.SVG } }));
   const render = (md) => ev((md) => { const el = renderMarkdown(md, "A.md"); document.body.append(el); return el.innerHTML; }, md);
@@ -358,6 +437,17 @@ describe("rendering", () => {
       ["tip", "Full", "body"],
       ["note", "Bare", null],
     ]);
+  });
+
+  test("callouts with + or - fold, and their title toggles them", async () => {
+    await render("> [!info]- Folded\n> hidden\n\n> [!tip]+ Open\n> shown\n\n> [!note] Plain\n> x\n\n> [!todo]- Bare");
+    const state = () => ev(() => [...document.querySelectorAll(".callout")].map((c) => [c.dataset.callout, c.classList.contains("is-collapsible"), c.classList.contains("is-collapsed"), !!c.querySelector(".callout-fold")]));
+    assert.deepEqual(await state(), [["info", true, true, true], ["tip", true, false, true], ["note", false, false, false], ["todo", false, false, false]]);
+    await ev(() => { const el = document.querySelector(".callout").closest("div:not(.callout)"); wireRendered(el, "A.md"); document.querySelector(".callout-title").click(); });
+    assert.equal((await state())[0][2], false);
+    // the reader's fold is kept for the note while the page is open
+    await render("> [!info]- Folded\n> hidden");
+    assert.equal(await ev(() => [...document.querySelectorAll(".callout")].at(-1).classList.contains("is-collapsed")), false);
   });
 
   test("scripts and event handlers are removed", async () => {

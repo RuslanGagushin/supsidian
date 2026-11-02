@@ -26,6 +26,7 @@ This repository wraps the Supsidian page into native apps with [Tauri 2](https:/
 
 ### Editor
 - **Live preview editing:** the note shows rendered (headings, bold, links, tasks, callouts, code), and only the block you are editing turns back into Markdown. Click a block to edit it; arrows move between blocks; Enter on an empty line finishes a block and starts the next one; Backspace at the start of a block joins it with the one above. Select text for a floating format bar (bold, italic, highlight, code, link, heading, lists, quote), and drag a block by its ⋮⋮ handle to move it. Your files stay plain Markdown.
+- **Foldable callouts and table editing, as in Obsidian:** `> [!info]+` makes a callout that starts open and `> [!info]-` one that starts folded; click its title to fold or unfold it. In a table, Tab and Shift+Tab go to the next and previous cell, Enter goes to the cell below (Tab or Enter at the end adds a row, Enter on an empty last row leaves the table), Shift+Enter breaks a line in a cell, and Alt+arrows move the row or column. The table's Markdown keeps its columns lined up. Right-click a cell (or use the toolbar's table button) to add, move, delete, align or sort rows and columns; the + buttons under and beside a table add a row or a column.
 - A source mode for the whole file, a reading view, **full-width** and **focus** modes, and a toolbar for formatting, images and files.
 - `[[` or `Ctrl+L` links to another card; `/` opens the insert menu.
 - Turn a selection into a **new child card**.
