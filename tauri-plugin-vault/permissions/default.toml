@@ -13,4 +13,5 @@ permissions = [
   "allow-exists",
   "allow-git-sync",
   "allow-git-info",
+  "allow-git-save-settings",
 ]

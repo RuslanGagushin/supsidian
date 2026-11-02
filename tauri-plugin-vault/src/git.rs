@@ -12,8 +12,8 @@ use std::{
 };
 
 use git2::{
-    build::CheckoutBuilder, AnnotatedCommit, Cred, CredentialType, FetchOptions, IndexEntry, MergeAnalysis, MergeOptions,
-    PushOptions, RemoteCallbacks, Repository, RepositoryInitOptions, Signature,
+    build::CheckoutBuilder, AnnotatedCommit, ConfigLevel, Cred, CredentialType, ErrorCode, FetchOptions, IndexEntry, MergeAnalysis,
+    MergeOptions, PushOptions, RemoteCallbacks, Repository, RepositoryInitOptions, Signature,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
@@ -32,6 +32,22 @@ pub struct GitConfig {
     pub token: String,
     pub author_name: String,
     pub author_email: String,
+}
+
+/// The sync settings as the page edits them. They live in the repository's own config
+/// (.git/config, which is never pushed): the remote as `origin`, the author as `user.*`,
+/// the rest under `supsidian.*`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitSettings {
+    pub remote: String,
+    pub branch: String,
+    pub username: String,
+    pub token: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub auto: bool,
+    pub minutes: u32,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -53,6 +69,8 @@ pub struct GitInfo {
     pub is_repo: bool,
     pub remote: Option<String>,
     pub branch: Option<String>,
+    /// settings saved in the repository by this app, None when it never saved any
+    pub settings: Option<GitSettings>,
     /// where the previous sync died, when it never finished
     pub previous_crash: Option<String>,
 }
@@ -125,7 +143,73 @@ pub fn info<R: Runtime>(app: &AppHandle<R>, root: String) -> Result<GitInfo> {
     let Ok(repo) = Repository::open(&dir) else { return Ok(GitInfo { previous_crash, ..GitInfo::default() }) };
     let remote = repo.find_remote("origin").ok().and_then(|r| r.url().map(str::to_owned));
     let branch = repo.head().ok().and_then(|h| h.shorthand().map(str::to_owned));
-    Ok(GitInfo { is_repo: true, remote, branch, previous_crash })
+    let settings = read_settings(&repo);
+    Ok(GitInfo { is_repo: true, remote, branch, settings, previous_crash })
+}
+
+/// Saves the settings into the repository, creating it once there is a remote to sync with.
+pub fn save_settings<R: Runtime>(app: &AppHandle<R>, root: String, settings: GitSettings) -> Result<()> {
+    let dir = workdir(app, &root)?;
+    let repo = match Repository::open(&dir) {
+        Ok(r) => r,
+        Err(_) if settings.remote.trim().is_empty() => return Ok(()),
+        Err(_) => init(&dir, &settings.branch)?,
+    };
+    write_settings(&repo, &settings)
+}
+
+fn init(dir: &Path, branch: &str) -> Result<Repository> {
+    let branch = if branch.trim().is_empty() { "main" } else { branch.trim() };
+    Ok(Repository::init_opts(dir, RepositoryInitOptions::new().initial_head(branch))?)
+}
+
+pub(crate) fn read_settings(repo: &Repository) -> Option<GitSettings> {
+    let cfg = repo.config().ok()?.open_level(ConfigLevel::Local).ok()?;
+    // `supsidian.auto` is always written, so it tells whether this app saved settings here
+    let auto = cfg.get_bool("supsidian.auto").ok()?;
+    let get = |key: &str| cfg.get_string(key).unwrap_or_default();
+    Some(GitSettings {
+        remote: get("remote.origin.url"),
+        branch: get("supsidian.branch"),
+        username: get("supsidian.username"),
+        token: get("supsidian.token"),
+        author_name: get("user.name"),
+        author_email: get("user.email"),
+        auto,
+        minutes: cfg.get_i64("supsidian.minutes").ok().and_then(|m| u32::try_from(m).ok()).unwrap_or(5),
+    })
+}
+
+pub(crate) fn write_settings(repo: &Repository, s: &GitSettings) -> Result<()> {
+    let remote = s.remote.trim();
+    match repo.find_remote("origin") {
+        Ok(r) if r.url() == Some(remote) => {}
+        Ok(_) if remote.is_empty() => repo.remote_delete("origin")?,
+        Ok(_) => repo.remote_set_url("origin", remote)?,
+        Err(_) if remote.is_empty() => {}
+        Err(_) => {
+            repo.remote("origin", remote)?;
+        }
+    }
+    let mut cfg = repo.config()?.open_level(ConfigLevel::Local)?;
+    let mut put = |key: &str, value: &str| -> Result<()> {
+        let value = value.trim();
+        if !value.is_empty() {
+            return Ok(cfg.set_str(key, value)?);
+        }
+        match cfg.remove(key) {
+            Err(e) if e.code() != ErrorCode::NotFound => Err(e.into()),
+            _ => Ok(()),
+        }
+    };
+    put("supsidian.branch", &s.branch)?;
+    put("supsidian.username", &s.username)?;
+    put("supsidian.token", &s.token)?;
+    put("user.name", &s.author_name)?;
+    put("user.email", &s.author_email)?;
+    cfg.set_bool("supsidian.auto", s.auto)?;
+    cfg.set_i64("supsidian.minutes", i64::from(s.minutes.max(1)))?;
+    Ok(())
 }
 
 pub fn sync<R: Runtime>(app: &AppHandle<R>, root: String, cfg: GitConfig) -> Result<GitReport> {
@@ -286,7 +370,7 @@ pub(crate) fn sync_repo(dir: &Path, cfg: &GitConfig) -> Result<GitReport> {
     let branch = if cfg.branch.trim().is_empty() { "main" } else { cfg.branch.trim() };
     let repo = match Repository::open(dir) {
         Ok(r) => r,
-        Err(_) => Repository::init_opts(dir, RepositoryInitOptions::new().initial_head(branch))?,
+        Err(_) => init(dir, branch)?,
     };
     match repo.find_remote("origin") {
         Ok(r) if r.url() == Some(cfg.remote.as_str()) => {}
@@ -535,6 +619,38 @@ mod tests {
         let n = webpki_root_certs::TLS_SERVER_ROOT_CERTS.len();
         assert!(n > 100);
         let _ = install_roots();
+    }
+
+    #[test]
+    fn settings_live_in_the_repository_config() {
+        let dir = std::env::temp_dir().join(format!("supsidian-settings-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let repo = init(&dir, "main").unwrap();
+        assert_eq!(read_settings(&repo), None, "nothing saved yet");
+
+        let mut s = GitSettings {
+            remote: "https://example.com/notes.git".into(),
+            branch: "main".into(),
+            username: "git".into(),
+            token: "secret".into(),
+            author_name: "Me".into(),
+            author_email: "me@example.com".into(),
+            auto: false,
+            minutes: 15,
+        };
+        write_settings(&repo, &s).unwrap();
+        assert_eq!(read_settings(&repo).as_ref(), Some(&s));
+        assert_eq!(repo.find_remote("origin").unwrap().url(), Some("https://example.com/notes.git"));
+
+        s.token.clear();
+        s.remote = "https://example.com/other.git".into();
+        write_settings(&repo, &s).unwrap();
+        assert_eq!(read_settings(&repo).as_ref(), Some(&s), "a cleared field is removed");
+
+        s.remote.clear();
+        write_settings(&repo, &s).unwrap();
+        assert!(repo.find_remote("origin").is_err(), "a cleared remote is removed");
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

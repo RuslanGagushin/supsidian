@@ -61,3 +61,10 @@ pub(crate) async fn git_info<R: Runtime>(app: AppHandle<R>, root: String) -> Res
         .await
         .map_err(|e| crate::Error::Msg(e.to_string()))?
 }
+
+#[command]
+pub(crate) async fn git_save_settings<R: Runtime>(app: AppHandle<R>, root: String, settings: crate::git::GitSettings) -> Result<()> {
+    tauri::async_runtime::spawn_blocking(move || crate::git::save_settings(&app, root, settings))
+        .await
+        .map_err(|e| crate::Error::Msg(e.to_string()))?
+}

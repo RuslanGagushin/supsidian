@@ -14,6 +14,7 @@ Pick a vault folder, then list, read, write and delete files inside it, and sync
 - `allow-exists`
 - `allow-git-sync`
 - `allow-git-info`
+- `allow-git-save-settings`
 
 ## Permission Table
 
@@ -72,6 +73,32 @@ Enables the git_info command without any pre-configured scope.
 <td>
 
 Denies the git_info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`vault:allow-git-save-settings`
+
+</td>
+<td>
+
+Enables the git_save_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`vault:deny-git-save-settings`
+
+</td>
+<td>
+
+Denies the git_save_settings command without any pre-configured scope.
 
 </td>
 </tr>

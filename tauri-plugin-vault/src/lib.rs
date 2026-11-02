@@ -48,6 +48,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::exists,
             commands::git_sync,
             commands::git_info,
+            commands::git_save_settings,
         ])
         .setup(|app, api| {
             #[cfg(mobile)]
