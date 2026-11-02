@@ -274,6 +274,46 @@ describe("live preview", () => {
     await page().waitForFunction(() => vault.notes.get("L.md").raw.endsWith("two\nLast"));
   });
 
+  test("selecting text shows the floating format bar, and its buttons format the selection", async () => {
+    await page().click("#editor .sn-live strong");
+    await H.tick(); // the click's own mouseup check runs first
+    await ev(() => { const t = $(".sn-editor-text.is-live"); t.setSelectionRange(0, 4); t.dispatchEvent(new Event("select")); });
+    assert.ok(await page().isVisible(".sn-fmtbar"));
+    const box = await page().locator(".sn-fmtbar").boundingBox(), tab = await page().locator(ta).boundingBox();
+    assert.ok(box.y + box.height <= tab.y + 4, "above the selected line");
+    await page().click('.sn-fmtbar [data-act="italic"]');
+    assert.equal(await value(), "*Para* **bold** text");
+    assert.deepEqual(await ev(() => { const t = $(".sn-editor-text.is-live"); return [t.selectionStart, t.selectionEnd]; }), [1, 5], "the text stays selected");
+    assert.ok(await ev(() => $('.sn-fmtbar [data-act="italic"]').classList.contains("is-active")));
+    await ev(() => { const t = $(".sn-editor-text.is-live"); t.setSelectionRange(3, 3); t.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowLeft" })); });
+    assert.equal(await page().locator(".sn-fmtbar").count(), 0, "gone when nothing is selected");
+  });
+
+  test("moveBlock moves a block before or after another and keeps the blank lines", async () => {
+    const mv = (b, from, to, after) => ev(([b, f, t, a]) => moveBlock(b, f, t, a), [b, from, to, after]);
+    const b = "A\n\nB\n\n\nC";
+    assert.equal(await mv(b, 0, 3, true), "B\n\nA\n\n\nC", "first block down");
+    assert.equal(await mv(b, 7, 0, false), "C\n\n\nA\n\nB", "last block to the top");
+    assert.equal(await mv(b, 3, 7, true), "A\n\n\nC\n\nB");
+    assert.equal(await mv(b, 3, 0, true), null, "already there");
+  });
+
+  test("dragging a block's handle moves the block in the file", async () => {
+    await ev(() => $("#editor .sn-live-block:nth-child(1)").dispatchEvent(new MouseEvent("mouseover", { bubbles: true })));
+    const handle = page().locator("#editor .sn-live-block").first().locator(".sn-live-handle");
+    const hb = await handle.boundingBox(), list = await page().locator("#editor .sn-live ul").boundingBox();
+    await page().mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+    await page().mouse.down();
+    await page().mouse.move(hb.x + 4, list.y + list.height - 3, { steps: 6 });
+    assert.ok(await ev(() => !!$("#editor .is-drop-after")), "the drop line shows");
+    await page().mouse.up();
+    assert.deepEqual(await blocks(), ["P", "UL", "H1", "P"]);
+    await page().keyboard.press("Control+s");
+    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("two\n\n# Title"));
+    assert.equal(await raw("L.md"), "---\ncolor: red\n---\nPara **bold** text\n\n- [ ] one\n- [ ] two\n\n# Title\n\nLast");
+    noErrors();
+  });
+
   test("a rendered checkbox ticks its own task", async () => {
     await ev(() => $$("#editor .sn-live input[type=checkbox]")[1].click());
     await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("- [x] two"));

@@ -1328,6 +1328,28 @@ body.write-serif .sn-editor-page, body.write-sans .sn-editor-page, body.write-in
   font: inherit; background: color-mix(in srgb, var(--fg) 4%, transparent);
 }
 .sn-live textarea.sn-editor-text.is-live:only-child { min-height: 30vh; background: transparent; }
+/* a block's drag handle sits in the margin on its left, shown on hover (always faintly on touch screens) */
+.sn-live-block { position: relative; }
+.sn-live-handle {
+  position: absolute; left: -24px; top: 2px; display: flex; align-items: center; justify-content: center;
+  width: 18px; height: 22px; border-radius: 4px; color: var(--faint); cursor: grab; opacity: 0; touch-action: none; user-select: none;
+  transition: opacity 120ms;
+}
+.sn-live-handle svg { width: 14px; height: 14px; }
+.sn-live-block:hover > .sn-live-handle, .sn-live-handle:focus-visible { opacity: 1; }
+.sn-live-handle:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); color: var(--fg); }
+@media (hover: none) { .sn-live-handle { opacity: .4; } }
+.sn-live.is-dragging, .sn-live.is-dragging * { cursor: grabbing; user-select: none; }
+.sn-live-block.is-dragged { opacity: .35; }
+.sn-live-block.is-drop-before { box-shadow: 0 -2px 0 var(--accent); }
+.sn-live-block.is-drop-after { box-shadow: 0 2px 0 var(--accent); }
+/* the floating format bar over a text selection */
+.sn-fmtbar {
+  position: fixed; z-index: 74; display: flex; align-items: center; gap: 1px; padding: 3px;
+  background: var(--win); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--fg) 14%, transparent);
+}
+.sn-fmtbar .sn-tb-sep { margin: 0 3px; }
 
 /* Inline completion at the caret */
 .ac-pop {
@@ -4760,6 +4782,7 @@ function renderEditor() {
   host.append(head);
   if (n && editor.mode !== "read") host.append(renderEdToolbar());
   const scroll = h("div", { cls: "sn-editor-scroll" });
+  scroll.addEventListener("scroll", () => { if ($(".sn-fmtbar")) updateFmtBar($(".sn-editor-text")); }, { passive: true });
   const page = h("div", { cls: "sn-editor-page" });
   scroll.append(page);
   host.append(scroll);
@@ -4818,8 +4841,10 @@ function editorTextarea(value, live = false) {
   if (live) ta.addEventListener("keydown", liveKeys);
   ta.addEventListener("keydown", editorKeys);
   ta.addEventListener("blur", () => { if (editor.dirty) saveEditor(); });
-  ta.addEventListener("keyup", (e) => { editorTableWrap(ta); editorModeline(); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
-  ta.addEventListener("mouseup", () => { editorTableWrap(ta); updateEdToolbar(); });
+  ta.addEventListener("select", () => updateFmtBar(ta));
+  ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) updateFmtBar(null); }, 0));
+  ta.addEventListener("keyup", (e) => { updateFmtBar(ta); editorTableWrap(ta); editorModeline(); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
+  ta.addEventListener("mouseup", () => { editorTableWrap(ta); updateEdToolbar(); setTimeout(() => updateFmtBar(ta), 0); });
   ta.addEventListener("input", () => { editorTableWrap(ta); updateEdToolbar(); });
   ta.addEventListener("focus", () => { editorTableWrap(ta); updateEdToolbar(); });
   ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) editorTableWrap(ta); }, 150));
@@ -4896,6 +4921,8 @@ function renderLive() {
     if (L.start >= 0 && !placed && b.start >= L.end) place();
     const el = h("div", { cls: "sn-live-block", dataset: { start: b.start, end: b.end } });
     renderMarkdown(L.body.slice(b.start, b.end), editor.path, { into: el, pdf: true });
+    el.append(ic("sn-live-handle", "grip-vertical"));
+    el.lastChild.title = wt("dragBlock");
     box.append(el);
   }
   if (L.start >= 0 && !placed) place();
@@ -4975,7 +5002,7 @@ function wireLive(box, path) {
     cb.dataset.task = String(liveTaskCount(liveText().slice(0, liveBlockStart(el))) + local);
   }, true);
   box.addEventListener("click", (e) => {
-    if (e.target.closest("a, input, button, textarea, summary, .code-head, .sn-pdf, .org-fold, [data-org-act]")) return;
+    if (e.target.closest("a, input, button, textarea, summary, .code-head, .sn-pdf, .org-fold, [data-org-act], .sn-live-handle")) return;
     const sel = getSelection();
     if (sel && !sel.isCollapsed && box.contains(sel.anchorNode)) return; // selecting text to copy
     const el = e.target.closest(".sn-live-block");
@@ -4983,6 +5010,60 @@ function wireLive(box, path) {
     const last = box.lastElementChild;
     if (!last || e.clientY > last.getBoundingClientRect().bottom) liveActivateEnd();
   });
+  box.addEventListener("pointerdown", (e) => { const hd = e.target.closest(".sn-live-handle"); if (hd && e.button === 0) liveDrag(box, hd.parentElement, e); });
+}
+/** Drag a rendered block by its handle; it drops before or after the block under the pointer. */
+function liveDrag(box, el, e) {
+  e.preventDefault();
+  const hd = e.target.closest(".sn-live-handle");
+  hd.setPointerCapture?.(e.pointerId);
+  let target = null, after = false, moved = false;
+  const clear = () => $$(".is-drop-before, .is-drop-after", box).forEach((b) => b.classList.remove("is-drop-before", "is-drop-after"));
+  const move = (ev) => {
+    if (!moved && Math.abs(ev.clientY - e.clientY) < 4) return;
+    moved = true;
+    box.classList.add("is-dragging"); el.classList.add("is-dragged");
+    const over = [...box.querySelectorAll(":scope > .sn-live-block")].find((b) => { const r = b.getBoundingClientRect(); return ev.clientY >= r.top && ev.clientY < r.bottom; })
+      || (ev.clientY < box.getBoundingClientRect().top + 8 ? box.querySelector(":scope > .sn-live-block") : [...box.querySelectorAll(":scope > .sn-live-block")].at(-1));
+    clear();
+    target = over && over !== el ? over : null;
+    if (!target) return;
+    const r = target.getBoundingClientRect();
+    after = ev.clientY > r.top + r.height / 2;
+    target.classList.add(after ? "is-drop-after" : "is-drop-before");
+  };
+  const up = () => {
+    hd.removeEventListener("pointermove", move); hd.removeEventListener("pointerup", up); hd.removeEventListener("pointercancel", up);
+    clear(); box.classList.remove("is-dragging"); el.classList.remove("is-dragged");
+    if (moved && target) liveMoveBlock(liveBlockStart(el), liveBlockStart(target), after);
+  };
+  hd.addEventListener("pointermove", move); hd.addEventListener("pointerup", up); hd.addEventListener("pointercancel", up);
+}
+/** Move the block starting at body offset `from` before (or after) the block starting at `to`. */
+function liveMoveBlock(from, to, after) {
+  const L = editor.live;
+  if (!L) return;
+  liveCommit();
+  const out = moveBlock(L.body, from, to, after);
+  if (!out) return;
+  Object.assign(L, { body: out, start: -1, end: -1, pre: "", post: "" });
+  editor.dirty = true; setSaveState(); scheduleSave();
+  renderLive();
+}
+/** The body with the block at `from` moved before (after) the block at `to`; null when nothing changes. Blank lines between blocks stay as they were. */
+function moveBlock(body, from, to, after) {
+  const blocks = liveBlocks(body);
+  const i = blocks.findIndex((b) => b.start === from), j = blocks.findIndex((b) => b.start === to);
+  if (i < 0 || j < 0 || i === j || blocks.length < 2) return null;
+  const src = blocks[i], dst = blocks[j], text = body.slice(src.start, src.end);
+  // cut the block with the gap above it (the first block: with the gap below it)
+  const [cutFrom, cutTo] = i > 0 ? [blocks[i - 1].end, src.end] : [src.start, blocks[1].start];
+  const gap = i > 0 ? body.slice(blocks[i - 1].end, src.start) : body.slice(src.end, blocks[1].start);
+  const rest = body.slice(0, cutFrom) + body.slice(cutTo);
+  const shift = (p) => (p >= cutTo ? p - (cutTo - cutFrom) : p);
+  const at = after ? shift(dst.end) : shift(dst.start);
+  const out = rest.slice(0, at) + (after ? gap + text : text + gap) + rest.slice(at);
+  return out === body ? null : out;
 }
 /** Keys that move between blocks; editorKeys handles everything else. */
 function liveKeys(e) {
@@ -5293,6 +5374,44 @@ function updateEdToolbar() {
   }
   const hb = bar.querySelector('[data-act="heading"]');
   if (hb) setIcon(hb, st.heading ? `heading-${Math.min(st.heading, 6)}` : "heading");
+}
+/* ---------- Floating format bar: shown over a selection in the editor text, like Evernote's */
+function updateFmtBar(ta) {
+  const has = ta && document.activeElement === ta && ta.selectionEnd > ta.selectionStart && editor.mode !== "read" && !ac.el;
+  let bar = $(".sn-fmtbar");
+  if (!has) { bar?.remove(); return; }
+  if (!bar) {
+    bar = h("div", { cls: "sn-fmtbar", role: "toolbar", "aria-label": "Formatting" });
+    const btn = (icon, title, fn) => {
+      const x = h("button", { type: "button", cls: "sn-tb-btn", title, "aria-label": title, dataset: { act: icon } });
+      setIcon(x, icon);
+      x.addEventListener("mousedown", (e) => e.preventDefault()); // keep the selection
+      x.addEventListener("click", () => { const el = $(".sn-editor-text"); if (!el) return; fn(el); updateEdToolbar(); updateFmtBar(el); });
+      bar.append(x);
+    };
+    const sep = () => bar.append(h("span", { cls: "sn-tb-sep", "aria-hidden": "true" }));
+    btn("bold", t("tbBold"), (el) => edWrap(el, "**"));
+    btn("italic", t("tbItalic"), (el) => edWrap(el, "*"));
+    btn("strikethrough", t("tbStrike"), (el) => edWrap(el, "~~"));
+    btn("highlighter", wt("highlight"), (el) => edWrap(el, "=="));
+    btn("code", t("tbCode"), (el) => edWrap(el, "`"));
+    sep();
+    btn("link", t("tbLink"), (el) => edLinkStart(el));
+    sep();
+    btn("heading", t("tbHeading"), (el) => edHeading(el));
+    btn("list", t("tbList"), (el) => edPrefix(el, "- "));
+    btn("list-checks", t("tbTask"), (el) => edPrefix(el, "- [ ] "));
+    btn("text-quote", t("tbQuote"), (el) => edPrefix(el, "> "));
+    document.body.append(bar);
+  }
+  const st = edLineState(ta);
+  for (const b of bar.querySelectorAll(".sn-tb-btn")) b.classList.toggle("is-active", !!{ bold: st.bold, italic: st.italic, strikethrough: st.strikethrough, highlighter: st.highlighter, code: st.code, heading: st.heading > 0, list: st.list, "list-checks": st.task, "text-quote": st.quote }[b.dataset.act]);
+  // above the start of the selection, or below its end when there is no room above
+  const a = caretRect(ta, ta.selectionStart), z = caretRect(ta, ta.selectionEnd), r = ta.getBoundingClientRect();
+  const w = bar.offsetWidth, hgt = bar.offsetHeight;
+  const left = Math.max(8, Math.min(innerWidth - w - 8, (a.top === z.top ? (a.left + z.left) / 2 : r.left + r.width / 2) - w / 2));
+  const top = a.top - hgt - 8 >= 8 ? a.top - hgt - 8 : z.top + z.height + 8;
+  Object.assign(bar.style, { left: left + "px", top: top + "px" });
 }
 function edSetHeading(ta, n) {
   edLines(ta, (lines) => lines.map((l) => { const body = l.replace(/^#{1,6} /, ""); return n ? "#".repeat(n) + " " + body : body; }));
@@ -5970,6 +6089,7 @@ const WSTR = {
     unlinked: "Unlinked mentions", linkIt: "Link", linked: "Linked “{name}” in {note}",
     tagsSection: "Tags", readTime: "{n} min",
     slashHint: "Type / for commands",
+    dragBlock: "Drag to move", highlight: "Highlight",
     c_h1: "Heading 1", c_h2: "Heading 2", c_h3: "Heading 3", c_text: "Plain text",
     c_bullet: "Bulleted list", c_num: "Numbered list", c_task: "Task", c_quote: "Quote",
     c_callout: "Callout", c_code: "Code block", c_table: "Table", c_divider: "Divider",
@@ -5988,6 +6108,7 @@ const WSTR = {
     unlinked: "Упоминания без ссылки", linkIt: "Связать", linked: "«{name}» связано в {note}",
     tagsSection: "Теги", readTime: "{n} мин",
     slashHint: "Наберите / для команд",
+    dragBlock: "Перетащите, чтобы переместить", highlight: "Выделение цветом",
     c_h1: "Заголовок 1", c_h2: "Заголовок 2", c_h3: "Заголовок 3", c_text: "Обычный текст",
     c_bullet: "Маркированный список", c_num: "Нумерованный список", c_task: "Задача", c_quote: "Цитата",
     c_callout: "Выноска", c_code: "Блок кода", c_table: "Таблица", c_divider: "Разделитель",
