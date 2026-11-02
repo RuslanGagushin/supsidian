@@ -13,6 +13,53 @@ const titles = () => ev(() => {
 });
 const noErrors = () => assert.equal(H.errors.length, 0, H.errors.map((e) => e.stack || e).join("\n"));
 
+describe("tables and fonts", () => {
+  beforeEach(() => openVault());
+
+  test("a table fills the note width, keeps its column alignment and scrolls when too wide", async () => {
+    const r = await ev(() => {
+      const el = renderMarkdown("| Month | Km |\n| :--- | :-: |\n| Oct | 980 |\n", "x.md");
+      el.classList.add("markdown-rendered");
+      el.style.width = "500px";
+      document.body.append(el);
+      const wrap = el.querySelector(".sn-table-wrap"), css = (s) => getComputedStyle(el.querySelector(s)).textAlign;
+      const wide = renderMarkdown(`| ${"word ".repeat(0)}${Array(40).fill("Longheaderword").join(" | ")} |\n|${" --- |".repeat(40)}\n`, "x.md");
+      wide.classList.add("markdown-rendered");
+      wide.style.width = "500px";
+      document.body.append(wide);
+      const w = wide.querySelector(".sn-table-wrap");
+      return { table: el.querySelector("table").offsetWidth, wrap: wrap.clientWidth, first: css("tbody td:first-child"), second: css("tbody td:last-child"), scrolls: w.scrollWidth > w.clientWidth, wideBox: w.offsetWidth };
+    });
+    assert.equal(r.table, r.wrap);
+    assert.equal(r.first, "start"); // :--- gives left, which reads as start
+    assert.equal(r.second, "center");
+    assert.ok(r.scrolls);
+    assert.equal(r.wideBox, 500);
+    noErrors();
+  });
+
+  test("Inter works as the interface font and as the writing font, and is embedded for Cyrillic too", async () => {
+    const r = await ev(async () => {
+      const family = (s) => getComputedStyle(document.body).getPropertyValue(s).trim();
+      UI.font = "inter"; UI.writeFont = "sans"; applyTheme();
+      const iface = { ui: getComputedStyle(document.body).fontFamily, sans: document.body.classList.contains("font-sans") };
+      const reading = h("div", { cls: "sn-reading" });
+      document.body.append(reading);
+      const plexText = getComputedStyle(reading).fontFamily;
+      UI.font = "mono"; UI.writeFont = "inter"; applyTheme();
+      const interText = getComputedStyle(reading).fontFamily;
+      const faces = [...document.fonts].filter((f) => f.family.replace(/"/g, "") === "Inter").length;
+      return { iface, plexText, interText, faces, family: family("--font-inter") };
+    });
+    assert.match(r.iface.ui, /^"?Inter/);
+    assert.ok(r.iface.sans);
+    assert.match(r.plexText, /^"?IBM Plex Sans/, "IBM Plex Sans for writing stays Plex under an Inter interface");
+    assert.match(r.interText, /^"?Inter/);
+    assert.equal(r.faces, 2);
+    noErrors();
+  });
+});
+
 describe("board", () => {
   beforeEach(() => openVault());
 
