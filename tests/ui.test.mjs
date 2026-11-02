@@ -437,7 +437,7 @@ describe("palettes, settings, language and themes", () => {
   });
 });
 
-describe("top bar", () => {
+describe("top bar (Workbench style)", () => {
   const state = () => ev(async () => {
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const top = $(".wb-top");
@@ -445,7 +445,7 @@ describe("top bar", () => {
   });
 
   for (const lang of ["en", "ru"]) test(`always fits, and gets its details back when the window widens (${lang})`, async () => {
-    await openVault({ viewport: { width: 1700, height: 800 }, lang });
+    await openVault({ viewport: { width: 1700, height: 800 }, lang, style: "workbench" });
     assert.deepEqual(await state(), { fits: true, step: 0, brand: true });
     for (const width of [1250, 1100, 1000, 850, 821, 700, 500, 390, 320]) {
       await H.page.setViewportSize({ width, height: 800 });
@@ -456,7 +456,7 @@ describe("top bar", () => {
   });
 
   test("drops the details before the logo, and the logo before the labels", async () => {
-    await openVault({ viewport: { width: 1100, height: 800 } });
+    await openVault({ viewport: { width: 1100, height: 800 }, style: "workbench" });
     assert.equal((await state()).brand, true);
     await H.page.setViewportSize({ width: 850, height: 800 });
     assert.deepEqual(await state(), { fits: true, step: 3, brand: false });
@@ -467,6 +467,47 @@ describe("top bar", () => {
     const before = (await state()).step;
     await ev(() => { $("#files-btn .wb-label").textContent = "A very long label ".repeat(6); });
     assert.ok((await state()).step > before);
+  });
+});
+
+describe("Evernote style", () => {
+  const shown = (sel) => ev((sel) => { const el = $(sel); return !!el && getComputedStyle(el).display !== "none"; }, sel);
+
+  test("is the default: search, the green new-card button and the vault are in the sidebar", async () => {
+    await openVault({ viewport: { width: 1280, height: 800 } });
+    assert.equal(await ev(() => document.body.classList.contains("style-evernote")), true);
+    for (const sel of [".ev-search", ".ev-new", ".ev-account"]) assert.equal(await shown(sel), true, sel);
+    for (const sel of [".wb-brand", ".wb-top .wb-new", ".wb-top .wb-open"]) assert.equal(await shown(sel), false, sel);
+    assert.match(await page().textContent(".ev-account"), /Demo|vault/i);
+    // the sidebar runs the full height, the top bar starts to its right
+    const box = await ev(() => ({ side: $(".sn-side").getBoundingClientRect().toJSON(), top: $(".wb-top").getBoundingClientRect().toJSON() }));
+    assert.equal(box.side.top, 0);
+    assert.ok(box.top.left >= box.side.right - 1);
+    noErrors();
+  });
+
+  test("the sidebar search opens the card picker", async () => {
+    await openVault();
+    await page().click(".ev-search");
+    assert.equal(await ev(() => !!document.activeElement?.closest("#minibuf") && document.activeElement.getAttribute("aria-label") === t("pickCard")), true);
+    noErrors();
+  });
+
+  test("the top bar fits at every width", async () => {
+    await openVault({ viewport: { width: 1700, height: 800 } });
+    for (const width of [1250, 1000, 821, 700, 390, 320]) {
+      await H.page.setViewportSize({ width, height: 800 });
+      assert.equal(await ev(async () => { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const top = $(".wb-top"); return top.scrollWidth <= top.clientWidth; }), true, `overflows at ${width}px`);
+    }
+  });
+
+  test("Settings switches to the Workbench style and back", async () => {
+    await openVault();
+    await ev(() => { UI.style = "workbench"; applyTheme(); });
+    assert.equal(await shown(".ev-side-head"), false);
+    assert.equal(await shown(".wb-brand"), true);
+    await ev(() => { UI.style = "evernote"; applyTheme(); });
+    assert.equal(await shown(".ev-side-head"), true);
   });
 });
 
