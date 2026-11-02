@@ -513,7 +513,7 @@ describe("top bar (Workbench style)", () => {
 describe("Evernote style", () => {
   const shown = (sel) => ev((sel) => { const el = $(sel); return !!el && getComputedStyle(el).display !== "none"; }, sel);
 
-  test("is the default: search, the green new-card button and the vault are in the sidebar", async () => {
+  test("is the default: search, the blue new-card button and the vault are in the sidebar", async () => {
     await openVault({ viewport: { width: 1280, height: 800 } });
     assert.equal(await ev(() => document.body.classList.contains("style-evernote")), true);
     for (const sel of [".ev-search", ".ev-new", ".ev-account"]) assert.equal(await shown(sel), true, sel);

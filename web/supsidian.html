@@ -1715,13 +1715,13 @@ audio.fv-media { width: min(520px, 100%); }
 }
 /* ==========================================================
    Evernote style (body.style-evernote, the default; Settings → Appearance → Style):
-   warm grey sidebar with search, a green pill for new cards and the vault at the bottom;
+   warm grey sidebar with search, a blue pill for new cards and the vault at the bottom;
    Inter everywhere but code; white notes on grey; neutral ink instead of outline-level colours.
    ========================================================== */
 body.style-evernote {
   --bg:#f6f5f4; --win:#ffffff; --panel:#e7e6e5; --fg:#212121; --muted:#696564; --faint:#9c9897; --line:#e6e4e2;
-  --accent:#00a82d; --accent-soft:#e3f5e8; --sel:#ebeae9; --flash:#fff1a8; --code-bg:#f4f3f2;
-  --ink:#141414; --ev-green:#00a82d; --ev-green-hover:#008f26; --ev-hover:#edeceb; --ev-avatar:#7c5cdb;
+  --accent:#4d64ff; --accent-soft:#ebeeff; --sel:#ebeae9; --flash:#fff1a8; --code-bg:#f4f3f2;
+  --ink:#141414; --ev-cta:#4d64ff; --ev-cta-hover:#3245bb; --ev-hover:#edeceb; --ev-avatar:#7c5cdb;
   --tbl-head:#f4f3f2; --tbl-head-line:#e6e4e2; --tag:#3e3e3e;
   --font-code: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --font-mono: var(--font-inter); --font-ui: var(--font-inter); --font-display: var(--font-inter);
@@ -1732,8 +1732,8 @@ body.style-evernote {
 }
 body.style-evernote.theme-dark {
   --bg:#1b1b1b; --win:#262626; --panel:#333333; --fg:#e8e8e8; --muted:#a8a4a3; --faint:#7d7978; --line:#353535;
-  --accent:#2dbe60; --accent-soft:#1f3a28; --sel:#383838; --flash:#4a3f12; --code-bg:#2e2e2e;
-  --ink:#f2f2f2; --ev-green:#00a82d; --ev-green-hover:#00bf33; --ev-hover:#2c2c2c;
+  --accent:#7c8eff; --accent-soft:#1f2547; --sel:#383838; --flash:#4a3f12; --code-bg:#2e2e2e;
+  --ink:#f2f2f2; --ev-cta:#4d64ff; --ev-cta-hover:#7c8eff; --ev-hover:#2c2c2c;
   --tbl-head:#2e2e2e; --tbl-head-line:#3a3a3a; --tag:#d6d6d6;
 }
 
@@ -1775,10 +1775,10 @@ button.ev-search:hover { background: color-mix(in srgb, var(--panel) 85%, var(--
 button.ev-search svg { width: 16px; height: 16px; }
 .ev-actions { display: flex; align-items: center; gap: 8px; }
 body.style-evernote button.wb-btn.ev-new, body.style-evernote button.wb-btn.primary {
-  height: 38px; padding: 0 18px 0 14px; border: 0; border-radius: 48px; background: var(--ev-green); color: #fff;
+  height: 38px; padding: 0 18px 0 14px; border: 0; border-radius: 48px; background: var(--ev-cta); color: #fff;
   font-size: 14px; font-weight: 600; gap: 7px;
 }
-body.style-evernote button.wb-btn.ev-new:hover, body.style-evernote button.wb-btn.primary:hover { background: var(--ev-green-hover); opacity: 1; }
+body.style-evernote button.wb-btn.ev-new:hover, body.style-evernote button.wb-btn.primary:hover { background: var(--ev-cta-hover); opacity: 1; }
 body.style-evernote button.wb-btn.ev-new svg { width: 17px; height: 17px; }
 button.clickable-icon.ev-round { width: 38px; height: 38px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--win); color: var(--muted); }
 button.clickable-icon.ev-round:hover { background: var(--ev-hover); color: var(--fg); }
@@ -1942,14 +1942,14 @@ body.style-evernote .modal { border-radius: 14px; font-family: var(--font-inter)
 body.style-evernote .modal-title { font-family: var(--font-inter); font-weight: 600; font-size: 18px; border-bottom: 0; }
 body.style-evernote .modal input[type="text"] { height: 36px; border-radius: 8px; font-family: var(--font-inter); font-size: 14px; }
 body.style-evernote .modal-buttons button, body.style-evernote .modal-buttons button:not(.clickable-icon) { height: 34px; padding: 0 16px; border-radius: 48px; font-family: var(--font-inter); font-size: 13px; font-weight: 600; }
-body.style-evernote .modal-buttons button.mod-cta, body.style-evernote .setting-item-control .wb-btn.is-cta, body.style-evernote button.mod-cta { background: var(--ev-green); color: #fff; border-color: var(--ev-green); }
+body.style-evernote .modal-buttons button.mod-cta, body.style-evernote .setting-item-control .wb-btn.is-cta, body.style-evernote button.mod-cta { background: var(--ev-cta); color: #fff; border-color: var(--ev-cta); }
 body.style-evernote .setting-heading { letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 600; color: var(--muted); }
 body.style-evernote .setting-item-name { font-size: 13.5px; }
 body.style-evernote .setting-item-description { font-size: 12px; }
 body.style-evernote .setting-item-control select, body.style-evernote .setting-item-control input { height: 32px; border-radius: 8px; font-family: var(--font-inter); font-size: 13px; background: var(--win); }
 body.style-evernote button.sn-set-tab { font-family: var(--font-inter); }
 body.style-evernote button.sn-set-tab.is-active { border-bottom-color: var(--accent); }
-body.style-evernote .checkbox-container.is-enabled { background: var(--ev-green); }
+body.style-evernote .checkbox-container.is-enabled { background: var(--ev-cta); }
 body.style-evernote .sn-about-name { font-family: var(--font-inter); font-weight: 700; }
 body.style-evernote .prompt { border-radius: 14px; font-family: var(--font-inter); }
 body.style-evernote .prompt-input { font-family: var(--font-inter) !important; font-size: 15px !important; }
