@@ -25,7 +25,8 @@ This repository wraps the Supsidian page into native apps with [Tauri 2](https:/
 - **Select mode:** select several cards to move, re-parent or delete them together. **Undo** reverts the last card action.
 
 ### Editor
-- Markdown editor with a reading view, **full-width** and **focus** modes, and a toolbar for formatting, images and files.
+- **Live preview editing:** the note shows rendered (headings, bold, links, tasks, callouts, code), and only the block you are editing turns back into Markdown. Click a block to edit it; arrows move between blocks; Enter on an empty line finishes a block and starts the next one; Backspace at the start of a block joins it with the one above. Your files stay plain Markdown.
+- A source mode for the whole file, a reading view, **full-width** and **focus** modes, and a toolbar for formatting, images and files.
 - `[[` or `Ctrl+L` links to another card; `/` opens the insert menu.
 - Turn a selection into a **new child card**.
 

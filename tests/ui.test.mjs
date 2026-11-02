@@ -217,6 +217,71 @@ describe("editor", () => {
   });
 });
 
+describe("live preview", () => {
+  const body = "# Title\n\nPara **bold** text\n\n- [ ] one\n- [ ] two\n\nLast";
+  beforeEach(async () => { await openVault({ demo: false, notes: { "L.md": "---\ncolor: red\n---\n" + body } }); await ev(() => openEditor("L.md", { focus: true })); });
+  const ta = ".sn-editor-text.is-live";
+  const value = () => page().inputValue(ta);
+  const blocks = () => ev(() => $$("#editor .sn-live-block").map((b) => b.firstElementChild?.tagName));
+
+  test("the other blocks are rendered while one is edited", async () => {
+    assert.equal(await value(), "Last");
+    assert.deepEqual(await blocks(), ["H1", "P", "UL"]);
+    assert.equal(await ev(() => $("#editor .sn-live strong").textContent), "bold");
+  });
+
+  test("clicking a rendered block edits it, with the caret where it was clicked", async () => {
+    await page().click("#editor .sn-live strong");
+    assert.equal(await value(), "Para **bold** text");
+    const caret = await ev(() => $(".sn-editor-text.is-live").selectionStart);
+    assert.ok(caret >= 7 && caret <= 13, `caret ${caret} inside **bold**`);
+    assert.deepEqual(await blocks(), ["H1", "UL", "P"]);
+  });
+
+  test("Enter on an empty line renders the block and starts a new one", async () => {
+    await page().keyboard.type(" *end*");
+    await page().keyboard.press("Enter");
+    await page().keyboard.press("Enter");
+    assert.equal(await value(), "");
+    assert.equal(await ev(() => $$("#editor .sn-live-block em").length), 1);
+    await page().keyboard.type("New");
+    await page().keyboard.press("Control+s");
+    await page().waitForFunction(() => vault.notes.get("L.md").raw.endsWith("New"));
+    assert.equal(await raw("L.md"), "---\ncolor: red\n---\n" + body + " *end*\n\nNew");
+  });
+
+  test("Enter ends a list on an empty item, and again starts a new block", async () => {
+    await page().click("#editor .sn-live ul li:last-child", { position: { x: 200, y: 5 } });
+    await ev(() => { const t = $(".sn-editor-text.is-live"); t.setSelectionRange(t.value.length, t.value.length); });
+    for (const k of ["Enter", "Enter", "Enter"]) await page().keyboard.press(k);
+    assert.equal(await value(), "");
+    await page().keyboard.type("After");
+    await page().keyboard.press("Control+s");
+    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("After"));
+    assert.match(await raw("L.md"), /- \[ \] two\n\nAfter\n\nLast$/);
+  });
+
+  test("arrows move between blocks and Backspace joins with the block above", async () => {
+    await ev(() => $(".sn-editor-text.is-live").setSelectionRange(0, 0));
+    await page().keyboard.press("ArrowUp");
+    assert.equal(await value(), "- [ ] one\n- [ ] two");
+    await page().keyboard.press("ArrowDown");
+    assert.equal(await value(), "Last");
+    await ev(() => $(".sn-editor-text.is-live").setSelectionRange(0, 0));
+    await page().keyboard.press("Backspace");
+    assert.equal(await value(), "- [ ] one\n- [ ] two\nLast");
+    await page().keyboard.press("Control+s");
+    await page().waitForFunction(() => vault.notes.get("L.md").raw.endsWith("two\nLast"));
+  });
+
+  test("a rendered checkbox ticks its own task", async () => {
+    await ev(() => $$("#editor .sn-live input[type=checkbox]")[1].click());
+    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("- [x] two"));
+    assert.match(await raw("L.md"), /- \[ \] one/);
+    noErrors();
+  });
+});
+
 describe("rendering", () => {
   beforeEach(() => openVault({ demo: false, notes: { "Target.md": "x", "A.md": "" }, files: { "img/p.svg": H.SVG } }));
   const render = (md) => ev((md) => { const el = renderMarkdown(md, "A.md"); document.body.append(el); return el.innerHTML; }, md);

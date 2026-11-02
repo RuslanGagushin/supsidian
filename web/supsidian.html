@@ -1319,6 +1319,15 @@ body.write-inter .sn-editor-text:not(.is-source), body.write-inter .sn-reading, 
 body.write-serif .sn-editor-page, body.write-sans .sn-editor-page, body.write-inter .sn-editor-page { max-width: 68ch; }
 .sn-editor-text.is-file-over { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 4px; }
 .sn-editor-text::placeholder { color: var(--faint); }
+/* live preview: rendered blocks, and the block being edited as Markdown text with a soft tint */
+.sn-live { min-height: 40vh; cursor: text; }
+.sn-live-block { display: flow-root; }
+.sn-live-block > :last-child { margin-bottom: 1em; }
+.sn-live textarea.sn-editor-text.is-live {
+  min-height: 0; margin: 0 -8px 1em; padding: 2px 8px; width: calc(100% + 16px); border-radius: 6px;
+  font: inherit; background: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+.sn-live textarea.sn-editor-text.is-live:only-child { min-height: 30vh; background: transparent; }
 
 /* Inline completion at the caret */
 .ac-pop {
@@ -4371,6 +4380,7 @@ function openEditor(path, o = {}) {
   $$(`.sn-card[data-path="${CSS.escape(path)}"]`).forEach((c) => c.classList.add("is-editing"));
   if (board.cardSigs) for (const p of [path, ...board.cardSigs.keys()]) if (board.cardSigs.has(p)) board.cardSigs.set(p, cardSig(p));
   if (o.focus === false) return;
+  if (editor.mode === "edit" && !o.keepCaret && !liveTa()) liveActivateEnd();
   setTimeout(() => {
     const ta = $(".sn-editor-text");
     if (ta && editor.mode !== "read") { ta.focus(); if (!o.keepCaret) ta.setSelectionRange(ta.value.length, ta.value.length); }
@@ -4382,6 +4392,7 @@ function closeEditor(force = false) {
   if (was && !force) setTimeout(() => $(`#board .sn-card[data-path="${CSS.escape(was)}"]`)?.focus({ preventScroll: false }), 0);
   if (force) { scheduleSave.cancel(); editor.dirty = false; }
   editor.path = null;
+  editor.live = null;
   $("#app")?.classList.remove("editor-open", "editor-wide");
   $$(".sn-card.is-editing").forEach((c) => c.classList.remove("is-editing"));
   const host = $("#editor");
@@ -4393,11 +4404,11 @@ async function saveEditor() {
   const path = editor.path;
   const n = vault.notes.get(path);
   const ta = $(".sn-editor-text");
-  if (!n || !ta) return;
+  if (!n || (!ta && editor.mode !== "edit")) return;
   editor.dirty = false;
   editor.saving = true;
   setSaveState();
-  const raw = editor.mode === "source" ? ta.value : splitNote(n.raw).fm + ta.value;
+  const raw = editor.mode === "source" ? ta.value : splitNote(n.raw).fm + (editor.mode === "edit" ? liveText() : ta.value);
   try { if (raw !== n.raw) await writeRaw(path, raw, { silentEditor: true }); }
   catch { editor.dirty = true; }
   editor.saving = false;
@@ -4409,8 +4420,9 @@ function editorModeline() {
   if (!ml || !editor.path) return;
   const ta = $(".sn-editor-text");
   const n = vault.notes.get(editor.path);
-  const text = ta ? ta.value : n?.body || "";
-  const line = ta ? ta.value.slice(0, ta.selectionStart).split("\n").length : 1;
+  const live = editor.mode === "edit" && editor.live;
+  const text = live ? liveText() : ta ? ta.value : n?.body || "";
+  const line = ta ? text.slice(0, live ? liveOffset(ta.selectionStart) : ta.selectionStart).split("\n").length : 1;
   const words = text.split(/\s+/).filter(Boolean).length;
   const mode = editor.mode === "source" ? "(Source)" : editor.mode === "read" ? "(Reading)" : "(Markdown)";
   const state = editor.saving ? t("saving") : editor.dirty ? t("unsaved") : vault.fs?.kind === "disk" ? t("saved") : "";
@@ -4428,7 +4440,15 @@ function syncEditorFromDisk() {
   const ta = $(".sn-editor-text");
   const n = vault.notes.get(editor.path);
   if (!n) { renderEditor(); return; }
-  if (ta && !editor.dirty) {
+  if (editor.mode === "edit" && editor.live && !editor.dirty) {
+    const L = editor.live;
+    if (L.body !== n.body || liveText() !== n.body) {
+      const lt = liveTa(), caret = lt && document.activeElement === lt ? liveOffset(lt.selectionStart) : null;
+      Object.assign(L, { body: n.body, start: -1, end: -1, pre: "", post: "" });
+      renderLive();
+      if (caret != null) liveActivate(caret);
+    }
+  } else if (ta && !editor.dirty) {
     const want = editor.mode === "source" ? n.raw : n.body;
     if (ta.value !== want) {
       const s = ta.selectionStart, e = ta.selectionEnd;
@@ -4459,6 +4479,7 @@ function renderEditor() {
   const host = $("#editor");
   if (!host) return;
   const path = editor.path;
+  if (editor.live?.path === path) liveCommit();
   host.replaceChildren();
   if (!path) return;
   const n = vault.notes.get(path);
@@ -4517,31 +4538,238 @@ function renderEditor() {
     wireRendered(rd, path);
     rd.addEventListener("dblclick", (e) => { if (!e.target.closest("a, input")) { editor.mode = "edit"; renderEditor(); $(".sn-editor-text")?.focus(); } });
     page.append(rd);
+  } else if (editor.mode === "source") {
+    page.append(editorTextarea(n.raw));
   } else {
-    const ta = h("textarea", { cls: "sn-editor-text" + (editor.mode === "source" ? " is-source" : ""), spellcheck: "true", placeholder: editor.mode === "source" ? t("emptyBody") : t("emptyBody") + " " + wt("slashHint") });
-    ta.value = editor.mode === "source" ? n.raw : n.body;
-    ta.addEventListener("input", (e) => {
-      editor.dirty = true; setSaveState(); autosize(ta); scheduleSave();
-      syncHook("modify", editor.path, 250);
-      if (e.isTrusted || ac.el) acUpdate(ta);
-    });
-    ta.addEventListener("keydown", editorKeys);
-    ta.addEventListener("blur", () => { if (editor.dirty) saveEditor(); });
-    ta.addEventListener("keyup", (e) => { editorTableWrap(ta); editorModeline(); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
-    ta.addEventListener("mouseup", () => { editorTableWrap(ta); updateEdToolbar(); });
-    ta.addEventListener("input", () => { editorTableWrap(ta); updateEdToolbar(); });
-    ta.addEventListener("focus", () => { editorTableWrap(ta); updateEdToolbar(); });
-    ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) editorTableWrap(ta); }, 150));
-    ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) acClose(); }, 120));
-    wireEditorFiles(ta);
-    ta.addEventListener("click", editorModeline);
-    page.append(ta);
-    requestAnimationFrame(() => autosize(ta));
+    if (!editor.live || editor.live.path !== path) editor.live = { path, body: n.body, start: -1, end: -1, pre: "", post: "" };
+    else if (!editor.dirty && editor.live.body !== n.body) Object.assign(editor.live, { body: n.body, start: -1, end: -1, pre: "", post: "" });
+    const box = h("div", { cls: "sn-live sn-reading markdown-rendered" });
+    wireLive(box, path);
+    page.append(box);
+    renderLive();
   }
   page.append(h("div", { id: "editor-foot" }));
   host.append(h("div", { cls: "modeline" }));
   renderEditorProps();
   setSaveState();
+}
+/** The editor's textarea: the whole note in source mode, the block being edited in live preview. */
+function editorTextarea(value, live = false) {
+  const ta = h("textarea", { cls: "sn-editor-text" + (editor.mode === "source" ? " is-source" : "") + (live ? " is-live" : ""), spellcheck: "true", placeholder: editor.mode === "source" ? t("emptyBody") : t("emptyBody") + " " + wt("slashHint") });
+  ta.value = value;
+  ta.addEventListener("input", (e) => {
+    editor.dirty = true; setSaveState(); autosize(ta); scheduleSave();
+    syncHook("modify", editor.path, 250);
+    if (e.isTrusted || ac.el) acUpdate(ta);
+  });
+  if (live) ta.addEventListener("keydown", liveKeys);
+  ta.addEventListener("keydown", editorKeys);
+  ta.addEventListener("blur", () => { if (editor.dirty) saveEditor(); });
+  ta.addEventListener("keyup", (e) => { editorTableWrap(ta); editorModeline(); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
+  ta.addEventListener("mouseup", () => { editorTableWrap(ta); updateEdToolbar(); });
+  ta.addEventListener("input", () => { editorTableWrap(ta); updateEdToolbar(); });
+  ta.addEventListener("focus", () => { editorTableWrap(ta); updateEdToolbar(); });
+  ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) editorTableWrap(ta); }, 150));
+  ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) acClose(); }, 120));
+  wireEditorFiles(ta);
+  ta.addEventListener("click", editorModeline);
+  requestAnimationFrame(() => autosize(ta));
+  return ta;
+}
+
+/* ---------- Live preview: the note is a column of rendered blocks; only the block being edited is Markdown text.
+   editor.live.body is the body without the active block's typing; [start, end) is the active block in it.
+   A new block (start === end) is written with pre/post separators once it has text. */
+function liveBlocks(body) {
+  const out = [];
+  let pos = 0, start = -1, end = 0, fence = null;
+  for (const line of body.split("\n")) {
+    if (fence || line.trim()) { if (start < 0) start = pos; end = pos + line.length; }
+    else if (start >= 0) { out.push({ start, end }); start = -1; }
+    const f = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (f) fence = !fence ? f[1] : line.trim().startsWith(fence) ? null : fence;
+    pos += line.length + 1;
+  }
+  if (start >= 0) out.push({ start, end });
+  return out;
+}
+/** The textarea of the active block. One made for an earlier range is stale (it can still blur and save while it is being replaced). */
+const liveKey = (L) => [L.start, L.end, L.pre, L.post].join("\u0001");
+function liveTa() {
+  const ta = $(".sn-editor-text.is-live");
+  return ta && editor.live && ta.liveKey === liveKey(editor.live) ? ta : null;
+}
+/** The note body as it is now, with the active block's text. */
+function liveText() {
+  const L = editor.live, ta = liveTa();
+  if (!L || L.start < 0 || !ta) return L ? L.body : "";
+  const v = ta.value;
+  return L.body.slice(0, L.start) + (v ? L.pre + v + L.post : "") + L.body.slice(L.end);
+}
+/** Body offset of a position in the active textarea. */
+function liveOffset(i) {
+  const L = editor.live, ta = liveTa();
+  if (!ta || L.start < 0) return i;
+  return L.start + (ta.value ? L.pre.length : 0) + i;
+}
+/** Write the active block's text into editor.live.body; the block stays active. */
+function liveCommit() {
+  const L = editor.live, ta = liveTa();
+  if (!L || L.start < 0 || !ta) return;
+  const v = ta.value;
+  if (!v && L.start === L.end) return;
+  const s = L.start + (v ? L.pre.length : 0);
+  L.body = liveText();
+  Object.assign(L, { start: s, end: s + v.length, pre: "", post: "" });
+  ta.liveKey = liveKey(L);
+}
+function liveTaskCount(text) {
+  return (text.replace(CODE_RE, (m) => m.replace(/\[/g, "\u0001")).match(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[ xX]\]/gm) || []).length;
+}
+function renderLive() {
+  const L = editor.live, box = $("#editor .sn-live");
+  if (!box || !L) return;
+  const old = liveTa(), keep = old && document.activeElement === old ? [old.selectionStart, old.selectionEnd] : null;
+  box.replaceChildren();
+  let placed = false;
+  const place = () => {
+    const ta = editorTextarea(L.body.slice(L.start, L.end), true);
+    ta.liveKey = liveKey(L);
+    box.append(ta);
+    placed = true;
+  };
+  for (const b of liveBlocks(L.body)) {
+    if (L.start >= 0 && L.end > L.start && b.start >= L.start && b.end <= L.end) continue;
+    if (L.start >= 0 && !placed && b.start >= L.end) place();
+    const el = h("div", { cls: "sn-live-block", dataset: { start: b.start, end: b.end } });
+    renderMarkdown(L.body.slice(b.start, b.end), editor.path, { into: el, pdf: true });
+    box.append(el);
+  }
+  if (L.start >= 0 && !placed) place();
+  const ta = liveTa();
+  if (keep && ta) { ta.focus(); ta.setSelectionRange(...keep); }
+}
+/** Make the block at a body offset the one being edited, with the caret there. o.toEnd: the last block takes the trailing blank lines too. */
+function liveActivate(off, o = {}) {
+  const L = editor.live;
+  if (!L) return null;
+  liveCommit();
+  const blocks = liveBlocks(L.body);
+  off = Math.max(0, Math.min(off, L.body.length));
+  const b = blocks.find((x) => off >= x.start && off <= x.end);
+  if (b) Object.assign(L, { start: b.start, end: o.toEnd && b === blocks.at(-1) ? L.body.length : b.end, pre: "", post: "" });
+  else if (!blocks.length) Object.assign(L, { start: 0, end: L.body.length, pre: "", post: "" });
+  else {
+    const prev = blocks.filter((x) => x.end < off).at(-1);
+    if (o.toEnd && prev === blocks.at(-1)) Object.assign(L, { start: prev.start, end: L.body.length, pre: "", post: "" });
+    else liveNewBlock(prev);
+  }
+  renderLive();
+  const ta = liveTa();
+  if (!ta) return null;
+  ta.focus({ preventScroll: true });
+  const i = Math.max(0, Math.min(off - L.start, ta.value.length));
+  ta.setSelectionRange(i, i);
+  autosize(ta);
+  liveScrollTo(ta, i);
+  editorModeline(); updateEdToolbar();
+  return ta;
+}
+/** An empty block after `prev` (or first), written to the body once it has text. */
+function liveNewBlock(prev) {
+  const L = editor.live, at = prev ? prev.end : 0, rest = L.body.slice(at);
+  const separated = !rest.trim() || /^\n[ \t]*\n/.test(rest);
+  Object.assign(L, { start: at, end: at, pre: prev ? "\n\n" : "", post: separated ? "" : "\n\n" });
+}
+function liveScrollTo(ta, i) {
+  const sc = $(".sn-editor-scroll");
+  if (!sc) return;
+  const r = caretRect(ta, i), box = sc.getBoundingClientRect();
+  if (r.top < box.top + 40 || r.top + r.height > box.bottom - 40) sc.scrollTop += r.top - box.top - sc.clientHeight / 3;
+}
+function liveActivateEnd() { const L = editor.live; return L ? liveActivate(liveText().length, { toEnd: true }) : null; }
+/** Body offset in the current text of a rendered block's start (blocks after the active one move as it is typed into). */
+function liveBlockStart(el) {
+  const L = editor.live, s = +el.dataset.start;
+  return L.start >= 0 && s >= L.end ? s + liveText().length - L.body.length : s;
+}
+/** Where a click in a rendered block falls in its Markdown: match the rendered text before the point against the source. */
+function liveClickOffset(el, e, src) {
+  let node, offset;
+  if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(e.clientX, e.clientY); node = r?.startContainer; offset = r?.startOffset; }
+  else if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(e.clientX, e.clientY); node = p?.offsetNode; offset = p?.offset; }
+  if (!node || !el.contains(node)) return src.length;
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  try { r.setEnd(node, offset); } catch { return src.length; }
+  const txt = r.toString();
+  let j = 0;
+  for (const ch of txt) {
+    if (/\s/.test(ch)) continue;
+    const k = src.indexOf(ch, j);
+    if (k >= 0 && k - j < 40) j = k + 1;
+  }
+  if (/\s$/.test(txt)) while (j < src.length && /[ \t]/.test(src[j])) j++;
+  return j;
+}
+function wireLive(box, path) {
+  wireRendered(box, path);
+  // task checkboxes are numbered per block when rendered: renumber them against the whole note before toggleTask runs
+  box.addEventListener("change", (e) => {
+    const cb = e.target.closest('input[type="checkbox"][data-task]'), el = cb?.closest(".sn-live-block");
+    if (!el) return;
+    const local = $$('input[type="checkbox"][data-task]', el).indexOf(cb);
+    cb.dataset.task = String(liveTaskCount(liveText().slice(0, liveBlockStart(el))) + local);
+  }, true);
+  box.addEventListener("click", (e) => {
+    if (e.target.closest("a, input, button, textarea, summary, .code-head, .sn-pdf, .org-fold, [data-org-act]")) return;
+    const sel = getSelection();
+    if (sel && !sel.isCollapsed && box.contains(sel.anchorNode)) return; // selecting text to copy
+    const el = e.target.closest(".sn-live-block");
+    if (el) { const s = liveBlockStart(el), src = liveText().slice(s, s + (+el.dataset.end - +el.dataset.start)); liveActivate(s + liveClickOffset(el, e, src)); return; }
+    const last = box.lastElementChild;
+    if (!last || e.clientY > last.getBoundingClientRect().bottom) liveActivateEnd();
+  });
+}
+/** Keys that move between blocks; editorKeys handles everything else. */
+function liveKeys(e) {
+  const ta = e.target, L = editor.live;
+  if (!L || e.isComposing || ac.el || isMod(e) || e.altKey) return;
+  const { selectionStart: s, selectionEnd: en, value: v } = ta;
+  if (s !== en) return;
+  const take = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+  const blocks = () => { liveCommit(); return liveBlocks(L.body); };
+  const prevBlock = () => blocks().filter((b) => b.start < L.start).at(-1);
+  if ((e.key === "ArrowUp" && caretRect(ta, s).top <= caretRect(ta, 0).top + 2) || (e.key === "ArrowLeft" && s === 0)) {
+    const prev = prevBlock();
+    if (prev) { take(); liveActivate(prev.end); }
+  } else if ((e.key === "ArrowDown" && caretRect(ta, s).top >= caretRect(ta, v.length).top - 2) || (e.key === "ArrowRight" && s === v.length)) {
+    const next = blocks().find((b) => b.start >= L.end && (L.start === L.end || b.start > L.start));
+    if (next) { take(); liveActivate(next.start); }
+  } else if (e.key === "Backspace" && s === 0) {
+    const prev = prevBlock();
+    if (!prev) return;
+    take();
+    if (L.start === L.end) { liveActivate(prev.end); return; } // an empty new block: back to the one above
+    // join with the block above: the blank lines between them become one line break
+    L.body = L.body.slice(0, prev.end) + "\n" + L.body.slice(L.start);
+    L.start = -1;
+    editor.dirty = true; setSaveState(); scheduleSave();
+    liveActivate(prev.end + 1);
+  } else if (e.key === "Enter" && !e.shiftKey && s === v.length && /(^|\n)[ \t]*$/.test(v) && v.trim() && !((v.match(/^\s*(```|~~~)/gm) || []).length % 2)) {
+    // Enter on an empty last line: the block is done and renders, and a new one starts below it
+    take();
+    const trimmed = v.replace(/\s+$/, "");
+    if (trimmed !== v) { ta.value = trimmed; editor.dirty = true; setSaveState(); scheduleSave(); }
+    const cur = blocks().filter((b) => b.start >= L.start && b.end <= L.end).at(-1);
+    L.start = -1;
+    liveNewBlock(cur);
+    renderLive();
+    const nt = liveTa();
+    nt.focus({ preventScroll: true });
+    liveScrollTo(nt, 0);
+    editorModeline(); updateEdToolbar();
+  }
 }
 function renderEditorProps() {
   const path = editor.path;
@@ -4668,7 +4896,7 @@ function editorKeys(e) {
     const m = /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\]\s+)?/.exec(line);
     if (!m) return;
     e.preventDefault();
-    if (line.trim() === m[0].trim()) { replace(lineStart, s, ""); return; }
+    if (line.trim() === m[0].trim()) { replace(lineStart, s, "", lineStart); return; }
     let marker = m[2];
     if (/^\d+/.test(marker)) marker = parseInt(marker, 10) + 1 + marker.slice(-1);
     replace(s, s, "\n" + m[1] + marker + m[3] + (m[4] ? "[ ] " : ""));
@@ -4739,7 +4967,7 @@ function renderEdToolbar() {
     const x = h("button", { type: "button", cls: "sn-tb-btn", title: key ? `${title} (${key})` : title, "aria-label": title, dataset: { act: icon } });
     setIcon(x, icon);
     x.addEventListener("mousedown", (e) => e.preventDefault()); // keep the caret in the text
-    x.addEventListener("click", (e) => { const el = ta(); if (el) fn(el, e); });
+    x.addEventListener("click", (e) => { const el = ta() || (editor.mode === "edit" ? liveActivateEnd() : null); if (el) fn(el, e); });
     g.append(x);
     return x;
   };
@@ -4774,7 +5002,7 @@ function renderEdToolbar() {
   const ins = h("button", { type: "button", cls: "sn-tb-insert", title: wt("slashHint") }, ic("sn-tb-insert-icon", "plus"), h("span", { cls: "sn-tb-insert-label", text: LANG === "ru" ? "Вставить" : "Insert" }), h("kbd", { text: "/" }));
   ins.addEventListener("mousedown", (e) => e.preventDefault());
   ins.addEventListener("click", () => {
-    const el = ta(); if (!el) return;
+    const el = ta() || (editor.mode === "edit" ? liveActivateEnd() : null); if (!el) return;
     el.focus();
     const s0 = el.selectionStart, v = el.value;
     const needSpace = s0 > 0 && !/\s/.test(v[s0 - 1]);
@@ -5241,6 +5469,7 @@ async function showWelcome() {
   $("#app").replaceChildren();
   $("#welcome")?.remove();
   const last = IS_NATIVE ? null : hasFsApi ? await idb.get("lastVault") : null;
+  if (vault.fs) return; // a vault opened while this waited
   const card = h("div", { cls: "sn-welcome-card" },
     ic("sn-welcome-logo", "layers"), h("h1", { cls: "wb-brand" }, "Sup", h("i", { text: "sidian" })), h("p", { text: t("welcomeSub") }));
   const actions = h("div", { cls: "sn-welcome-actions" });
@@ -5873,14 +6102,20 @@ function noteHeadings(text) {
 function outlineMenu(anchor) {
   const n = vault.notes.get(editor.path);
   if (!n) return;
-  const ta = $(".sn-editor-text");
-  const text = ta ? ta.value : n.body;
+  let ta = $(".sn-editor-text");
+  const live = editor.mode === "edit" && editor.live;
+  const text = live ? liveText() : ta ? ta.value : n.body;
   const hs = noteHeadings(text);
   const m = new Menu();
   if (!hs.length) m.add(wt("noHeadings"), null, null, { disabled: true });
   const min = Math.min(...hs.map((x) => x.level));
   hs.forEach((hd, i) => m.add(" ".repeat(hd.level - min) + hd.text, `heading-${Math.min(hd.level, 6)}`, () => {
-    if (ta) {
+    if (live) {
+      liveActivate(hd.offset);
+      const sc = $(".sn-editor-scroll"), lt = liveTa();
+      if (sc && lt) sc.scrollTop += caretRect(lt, lt.selectionStart).top - sc.getBoundingClientRect().top - 60;
+      editorModeline();
+    } else if (ta) {
       ta.focus();
       ta.setSelectionRange(hd.offset, hd.offset);
       const r = caretRect(ta, hd.offset);
@@ -6808,10 +7043,15 @@ function openEditorAtLine(path, lineIndex) {
   setTimeout(() => {
     const ta = $(".sn-editor-text");
     const n = vault.notes.get(path);
-    if (!ta || !n) return;
+    if (!n || (!ta && !(editor.mode === "edit" && editor.live))) return;
     const lines = n.raw.split("\n");
     let off = lines.slice(0, lineIndex).join("\n").length + (lineIndex ? 1 : 0);
     if (editor.mode !== "source") off -= splitNote(n.raw).fm.length;
+    if (editor.mode === "edit" && editor.live) {
+      const body = liveText(), le = body.indexOf("\n", Math.max(0, off));
+      liveActivate(le < 0 ? body.length : le);
+      return;
+    }
     off = Math.max(0, Math.min(off, ta.value.length));
     const le = ta.value.indexOf("\n", off);
     ta.focus();
