@@ -1172,6 +1172,30 @@ body.font-sans .sn-editor-text:not(.is-source) { font-family: var(--font-ui); fo
 .checkbox-container { width: 34px; height: 20px; }
 .checkbox-container::after { width: 16px; height: 16px; }
 .checkbox-container.is-enabled::after { transform: translateX(14px); }
+/* settings: a fixed-height dialog with a tab per group, so switching tabs doesn't make it jump */
+.modal.mod-settings { width: min(640px, calc(100vw - 32px)); height: min(620px, calc(100vh - 64px)); display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.modal.mod-settings > .modal-title { margin-bottom: 0; flex: none; }
+.modal.mod-settings > .sn-set-tabs { margin-inline: 0; }
+.sn-set-tabs { flex: none; display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.sn-set-tabs::-webkit-scrollbar { display: none; }
+button.sn-set-tab { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; box-shadow: none; color: var(--muted); font-family: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+button.sn-set-tab:hover { color: var(--fg); background: none; }
+button.sn-set-tab.is-active { color: var(--fg); border-bottom-color: var(--fg); }
+button.sn-set-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sn-set-tab-icon { display: inline-flex; }
+.sn-set-tab-icon svg { width: 14px; height: 14px; }
+.sn-set-body { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 0 16px; }
+.sn-set-body > .sn-sync-status { margin-top: 10px; }
+.sn-set-note { margin-top: 14px; font-size: 11.5px; color: var(--faint); }
+.sn-about { padding: 16px 0 14px; }
+.sn-about-name { font-family: var(--font-display); font-size: 22px; font-weight: 500; }
+.sn-about-ver { margin-top: 2px; font-size: 12px; color: var(--muted); }
+.sn-update-row.is-available .setting-item-description { color: var(--accent); }
+.setting-item-control .wb-btn.is-cta { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+@media (max-width: 520px) {
+  .modal.mod-settings { width: calc(100vw - 16px); height: calc(100vh - 32px); }
+  button.sn-set-tab { padding: 0 8px; }
+}
 .sn-kbd-table { font-family: var(--font-mono); font-size: 12px; }
 .sn-kbd-table td:first-child { color: var(--accent); }
 kbd.sn-k { font-family: var(--font-mono); font-size: 11px; color: var(--accent); border: 0; background: none; padding: 0; }
@@ -3204,8 +3228,9 @@ function echo(text, o = {}) {
   clearTimeout(echoTimer);
   const isHint = o.hint || text === defaultEcho();
   mb.replaceChildren(h("span", { cls: "echo" + (isHint ? " is-hint" : ""), text, title: text }));
-  mb.classList.toggle("is-blank", !text && !o.undo);
+  mb.classList.toggle("is-blank", !text && !o.undo && !o.action);
   if (o.undo) mb.append(h("button", { cls: "wb-btn mini", type: "button", onClick: () => undo() }, t("undo"), h("kbd", { text: "C-z" })));
+  if (o.action) mb.append(h("button", { cls: "wb-btn mini", type: "button", text: o.action.label, onClick: () => { echo(defaultEcho(), { keep: true }); o.action.run(); } }));
   if (!isHint) { mb.classList.remove("flash"); void mb.offsetWidth; mb.classList.add("flash"); }
   if (o.hint) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), 7000);
   else if (!o.keep && !isHint) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), o.undo ? 9000 : 6000);
@@ -3286,9 +3311,10 @@ function notice(text, o = {}) {
   if (!box) document.body.append((box = h("div", { cls: "notice-container" })));
   const n = h("div", { cls: "notice" }, h("span", { text }));
   if (o.undo) n.append(h("button", { cls: "sn-undo-btn", text: t("undo"), onClick: () => { n.remove(); undo(); } }));
+  if (o.action) n.append(h("button", { cls: "sn-undo-btn", text: o.action.label, onClick: () => { n.remove(); o.action.run(); } }));
   n.addEventListener("click", (e) => { if (e.target === n || e.target.tagName === "SPAN") n.remove(); });
   box.append(n);
-  setTimeout(() => n.remove(), o.undo ? 6000 : 3500);
+  setTimeout(() => n.remove(), o.action ? 12000 : o.undo ? 6000 : 3500);
 }
 
 let modalStack = 0;
@@ -5061,39 +5087,77 @@ function makeResizer(el, onMove, getStart) {
     el.addEventListener("pointerup", up);
   });
 }
-function settingsModal() {
-  const panel = h("div", { cls: "modal" });
-  const close = openLayer(panel, () => { renderAll(); if (editor.path) openEditor(editor.path, { keepCaret: true }); });
+/** Settings, one tab per group. `tab` picks the tab (the last one used otherwise); with the dialog open it just switches to it. */
+let settingsOpen = null;
+function settingsModal(tab) {
+  if (settingsOpen) { settingsOpen(tab); return; }
+  const panel = h("div", { cls: "modal mod-settings" });
+  const leaveTab = () => { sync.panel = null; upd.view = null; };
+  const close = openLayer(panel, () => { leaveTab(); settingsOpen = null; renderAll(); if (editor.path) openEditor(editor.path, { keepCaret: true }); });
   const item = (name, desc, control) => h("div", { cls: "setting-item" }, h("div", { cls: "setting-item-info" }, h("div", { cls: "setting-item-name", text: name }), desc ? h("div", { cls: "setting-item-description", text: desc }) : null), h("div", { cls: "setting-item-control" }, control));
   const select = (value, options, onChange) => { const s = h("select", {}, options.map(([v, l]) => h("option", { value: v, text: l, selected: String(v) === String(value) }))); s.addEventListener("change", () => onChange(s.value)); return s; };
   const text = (value, ph, onChange, type = "text") => { const i = h("input", { type, value: String(value ?? ""), placeholder: ph || "" }); i.addEventListener("change", () => onChange(i.value)); return i; };
   const toggle = (value, onChange) => { const c = h("div", { cls: "checkbox-container" + (value ? " is-enabled" : "") }); c.addEventListener("click", () => { c.classList.toggle("is-enabled"); onChange(c.classList.contains("is-enabled")); }); return c; };
   const save = () => { saveSettings(); graph = buildGraph(); };
-  panel.append(iconBtn("x", t("close"), () => close(), "modal-close"), h("div", { cls: "modal-title", text: t("settings") }));
-  panel.append(h("div", { cls: "setting-heading", text: t("sectionAppearance") }));
-  panel.append(item(t("setLanguage"), null, select(UI.lang, [["auto", "Auto"], ["en", "English"], ["ru", "Русский"]], (v) => { UI.lang = v; saveUI(); applyLanguage(); close(); settingsModal(); })));
-  panel.append(item(t("setTheme"), null, select(UI.theme, [["auto", t("themeAuto")], ["light", t("themeLight")], ["dark", t("themeDark")]], (v) => { UI.theme = v; saveUI(); applyTheme(); })));
-  panel.append(item(t("setFont"), null, select(UI.font === "plex" || UI.font === "inter" ? UI.font : "mono", [["mono", t("fontMono")], ["plex", t("fontPlex")], ["inter", t("fontInter")]], (v) => { UI.font = v; saveUI(); applyTheme(); })));
-  panel.append(item(wt("setWriteFont"), wt("setWriteFontDesc"), select(UI.writeFont || "mono", [["mono", wt("wfMono")], ["serif", wt("wfSerif")], ["sans", wt("wfSans")], ["inter", wt("wfInter")]], (v) => { UI.writeFont = v; saveUI(); applyTheme(); })));
-  panel.append(h("div", { cls: "setting-heading", text: t("sectionCards") }));
-  panel.append(item(t("setParentsField"), t("setParentsFieldDesc"), text(S.parentsField, "parents", (v) => { S.parentsField = v.trim() || "parents"; save(); })));
-  panel.append(item(t("setCardsFolder"), t("setCardsFolderDesc"), text(S.cardsFolder, "Cards", (v) => { S.cardsFolder = v.trim().replace(/\/+$/, ""); save(); })));
-  panel.append(item(t("setOnlyFolder"), t("setOnlyFolderDesc"), toggle(S.onlyCardsFolder, (v) => { S.onlyCardsFolder = v; save(); })));
-  panel.append(item(t("setTemplatesFolder"), t("setTemplatesFolderDesc"), text(S.templatesFolder, "Templates", (v) => { S.templatesFolder = v.trim().replace(/\/+$/, ""); save(); })));
-  panel.append(h("div", { cls: "setting-heading", text: t("sectionBoard") }));
-  panel.append(item(t("setDefaultDepth"), null, select(S.defaultDepth, [[1, "1"], [2, "2"], [3, "3"], [0, "∞"]], (v) => { S.defaultDepth = Number(v); save(); })));
-  panel.append(item(t("setDefaultLayout"), null, select(S.defaultLayout, [["columns", t("layoutColumns")], ["list", t("layoutList")]], (v) => { S.defaultLayout = v; save(); })));
-  panel.append(item(t("setDefaultSort"), null, select(S.defaultSort, [["manual", t("sortManual")], ["name", t("sortName")], ["modified", t("sortModified")], ["created", t("sortCreated")]], (v) => { S.defaultSort = v; save(); })));
-  panel.append(item(t("setPreview"), t("setPreviewDesc"), text(S.previewLength, "600", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.previewLength = Math.floor(n); save(); } }, "number")));
-  panel.append(item(t("setCardHeight"), t("setCardHeightDesc"), text(S.cardMaxHeight, "360", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.cardMaxHeight = Math.floor(n); save(); } }, "number")));
-  panel.append(item(t("setMaxCards"), null, text(S.maxCards, "1000", (v) => { const n = Number(v); if (Number.isFinite(n) && n > 0) { S.maxCards = Math.floor(n); save(); } }, "number")));
-  panel.append(h("div", { cls: "setting-heading", text: tt("sectionAgenda") }));
-  panel.append(item(tt("setKeywords"), tt("setKeywordsDesc"), text(UI.todoKeywords || ORG_DEFAULT_KW, ORG_DEFAULT_KW, (v) => { UI.todoKeywords = v.trim() || ORG_DEFAULT_KW; saveUI(); orgCache.clear(); })));
-  if (syncAvailable()) {
-    panel.append(h("div", { cls: "setting-heading", text: "Git" }));
-    panel.append(item(st("settingsRow"), st("settingsRowDesc"), h("button", { cls: "wb-btn", type: "button", text: st("open"), onClick: () => { close(); syncSettingsModal(); } })));
+  const storedIn = () => h("p", { cls: "modal-text sn-set-note", text: vault.fs.kind === "disk" && (vault.pluginData || vault.hasObsidian) ? t("settingsShared") : t("settingsLocal") });
+  const tabs = [
+    ["appearance", t("sectionAppearance"), "palette", () => [
+      item(t("setLanguage"), null, select(UI.lang, [["auto", "Auto"], ["en", "English"], ["ru", "Русский"]], (v) => { UI.lang = v; saveUI(); applyLanguage(); close(); settingsModal("appearance"); })),
+      item(t("setTheme"), null, select(UI.theme, [["auto", t("themeAuto")], ["light", t("themeLight")], ["dark", t("themeDark")]], (v) => { UI.theme = v; saveUI(); applyTheme(); })),
+      item(t("setFont"), null, select(UI.font === "plex" || UI.font === "inter" ? UI.font : "mono", [["mono", t("fontMono")], ["plex", t("fontPlex")], ["inter", t("fontInter")]], (v) => { UI.font = v; saveUI(); applyTheme(); })),
+      item(wt("setWriteFont"), wt("setWriteFontDesc"), select(UI.writeFont || "mono", [["mono", wt("wfMono")], ["serif", wt("wfSerif")], ["sans", wt("wfSans")], ["inter", wt("wfInter")]], (v) => { UI.writeFont = v; saveUI(); applyTheme(); })),
+    ]],
+    ["cards", t("sectionCards"), "layers", () => [
+      item(t("setParentsField"), t("setParentsFieldDesc"), text(S.parentsField, "parents", (v) => { S.parentsField = v.trim() || "parents"; save(); })),
+      item(t("setCardsFolder"), t("setCardsFolderDesc"), text(S.cardsFolder, "Cards", (v) => { S.cardsFolder = v.trim().replace(/\/+$/, ""); save(); })),
+      item(t("setOnlyFolder"), t("setOnlyFolderDesc"), toggle(S.onlyCardsFolder, (v) => { S.onlyCardsFolder = v; save(); })),
+      item(t("setTemplatesFolder"), t("setTemplatesFolderDesc"), text(S.templatesFolder, "Templates", (v) => { S.templatesFolder = v.trim().replace(/\/+$/, ""); save(); })),
+      storedIn(),
+    ]],
+    ["board", t("sectionBoard"), "layout-grid", () => [
+      item(t("setDefaultDepth"), null, select(S.defaultDepth, [[1, "1"], [2, "2"], [3, "3"], [0, "∞"]], (v) => { S.defaultDepth = Number(v); save(); })),
+      item(t("setDefaultLayout"), null, select(S.defaultLayout, [["columns", t("layoutColumns")], ["list", t("layoutList")]], (v) => { S.defaultLayout = v; save(); })),
+      item(t("setDefaultSort"), null, select(S.defaultSort, [["manual", t("sortManual")], ["name", t("sortName")], ["modified", t("sortModified")], ["created", t("sortCreated")]], (v) => { S.defaultSort = v; save(); })),
+      item(t("setPreview"), t("setPreviewDesc"), text(S.previewLength, "600", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.previewLength = Math.floor(n); save(); } }, "number")),
+      item(t("setCardHeight"), t("setCardHeightDesc"), text(S.cardMaxHeight, "360", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.cardMaxHeight = Math.floor(n); save(); } }, "number")),
+      item(t("setMaxCards"), null, text(S.maxCards, "1000", (v) => { const n = Number(v); if (Number.isFinite(n) && n > 0) { S.maxCards = Math.floor(n); save(); } }, "number")),
+      storedIn(),
+    ]],
+    ["agenda", tt("sectionAgenda"), "calendar-check", () => [
+      item(tt("setKeywords"), tt("setKeywordsDesc"), text(UI.todoKeywords || ORG_DEFAULT_KW, ORG_DEFAULT_KW, (v) => { UI.todoKeywords = v.trim() || ORG_DEFAULT_KW; saveUI(); orgCache.clear(); })),
+    ]],
+    syncAvailable() && ["sync", "Git", "git-branch", () => syncSettingsBody(item, toggle)],
+    ["about", ut("about"), "info", () => aboutBody(item, toggle)],
+  ].filter(Boolean);
+  const bar = h("div", { cls: "sn-set-tabs", role: "tablist" });
+  const body = h("div", { cls: "sn-set-body", role: "tabpanel" });
+  const buttons = new Map();
+  const show = (id) => {
+    const tb = tabs.find((x) => x[0] === id) || tabs[0];
+    leaveTab();
+    body.replaceChildren(...tb[3]().flat());
+    body.scrollTop = 0;
+    for (const [k, b] of buttons) { b.classList.toggle("is-active", k === tb[0]); b.setAttribute("aria-selected", String(k === tb[0])); b.tabIndex = k === tb[0] ? 0 : -1; }
+    buttons.get(tb[0]).scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    if (UI.settingsTab !== tb[0]) { UI.settingsTab = tb[0]; saveUI(); }
+  };
+  for (const [id, label, icon] of tabs) {
+    const b = h("button", { cls: "sn-set-tab", type: "button", role: "tab", onClick: () => show(id) }, ic("sn-set-tab-icon", icon), h("span", { text: label }));
+    buttons.set(id, b);
+    bar.append(b);
   }
-  panel.append(h("p", { cls: "modal-text", style: "margin-top:16px;font-size:12px", text: vault.fs.kind === "disk" && (vault.pluginData || vault.hasObsidian) ? t("settingsShared") : t("settingsLocal") }));
+  // arrow keys move between tabs, as in other tab lists
+  bar.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const i = tabs.findIndex((x) => x[0] === UI.settingsTab), n = tabs.length;
+    const next = tabs[(i + (e.key === "ArrowRight" ? 1 : n - 1)) % n][0];
+    show(next);
+    buttons.get(next).focus();
+  });
+  panel.append(iconBtn("x", t("close"), () => close(), "modal-close"), h("div", { cls: "modal-title", text: t("settings") }), bar, body);
+  settingsOpen = (id) => show(id || UI.settingsTab);
+  show(tab || UI.settingsTab);
 }
 function hotkeysModal() {
   const panel = h("div", { cls: "modal" });
@@ -5350,12 +5414,11 @@ function openSyncPanel() { if (!syncAvailable()) { notice(st("unavailable")); re
 function renderSyncPanel() { sync.panel?.render(); }
 function syncSettingsModal() {
   if (!syncAvailable()) { notice(st("unavailable")); return; }
-  if (sync.panel) return;
-  const panel = h("div", { cls: "modal" });
-  const close = openLayer(panel, () => { sync.panel = null; });
-  const item = (name, desc, control) => h("div", { cls: "setting-item" }, h("div", { cls: "setting-item-info" }, h("div", { cls: "setting-item-name", text: name }), desc ? h("div", { cls: "setting-item-description", text: desc }) : null), h("div", { cls: "setting-item-control" }, control));
+  settingsModal("sync");
+}
+/** The Git tab of the settings: status, sync now, remote and access. `item` and `toggle` are the settings' row builders. */
+function syncSettingsBody(item, toggle) {
   const text = (key, ph, type = "text", after) => { const i = h("input", { type, placeholder: ph || "", spellcheck: "false", autocomplete: "off" }); i.value = String(SS[key] ?? ""); i.addEventListener("change", () => { SS[key] = type === "number" ? Number(i.value) || GIT_DEFAULTS[key] : i.value.trim(); saveSyncSettings(); after?.(); }); return i; };
-  const toggle = (value, onChange) => { const c = h("div", { cls: "checkbox-container" + (value ? " is-enabled" : "") }); c.addEventListener("click", () => { c.classList.toggle("is-enabled"); onChange(c.classList.contains("is-enabled")); }); return c; };
   const status = h("div", { cls: "sn-sync-status" });
   const result = h("p", { cls: "sn-sync-note" });
   const syncBtn = h("button", { cls: "mod-cta", type: "button", text: st("syncNow"), onClick: async () => { await runSync(); } });
@@ -5368,18 +5431,18 @@ function syncSettingsModal() {
     syncBtn.disabled = sync.busy;
   };
   sync.panel = { render };
-  panel.append(iconBtn("x", t("close"), () => close(), "modal-close"), h("div", { cls: "modal-title", text: st("panel") }), status, result);
-  panel.append(item(st("remote"), st("remoteDesc"), text("remote", "https://github.com/you/notes.git")));
-  panel.append(item(st("branch"), null, text("branch", "main")));
-  panel.append(item(st("username"), st("usernameDesc"), text("username", "git")));
-  panel.append(item(st("token"), st("tokenDesc"), text("token", "", "password")));
-  panel.append(item(st("authorName"), null, text("authorName", "Supsidian")));
-  panel.append(item(st("authorEmail"), null, text("authorEmail", "you@example.com")));
-  panel.append(item(st("auto"), st("autoDesc"), toggle(SS.auto, (v) => { SS.auto = v; saveSyncSettings(); })));
-  panel.append(item(st("minutes"), null, text("minutes", "5", "number")));
-  panel.append(h("p", { cls: "sn-sync-note", text: st("note") }));
-  panel.append(h("div", { cls: "modal-buttons" }, syncBtn));
   render();
+  return [status, result,
+    item(st("remote"), st("remoteDesc"), text("remote", "https://github.com/you/notes.git")),
+    item(st("branch"), null, text("branch", "main")),
+    item(st("username"), st("usernameDesc"), text("username", "git")),
+    item(st("token"), st("tokenDesc"), text("token", "", "password")),
+    item(st("authorName"), null, text("authorName", "Supsidian")),
+    item(st("authorEmail"), null, text("authorEmail", "you@example.com")),
+    item(st("auto"), st("autoDesc"), toggle(SS.auto, (v) => { SS.auto = v; saveSyncSettings(); })),
+    item(st("minutes"), null, text("minutes", "5", "number")),
+    h("p", { cls: "sn-sync-note", text: st("note") }),
+    h("div", { cls: "modal-buttons" }, syncBtn)];
 }
 
 
@@ -7915,6 +7978,130 @@ if (IS_NATIVE) {
       else history.back();
     });
   }
+}
+
+
+/* =========================================================
+   Version and updates.
+   The desktop apps update themselves from GitHub Releases: the Tauri updater downloads the new
+   build, checks its signature, installs it and the app restarts. Android can't replace its own APK,
+   so it compares with the latest release and opens the APK download. The web page has nothing to
+   install; it only shows its version.
+   ========================================================= */
+const APP_VERSION = "0.7.1"; // the page's own version (the apps ask Tauri for theirs); kept equal to package.json
+const REPO = "RuslanGagushin/supsidian";
+const RELEASES = `https://github.com/${REPO}/releases`;
+const USTR = {
+  en: {
+    about: "About", version: "Version", web: "web page", updates: "Updates", check: "Check now", install: "Install and restart", download: "Download",
+    checking: "Checking for updates…", current: "You have the latest version.", never: "Not checked yet.", lastChecked: "Last checked {time}.",
+    available: "Version {v} is available.", availableAndroid: "Version {v} is available — download the APK and open it to install.",
+    downloading: "Downloading version {v}… {p}", restarting: "Installed — restarting…", error: "Couldn't check for updates: {msg}",
+    auto: "Check for updates automatically", autoDesc: "When the app starts and twice a day. Nothing is installed without asking.",
+    availableNotice: "Supsidian {v} is available", open: "Open",
+    releaseNotes: "Release notes", releaseNotesDesc: "What changed in each version, and downloads for every platform.",
+    webNote: "This page is always the version it was loaded at. The Windows, macOS and Android apps keep themselves up to date.",
+  },
+  ru: {
+    about: "О программе", version: "Версия", web: "веб-страница", updates: "Обновления", check: "Проверить", install: "Установить и перезапустить", download: "Скачать",
+    checking: "Проверяем обновления…", current: "Установлена последняя версия.", never: "Ещё не проверяли.", lastChecked: "Последняя проверка: {time}.",
+    available: "Доступна версия {v}.", availableAndroid: "Доступна версия {v} — скачайте APK и откройте его, чтобы установить.",
+    downloading: "Скачиваем версию {v}… {p}", restarting: "Установлено — перезапускаем…", error: "Не удалось проверить обновления: {msg}",
+    auto: "Проверять обновления автоматически", autoDesc: "При запуске и дважды в день. Без вашего согласия ничего не устанавливается.",
+    availableNotice: "Доступна Supsidian {v}", open: "Открыть",
+    releaseNotes: "Что нового", releaseNotesDesc: "Изменения в каждой версии и файлы для всех платформ.",
+    webNote: "Эта страница остаётся той версией, с которой была загружена. Приложения для Windows, macOS и Android обновляются сами.",
+  },
+};
+const ut = (k, v = {}) => (USTR[LANG]?.[k] ?? USTR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
+/** state: idle | checking | current | available | installing | restarting | error. `update` is the Tauri updater's handle (desktop only). */
+const upd = { state: "idle", version: "", url: "", error: "", got: 0, total: 0, update: null, view: null };
+const canSelfUpdate = () => IS_NATIVE && !IS_ANDROID && !!window.__TAURI__?.updater;
+async function appVersion() {
+  try { if (IS_NATIVE) return await window.__TAURI__.app.getVersion(); } catch { /* older shell: the page's version */ }
+  return APP_VERSION;
+}
+/** Is version a newer than b? Compares major.minor.patch, ignoring a leading v. */
+function isNewer(a, b) {
+  const p = (v) => String(v).replace(/^v/, "").split(/[.+-]/).slice(0, 3).map((x) => parseInt(x, 10) || 0);
+  const x = p(a), y = p(b);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+}
+function setUpd(o) { Object.assign(upd, o); upd.view?.(); }
+async function checkUpdate({ quiet = false } = {}) {
+  if (!IS_NATIVE || ["checking", "installing", "restarting"].includes(upd.state)) return;
+  setUpd({ state: "checking", error: "" });
+  try {
+    let found = false;
+    if (canSelfUpdate()) {
+      try {
+        const u = await window.__TAURI__.updater.check();
+        setUpd(u ? { state: "available", version: u.version, update: u, url: `${RELEASES}/tag/v${u.version}` } : { state: "current", update: null });
+        found = true;
+      } catch (e) { console.warn("updater: no signed update manifest, asking GitHub instead", e); }
+    }
+    if (!found) {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: "application/vnd.github+json" } });
+      if (!r.ok) throw new Error("GitHub " + r.status);
+      const rel = await r.json();
+      const version = String(rel.tag_name || "").replace(/^v/, "");
+      const apk = IS_ANDROID && (rel.assets || []).find((a) => /\.apk$/i.test(a.name));
+      setUpd(isNewer(version, await appVersion()) ? { state: "available", version, update: null, url: apk?.browser_download_url || rel.html_url || RELEASES } : { state: "current", update: null });
+    }
+    UI.updateChecked = Date.now();
+    saveUI();
+  } catch (e) { setUpd({ state: "error", error: String(e?.message || e) }); }
+  upd.view?.();
+  if (quiet && upd.state === "available" && !upd.view) notice(ut("availableNotice", { v: upd.version }), { keep: true, action: { label: ut("open"), run: () => settingsModal("about") } });
+}
+async function installUpdate() {
+  if (!upd.update) { openExternal(upd.url || RELEASES); return; }
+  setUpd({ state: "installing", got: 0, total: 0 });
+  try {
+    if (editor.dirty) await saveEditor();
+    await upd.update.downloadAndInstall((e) => {
+      if (e.event === "Started") setUpd({ total: e.data?.contentLength || 0 });
+      else if (e.event === "Progress") setUpd({ got: upd.got + (e.data?.chunkLength || 0) });
+    });
+    setUpd({ state: "restarting" });
+    await window.__TAURI__.process.relaunch();
+  } catch (e) { setUpd({ state: "error", error: String(e?.message || e) }); }
+}
+/** The About tab of the settings: version, updates, release notes. */
+function aboutBody(item, toggle) {
+  const ver = h("span", { text: APP_VERSION });
+  appVersion().then((v) => (ver.textContent = v));
+  const ua = navigator.userAgent;
+  const platform = !IS_NATIVE ? ut("web") : IS_ANDROID ? "Android" : /Mac/i.test(ua) ? "macOS" : /Win/i.test(ua) ? "Windows" : "Linux";
+  const out = [h("div", { cls: "sn-about" }, h("div", { cls: "sn-about-name", text: "Supsidian" }), h("div", { cls: "sn-about-ver" }, ut("version") + " ", ver, " · " + platform))];
+  if (IS_NATIVE) {
+    const btn = h("button", { cls: "wb-btn", type: "button", onClick: () => (upd.state === "available" ? installUpdate() : checkUpdate()) });
+    const row = item(ut("updates"), " ", btn);
+    const desc = row.querySelector(".setting-item-description");
+    row.classList.add("sn-update-row");
+    upd.view = () => {
+      const s = upd.state, v = upd.version;
+      const pct = upd.total ? Math.min(100, Math.round((upd.got / upd.total) * 100)) + "%" : "";
+      desc.textContent = s === "checking" ? ut("checking") : s === "current" ? ut("current") : s === "error" ? ut("error", { msg: upd.error })
+        : s === "available" ? ut(upd.update || !IS_ANDROID ? "available" : "availableAndroid", { v }) : s === "installing" ? ut("downloading", { v, p: pct })
+        : s === "restarting" ? ut("restarting") : UI.updateChecked ? ut("lastChecked", { time: new Date(UI.updateChecked).toLocaleString(LANG === "ru" ? "ru-RU" : "en-US", { dateStyle: "medium", timeStyle: "short" }) }) : ut("never");
+      btn.textContent = s === "available" ? ut(upd.update ? "install" : "download") : ut("check");
+      btn.classList.toggle("is-cta", s === "available");
+      btn.disabled = ["checking", "installing", "restarting"].includes(s);
+      row.classList.toggle("is-available", s === "available");
+    };
+    upd.view();
+    out.push(row, item(ut("auto"), ut("autoDesc"), toggle(UI.autoUpdate !== false, (v) => { UI.autoUpdate = v; saveUI(); })));
+  } else out.push(h("p", { cls: "modal-text", text: ut("webNote") }));
+  out.push(item(ut("releaseNotes"), ut("releaseNotesDesc"), h("button", { cls: "wb-btn", type: "button", text: st("open"), onClick: () => openExternal(RELEASES) })));
+  return out;
+}
+// check on launch and twice a day while the app stays open
+if (IS_NATIVE) {
+  const autoCheck = () => { if (UI.autoUpdate !== false && upd.state !== "available") checkUpdate({ quiet: true }); };
+  setTimeout(autoCheck, 8000);
+  setInterval(autoCheck, 12 * 3600e3);
 }
 
 

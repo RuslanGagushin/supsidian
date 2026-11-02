@@ -47,6 +47,11 @@ This repository wraps the Supsidian page into native apps with [Tauri 2](https:/
 - Light and dark themes; English and Russian interface.
 - An Emacs-flavoured workbench: a mode line under each board (layout, depth, sort, card count) and a minibuffer with key hints. Most actions have shortcuts. Org-style `C-c` chords work in the editor, for example `C-c C-t` to cycle a TODO state and `C-c C-s` / `C-c C-d` to schedule or set a deadline.
 - On phones the layout switches to a single column, the side tree becomes a drawer, and the Android **Back** button closes the editor, menus and dialogs before leaving the app.
+- **Settings** has a tab per group: Appearance, Cards, Board, Agenda, Git (in the app) and About, which shows the version and checks for updates.
+
+### Updates
+- The Windows and macOS apps check GitHub Releases when they start and twice a day. When a new version is out, a note appears in the minibuffer. **Settings → About → Install and restart** downloads it, checks its signature, installs it and restarts the app. Nothing is installed without asking, and the automatic check can be turned off there.
+- Android can't update its own APK, so **Install** opens the new APK's download instead. Open the downloaded file to install it over the old one. This needs a signed APK; see [Android signing](#android-signing).
 
 ---
 
@@ -107,6 +112,14 @@ On Android the app draws edge to edge (behind the status bar and gesture bar). T
 2. Open **Actions → Build apps → Run workflow**. A run takes about 15–25 minutes, less on later runs thanks to the cache.
 3. Download the results from the run's **Artifacts**: **Supsidian-Windows**, **Supsidian-macOS**, **Supsidian-Android**.
 4. To publish a release, push a tag: `git tag v0.1.0 && git push --tags`. The same files are attached to a GitHub Release.
+
+### Desktop update signing
+The installed Windows and macOS apps only accept updates signed with the key whose public half is in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`).
+
+- Add the private key as the repository secret `TAURI_SIGNING_PRIVATE_KEY`, with the contents of `~/.tauri/supsidian.key`. If the key has a password, also add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Tagged builds are then signed, and the release gets a `latest.json` (made by `scripts/updater-manifest.mjs`) that the apps read.
+- Without the secret, the apps still build, but a release can't update them. **Check now** falls back to comparing versions with GitHub and opens the release page.
+- Keep a backup of the private key. If it is lost, installed apps can't take signed updates any more, and everyone has to download one release by hand. To start over with a new key, run `npx tauri signer generate -w ~/.tauri/supsidian.key`, then put the new `.pub` contents in `tauri.conf.json`.
+- When releasing, bump the version in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `APP_VERSION` in `web/supsidian.html`. A test checks that they match.
 
 ### Android signing
 The workflow always builds a **release** APK. Android only installs signed APKs, and an update must be signed with the same key as the installed app.

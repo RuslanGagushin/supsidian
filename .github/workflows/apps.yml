@@ -2,6 +2,10 @@
 # Works both in the full supsidian repository (app/ + standalone/) and in a repository that holds only the app folder.
 #  - Run it by hand: Actions → "Build apps" → Run workflow. The files appear under the run's "Artifacts".
 #  - Push a tag like v0.1.0 and the same files are also attached to a GitHub Release.
+# Desktop updates: with the TAURI_SIGNING_PRIVATE_KEY secret (and TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+# if the key has one) the Windows and macOS builds are signed for the updater, and the release gets
+# a latest.json that the installed apps check. Without it the apps build as before but can't
+# update themselves; they point to the release page instead.
 name: Build apps
 
 on:
@@ -40,13 +44,20 @@ jobs:
         run: npm ci
       - name: Build Windows installers
         working-directory: ${{ env.APP }}
-        run: npm run build
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then npm run build -- --config src-tauri/tauri.updater.conf.json
+          else echo "::warning::No TAURI_SIGNING_PRIVATE_KEY secret: no signed update for the installed apps."; npm run build; fi
       - uses: actions/upload-artifact@v6
         with:
           name: Supsidian-Windows
           path: |
             ${{ env.APP }}/src-tauri/target/release/bundle/msi/*.msi
             ${{ env.APP }}/src-tauri/target/release/bundle/nsis/*.exe
+            ${{ env.APP }}/src-tauri/target/release/bundle/nsis/*.exe.sig
           if-no-files-found: error
 
   macos:
@@ -72,11 +83,20 @@ jobs:
         run: npm ci
       - name: Build universal app (Apple Silicon + Intel)
         working-directory: ${{ env.APP }}
-        run: npm run tauri build -- --target universal-apple-darwin
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then npm run tauri build -- --target universal-apple-darwin --config src-tauri/tauri.updater.conf.json
+          else echo "::warning::No TAURI_SIGNING_PRIVATE_KEY secret: no signed update for the installed apps."; npm run tauri build -- --target universal-apple-darwin; fi
       - uses: actions/upload-artifact@v6
         with:
           name: Supsidian-macOS
-          path: ${{ env.APP }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          # the .app.tar.gz and its .sig are what the updater downloads
+          path: |
+            ${{ env.APP }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            ${{ env.APP }}/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+            ${{ env.APP }}/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
           if-no-files-found: error
 
   android:
@@ -152,9 +172,14 @@ jobs:
     needs: [windows, macos, android]
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v5
+      - name: Find the app folder
+        run: if [ -d app/src-tauri ]; then echo "APP=app" >> "$GITHUB_ENV"; else echo "APP=." >> "$GITHUB_ENV"; fi
       - uses: actions/download-artifact@v7
         with:
           path: out
+      - name: Update manifest for the desktop apps (latest.json)
+        run: node "$APP/scripts/updater-manifest.mjs" out "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY"
       - uses: softprops/action-gh-release@v3
         with:
           files: out/**/*

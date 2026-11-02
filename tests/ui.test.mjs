@@ -318,11 +318,43 @@ describe("palettes, settings, language and themes", () => {
   });
 
   test("settings and keyboard shortcuts open without errors", async () => {
-    await ev(() => settingsModal());
+    await ev(() => settingsModal("cards"));
     assert.match(await page().textContent(".modal"), /Parents field/);
     await page().keyboard.press("Escape");
     await ev(() => hotkeysModal());
     assert.match(await page().textContent(".modal"), /All files in the vault/);
+    noErrors();
+  });
+
+  test("settings have a tab per group, arrow keys move between them and the last tab is remembered", async () => {
+    await ev(() => settingsModal("appearance"));
+    const tabs = () => page().$$eval(".sn-set-tab", (b) => b.map((x) => [x.textContent, x.getAttribute("aria-selected")]));
+    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Cards", "Board", "Agenda", "About"], "no Git tab outside the app");
+    assert.match(await page().textContent(".sn-set-body"), /Theme/);
+    assert.doesNotMatch(await page().textContent(".sn-set-body"), /Parents field/, "one group at a time");
+    const height = await page().$eval(".modal", (m) => m.offsetHeight);
+    await page().click(".sn-set-tab:has-text('Board')");
+    assert.match(await page().textContent(".sn-set-body"), /Default depth/);
+    assert.equal(await page().$eval(".modal", (m) => m.offsetHeight), height, "the dialog keeps its size between tabs");
+    await page().focus(".sn-set-tab.is-active");
+    await page().keyboard.press("ArrowRight");
+    assert.equal((await tabs()).find((x) => x[1] === "true")[0], "Agenda");
+    await page().keyboard.press("Escape");
+    await ev(() => settingsModal());
+    assert.equal(await page().textContent(".sn-set-tab.is-active"), "Agenda");
+    await ev(() => settingsModal("about")); // already open: switches tabs instead of stacking a second dialog
+    assert.equal(await page().$$eval(".modal", (m) => m.length), 1);
+    noErrors();
+  });
+
+  test("About shows the version; the web page has nothing to update", async () => {
+    await ev(() => settingsModal("about"));
+    const body = await page().textContent(".sn-set-body");
+    assert.match(body, /Supsidian/);
+    assert.match(body, new RegExp("Version " + (await ev(() => APP_VERSION)).replace(/\./g, "\\.") + " · web page"));
+    assert.match(body, /Release notes/);
+    assert.doesNotMatch(body, /Check now/, "no update check in the browser");
+    assert.deepEqual(await ev(() => [isNewer("0.8.0", "0.7.1"), isNewer("v0.7.10", "0.7.9"), isNewer("1.0.0", "1.0.0"), isNewer("0.7.1", "0.8.0"), isNewer("1.0", "0.9.9")]), [true, true, false, false, true]);
     noErrors();
   });
 
