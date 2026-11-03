@@ -4041,8 +4041,6 @@ function cardMenu(path, via = null) {
   if (via && graph.parentsOf(path).includes(via)) m.add(t("menuRemoveFrom", { name: baseName(via) }), "unlink", () => removeParent(path, via));
   else if (graph.parentsOf(path).length || graph.unresolvedParentsOf(path).length) m.add(t("menuRemoveParent"), "unlink", () => promptRemoveParent(path));
   m.add(t("menuIcon"), "smile", () => promptIcon([path]));
-  m.label(t("color"));
-  m.colors(cardColor(path), (c) => setColor([path], c));
   m.sep();
   m.add(S.pinned.includes(path) ? t("unpin") : t("pin"), S.pinned.includes(path) ? "pin-off" : "pin", () => togglePin(path));
   m.add(t("menuCopyLink"), "link", () => { navigator.clipboard?.writeText(`[[${linkText(path)}]]`); notice(t("linkCopied")); });
