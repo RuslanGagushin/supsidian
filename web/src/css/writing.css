@@ -41,21 +41,22 @@ body.write-serif .sn-editor-page, body.write-sans .sn-editor-page, body.write-in
 .sn-live .lp-block > :first-child { margin-top: 0; }
 .sn-live .lp-block > :last-child, .sn-live .lp-block .sn-table-host { margin-bottom: 0; }
 .sn-live .lp-inline img { max-width: 100%; vertical-align: bottom; }
-/* a rendered table in live preview: + buttons under it (a row) and on its right (a column), shown on hover */
-.sn-table-host { position: relative; margin-block: 0 1em; }
+/* a rendered table in live preview: + buttons under it (a row) and on its right (a column), shown on hover;
+   the host keeps room for them, so they neither cover the last row nor push the editor into scrolling sideways */
+.sn-table-host { position: relative; margin-block: 0 1em; padding: 0 17px 15px 0; }
 .markdown-rendered .sn-table-host > .sn-table-wrap { margin-bottom: 0; }
 .sn-table-host :is(td, th) { cursor: text; }
 .sn-table-host :is(td, th).is-editing { box-shadow: inset 0 0 0 2px var(--accent); }
 .sn-cell-edit { display: inline-block; min-width: 1ch; min-height: 1lh; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
-.sn-table-add-row, .sn-table-add-col {
-  position: absolute; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px;
+button.sn-table-add-row, button.sn-table-add-col {
+  position: absolute; height: auto; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px; box-shadow: none;
   background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--faint); cursor: pointer; opacity: 0; transition: opacity 120ms;
 }
-.sn-table-add-row { left: 0; right: 0; bottom: -15px; height: 13px; }
-.sn-table-add-col { top: 0; bottom: 0; right: -17px; width: 13px; }
+button.sn-table-add-row { left: 0; right: 17px; bottom: 0; height: 13px; }
+button.sn-table-add-col { top: 0; bottom: 15px; right: 0; width: 13px; }
 .sn-table-add-row svg, .sn-table-add-col svg { width: 12px; height: 12px; }
 .sn-table-host:hover > :is(.sn-table-add-row, .sn-table-add-col), .sn-table-host > :focus-visible { opacity: 1; }
-.sn-table-add-row:hover, .sn-table-add-col:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+button.sn-table-add-row:hover, button.sn-table-add-col:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
 @media (hover: none) { .sn-table-add-row, .sn-table-add-col { opacity: .5; } }
 /* the floating format bar over a text selection */
 .sn-fmtbar {

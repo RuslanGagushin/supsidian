@@ -199,7 +199,8 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .markdown-rendered .tok-num { color: var(--l8); }
 .markdown-rendered blockquote { border-inline-start: 2px solid var(--line); color: var(--muted); font-style: italic; padding-left: 12px; }
 /* the wrapper draws the rounded frame and scrolls a table too wide for the page */
-.markdown-rendered .sn-table-wrap { margin-block: 0 1em; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.markdown-rendered .sn-table-wrap { margin-block: 0 1em; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+.markdown-rendered .sn-table-wrap.is-wide { overflow-x: auto; }
 .markdown-rendered table { width: 100%; margin: 0; font-variant-numeric: tabular-nums; }
 .markdown-rendered th, .markdown-rendered td { border: 1px solid var(--line); border-width: 0 1px 1px 0; padding: .65em .85em; line-height: 1.45; vertical-align: top; }
 .markdown-rendered th { background: var(--tbl-head); border-color: var(--tbl-head-line); font-weight: var(--font-medium); text-align: center; vertical-align: middle; }

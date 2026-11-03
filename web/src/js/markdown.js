@@ -171,6 +171,14 @@ function decorateCodeBlocks(el) {
     box.append(h("div", { cls: "code-body" }, gutter, pre));
   }
 }
+/** A table's frame scrolls only for a table really wider than it: WebKit rounds a full-width table a pixel over, which would show a scrollbar. */
+const tableWide = new ResizeObserver((entries) => {
+  for (const { target } of entries) {
+    const wrap = target.closest(".sn-table-wrap");
+    if (!wrap?.isConnected) { tableWide.unobserve(target); continue; }
+    wrap.classList.toggle("is-wide", wrap.scrollWidth > wrap.clientWidth + 1);
+  }
+});
 function renderMarkdown(md, sourcePath, opts = {}) {
   const codes = [];
   let s = md.replace(/(^|\n)(```|~~~)[\s\S]*?(\n\2[^\n]*|$)|`[^`\n]+`/g, (m) => { codes.push(m); return `${codes.length - 1}`; });
@@ -222,7 +230,7 @@ function renderMarkdown(md, sourcePath, opts = {}) {
     }
     bq.replaceWith(c);
   }
-  for (const tb of el.querySelectorAll("table")) { const wrap = h("div", { cls: "sn-table-wrap" }); tb.replaceWith(wrap); wrap.append(tb); }
+  for (const tb of el.querySelectorAll("table")) { const wrap = h("div", { cls: "sn-table-wrap" }); tb.replaceWith(wrap); wrap.append(tb); tableWide.observe(wrap); tableWide.observe(tb); }
   // Tasks: clickable checkboxes toggle the line in the file
   $$('input[type="checkbox"]', el).forEach((cb, i) => {
     cb.removeAttribute("disabled");
