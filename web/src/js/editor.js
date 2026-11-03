@@ -246,7 +246,9 @@ function cmEditor(value, o = {}) {
   ta.setWrap = (on) => view.dispatch({ effects: wrap.reconfigure(on ? CM.EditorView.lineWrapping : []) });
   const add = ta.addEventListener, dispatch = ta.dispatchEvent;
   ta.addEventListener = function (type, fn, opts) { if (own[type]) own[type].push(fn); else add.call(this, type, fn, opts); };
-  ta.dispatchEvent = function (e) { if (!own[e.type]) return dispatch.call(this, e); fire(e.type, e); return !e.defaultPrevented; };
+  // our input and select events come from the update listener, not the DOM, so a dispatched one goes straight to the listeners;
+  // a keydown goes through the DOM: CodeMirror dispatches its own Enter and Backspace there for Android keyboards, and its keymap has to see them
+  ta.dispatchEvent = function (e) { if (e.type !== "input" && e.type !== "select") return dispatch.call(this, e); fire(e.type, e); return !e.defaultPrevented; };
   return ta;
 }
 /** Where an editor element goes in the page: a CodeMirror view's outer element, or the element itself. */

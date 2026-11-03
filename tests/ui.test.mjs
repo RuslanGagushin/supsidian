@@ -145,6 +145,16 @@ describe("editor", () => {
     noErrors();
   });
 
+  test("Enter as Android sends it breaks the line: CodeMirror dispatches its own keydown on the editor", async () => {
+    await setValue("Hello");
+    // what CodeMirror does when an Android keyboard reports Enter only as input: a synthetic keydown on its content element
+    const handled = await ev(() => { const e = new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, cancelable: true }); $(".sn-editor-text").dispatchEvent(e); return e.defaultPrevented; });
+    assert.equal(handled, true, "CodeMirror's keymap handles it");
+    await page().keyboard.type("World");
+    assert.equal(await value(), "Hello\nWorld");
+    noErrors();
+  });
+
   test("the editor is CodeMirror: undo and redo cover typing and formatting", async () => {
     assert.equal(await ev(() => !!$(".sn-editor-text").cmView), true);
     await setValue("plain", 0, 5);
