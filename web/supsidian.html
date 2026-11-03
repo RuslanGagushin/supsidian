@@ -1347,6 +1347,8 @@ body.write-serif .sn-editor-page, body.write-sans .sn-editor-page, body.write-in
 .sn-table-host { position: relative; margin-block: 0 1em; }
 .markdown-rendered .sn-table-host > .sn-table-wrap { margin-bottom: 0; }
 .sn-table-host :is(td, th) { cursor: text; }
+.sn-table-host :is(td, th).is-editing { box-shadow: inset 0 0 0 2px var(--accent); }
+.sn-cell-edit { display: inline-block; min-width: 1ch; min-height: 1lh; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
 .sn-table-add-row, .sn-table-add-col {
   position: absolute; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px;
   background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--faint); cursor: pointer; opacity: 0; transition: opacity 120ms;
@@ -4949,6 +4951,7 @@ function renderLive() {
   const L = editor.live, box = $("#editor .sn-live");
   if (!box || !L) return;
   const old = liveTa(), keep = old && document.activeElement === old ? [old.selectionStart, old.selectionEnd] : null;
+  editor.cell = null;
   box.replaceChildren();
   let placed = false;
   const place = () => {
@@ -4960,16 +4963,19 @@ function renderLive() {
   for (const b of liveBlocks(L.body)) {
     if (L.start >= 0 && L.end > L.start && b.start >= L.start && b.end <= L.end) continue;
     if (L.start >= 0 && !placed && b.start >= L.end) place();
-    const el = h("div", { cls: "sn-live-block", dataset: { start: b.start, end: b.end } });
-    renderMarkdown(L.body.slice(b.start, b.end), editor.path, { into: el, pdf: true });
-    liveTableButtons(el);
-    el.append(ic("sn-live-handle", "grip-vertical"));
-    el.lastChild.title = wt("dragBlock");
-    box.append(el);
+    box.append(liveBlockEl(b));
   }
   if (L.start >= 0 && !placed) place();
   const ta = liveTa();
   if (keep && ta) { ta.focus(); ta.setSelectionRange(...keep); }
+}
+function liveBlockEl(b) {
+  const el = h("div", { cls: "sn-live-block", dataset: { start: b.start, end: b.end } });
+  renderMarkdown(editor.live.body.slice(b.start, b.end), editor.path, { into: el, pdf: true });
+  liveTableButtons(el);
+  el.append(ic("sn-live-handle", "grip-vertical"));
+  el.lastChild.title = wt("dragBlock");
+  return el;
 }
 /** Make the block at a body offset the one being edited, with the caret there. o.toEnd: the last block takes the trailing blank lines too. */
 function liveActivate(off, o = {}) {
@@ -4979,11 +4985,16 @@ function liveActivate(off, o = {}) {
   const blocks = liveBlocks(L.body);
   off = Math.max(0, Math.min(off, L.body.length));
   const b = blocks.find((x) => off >= x.start && off <= x.end);
-  if (b) Object.assign(L, { start: b.start, end: o.toEnd && b === blocks.at(-1) ? L.body.length : b.end, pre: "", post: "" });
+  // a block that is just a table stays rendered: a cell is edited instead, and the end of the note is a new block under it
+  const tableOf = (x) => x && findTables(L.body.slice(x.start, x.end)).find((t) => !t.from && t.to === x.end - x.start);
+  const last = blocks.at(-1), tb = tableOf(b);
+  if (o.toEnd && tableOf(last) && (!b || b === last)) liveNewBlock(last);
+  else if (tb) { const at = tableCellAt(tb, off - b.start); liveCellOpen(b.start, at.row, at.col, { caret: Infinity }); return null; }
+  else if (b) Object.assign(L, { start: b.start, end: o.toEnd && b === last ? L.body.length : b.end, pre: "", post: "" });
   else if (!blocks.length) Object.assign(L, { start: 0, end: L.body.length, pre: "", post: "" });
   else {
     const prev = blocks.filter((x) => x.end < off).at(-1);
-    if (o.toEnd && prev === blocks.at(-1)) Object.assign(L, { start: prev.start, end: L.body.length, pre: "", post: "" });
+    if (o.toEnd && prev === last) Object.assign(L, { start: prev.start, end: L.body.length, pre: "", post: "" });
     else liveNewBlock(prev);
   }
   renderLive();
@@ -5047,8 +5058,7 @@ function wireLive(box, path) {
     if (e.target.closest("a, input, button, textarea, summary, .code-head, .sn-pdf, .org-fold, [data-org-act], .sn-live-handle, .callout.is-collapsible > .callout-title")) return;
     const sel = getSelection();
     if (sel && !sel.isCollapsed && box.contains(sel.anchorNode)) return; // selecting text to copy
-    const cell = e.target.closest("td, th"), at = cell && liveTableAt(cell);
-    if (at) { liveActivate(at.s + at.tb.from + tableCellEnd(at.tb, at.row, at.col)); return; }
+    if (e.target.closest("td, th") && liveTableAt(e.target)) return; // edited on mousedown
     const el = e.target.closest(".sn-live-block");
     if (el) { const s = liveBlockStart(el), src = liveText().slice(s, s + (+el.dataset.end - +el.dataset.start)); liveActivate(s + liveClickOffset(el, e, src)); return; }
     const last = box.lastElementChild;
@@ -5059,6 +5069,13 @@ function wireLive(box, path) {
     if (at) tableMenu((op) => liveTableOp(cell, op, { edit: /^(row|col)(Above|Below|Left|Right)$/.test(op) }), at.row).showAtEvent(e);
   });
   box.addEventListener("pointerdown", (e) => { const hd = e.target.closest(".sn-live-handle"); if (hd && e.button === 0) liveDrag(box, hd.parentElement, e); });
+  box.addEventListener("mousedown", (e) => {
+    const cell = e.button === 0 && !e.target.closest("a, input, button, .sn-cell-edit") && e.target.closest("td, th"), at = cell && liveTableAt(cell);
+    if (!at) return;
+    e.preventDefault();
+    const src = at.tb.lines[at.row ? at.row + 1 : 0], sp = tableSpans(src)[at.col] || [0, 0];
+    liveCellOpen(at.s + at.tb.from, at.row, at.col, { caret: liveClickOffset(cell, e, src.slice(...sp)) });
+  });
 }
 /** Drag a rendered block by its handle; it drops before or after the block under the pointer. */
 function liveDrag(box, el, e) {
@@ -5183,12 +5200,6 @@ function tableCellAt(tb, off) {
   if (/^\s*\|/.test(line)) pipes--;
   return { row: li < 2 ? 0 : li - 1, col: Math.max(0, Math.min(pipes, parseTable(tb.lines).align.length - 1)) };
 }
-/** Offset in a table's text of the end of a cell's text. */
-function tableCellEnd(tb, row, col) {
-  const li = row ? row + 1 : 0, start = tb.lines.slice(0, li).reduce((n, l) => n + l.length + 1, 0);
-  const sp = tableSpans(tb.lines[li])[col];
-  return start + (sp ? sp[1] : tb.lines[li].length);
-}
 /** Each op changes the table and returns the cell to put the caret in ([row, col]), or "delete" for no table left. */
 const TABLE_OPS = {
   rowAbove: (t, r, c) => { t.rows.splice(Math.max(1, r), 0, t.align.map(() => "")); return [Math.max(1, r), c]; },
@@ -5293,8 +5304,159 @@ function liveTableOp(x, op, o = {}) {
   editor.dirty = true; setSaveState(); scheduleSave();
   renderLive();
   if (!o.edit || !out.insert) return;
-  const ta = liveActivate(out.sel[0]);
-  if (ta) ta.setSelectionRange(ta.selectionStart, ta.selectionStart + out.sel[1] - out.sel[0]);
+  const at2 = tableCellAt({ ...tb, lines: out.insert.split("\n") }, out.sel[0] - out.from);
+  liveCellOpen(out.from, at2.row, at2.col, { select: true });
+}
+/* ---------- A table in live preview stays rendered while it is edited, as in Obsidian: one cell at a time holds an editor
+   with the cell's Markdown, and the table's text is rewritten (lined up) as you type.
+   editor.cell = { el, from, to, row, col, t }: the cell's editor, the table's [from, to) in editor.live.body and the parsed table. */
+const cellCaret = (el) => {
+  const sel = getSelection();
+  if (!sel.rangeCount || !el.contains(sel.anchorNode)) return [el.textContent.length, el.textContent.length];
+  const r = sel.getRangeAt(0), pre = document.createRange();
+  pre.selectNodeContents(el); pre.setEnd(r.startContainer, r.startOffset);
+  const s = pre.toString().length;
+  return [s, s + r.toString().length];
+};
+function cellSetCaret(el, s, e = s) {
+  const node = el.firstChild || el.appendChild(document.createTextNode("")), n = node.length;
+  const r = document.createRange();
+  r.setStart(node, Math.min(s, n)); r.setEnd(node, Math.min(e, n));
+  getSelection().removeAllRanges(); getSelection().addRange(r);
+}
+/** The rendered cell of the table at body offset `from`. */
+function liveCellAt(from, row, col) {
+  for (const el of $$("#editor .sn-live > .sn-live-block")) {
+    const s = +el.dataset.start, e = +el.dataset.end;
+    if (from < s || from > e) continue;
+    const idx = findTables(editor.live.body.slice(s, e)).findIndex((tb) => s + tb.from === from);
+    const tbl = $$("table", el).filter((x) => !x.closest("blockquote, .callout"))[idx];
+    return tbl?.rows[row]?.cells[col] || null;
+  }
+  return null;
+}
+/** Edit one cell of a rendered table: o.caret puts the caret at that offset in the cell's text, o.select selects it all, o.atStart / the default the end. */
+function liveCellOpen(from, row, col, o = {}) {
+  const L = editor.live;
+  if (!L) return null;
+  if (L.start >= 0) { liveCommit(); Object.assign(L, { start: -1, end: -1, pre: "", post: "" }); renderLive(); }
+  liveCellClose({ save: false });
+  const tb = findTables(L.body).find((x) => x.from === from), td = tb && liveCellAt(from, row, col);
+  if (!td) return null;
+  const t = parseTable(tb.lines), text = t.rows[row][col];
+  const el = h("span", { cls: "sn-cell-edit", spellcheck: "true", text });
+  el.contentEditable = "plaintext-only";
+  if (el.contentEditable !== "plaintext-only") el.contentEditable = "true";
+  td.replaceChildren(el);
+  td.classList.add("is-editing");
+  editor.cell = { el, from, to: tb.to, row, col, t };
+  el.addEventListener("input", liveCellInput);
+  el.addEventListener("keydown", liveCellKeys);
+  el.addEventListener("blur", () => setTimeout(() => { if (editor.cell?.el === el && document.activeElement !== el) liveCellClose(); }, 0));
+  el.focus({ preventScroll: true });
+  cellSetCaret(el, o.select ? 0 : o.atStart ? 0 : o.caret ?? text.length, o.select ? text.length : o.atStart ? 0 : o.caret ?? text.length);
+  editorModeline(); updateEdToolbar();
+  return el;
+}
+/** The cell's text into the note: pipes are escaped, line breaks become <br>. */
+function liveCellInput() {
+  const c = editor.cell, L = editor.live;
+  if (!c || !L) return;
+  c.t.rows[c.row][c.col] = c.el.textContent.replace(/\r?\n/g, "<br>").replace(/\\?\|/g, (m) => (m.length > 1 ? m : "\\|"));
+  liveCellWrite(formatTable(c.t).text);
+  editor.dirty = true; setSaveState(); scheduleSave();
+  syncHook("modify", editor.path, 250);
+}
+/** Replace the table's text in the body; the rendered blocks keep their offsets. */
+function liveCellWrite(text) {
+  const c = editor.cell, L = editor.live, delta = text.length - (c.to - c.from);
+  L.body = L.body.slice(0, c.from) + text + L.body.slice(c.to);
+  for (const el of $$("#editor .sn-live > .sn-live-block")) {
+    if (+el.dataset.start > c.from) el.dataset.start = +el.dataset.start + delta;
+    if (+el.dataset.end >= c.from) el.dataset.end = +el.dataset.end + delta;
+  }
+  c.to = c.from + text.length;
+}
+/** Close the cell editor: its table renders again. */
+function liveCellClose(o = {}) {
+  const c = editor.cell;
+  editor.cell = null;
+  const el = c?.el.closest(".sn-live-block");
+  if (!el?.isConnected) return;
+  el.replaceWith(liveBlockEl({ start: +el.dataset.start, end: +el.dataset.end }));
+  if (o.save !== false && editor.dirty) saveEditor();
+}
+/** Move the cell editor to another cell after op (TABLE_OPS) on the table; the table renders with the change. */
+function liveCellGo(row, col, op = "format", o = {}) {
+  const c = editor.cell;
+  const res = TABLE_OPS[op](c.t, row, col);
+  liveCellWrite(formatTable(c.t).text);
+  if (op !== "format") { editor.dirty = true; setSaveState(); scheduleSave(); }
+  liveCellClose({ save: false });
+  liveCellOpen(c.from, ...res, o);
+}
+/** Leave the table for the block above (up) or below it; below the last block a new one starts. */
+function liveCellLeave(down) {
+  const c = editor.cell, L = editor.live;
+  liveCellClose({ save: false });
+  const blocks = liveBlocks(L.body);
+  if (!down) { const prev = blocks.filter((b) => b.end < c.from).at(-1); if (prev) liveActivate(prev.end); return; }
+  const next = blocks.find((b) => b.start > c.to);
+  if (next) { liveActivate(next.start); return; }
+  liveNewBlock(blocks.find((b) => c.from >= b.start && c.from <= b.end));
+  renderLive();
+  liveTa()?.focus({ preventScroll: true });
+  editorModeline(); updateEdToolbar();
+}
+/** Keys in a cell: Tab / Shift+Tab and Enter move on as in the source (a new row after the last; Enter on an empty last row ends the table),
+   Shift+Enter a <br>, arrows at the edge of the text go to the next cell or out of the table, Alt+arrows move the row or column, Escape stops editing. */
+function liveCellKeys(e) {
+  const c = editor.cell;
+  if (!c || e.isComposing) return;
+  const take = () => { e.preventDefault(); e.stopPropagation(); };
+  const last = c.t.rows.length - 1, cols = c.t.align.length, len = c.el.textContent.length, [s, en] = cellCaret(c.el);
+  if (isMod(e)) {
+    const k = e.key.toLowerCase();
+    if (k === "s") { take(); saveEditor(); }
+    else if (k === "b" || k === "i") {
+      take();
+      const mark = k === "b" ? "**" : "*", v = c.el.textContent;
+      c.el.textContent = v.slice(0, s) + mark + v.slice(s, en) + mark + v.slice(en);
+      cellSetCaret(c.el, s + mark.length, en + mark.length);
+      liveCellInput();
+    }
+    return;
+  }
+  if (e.altKey && !e.shiftKey && /^Arrow/.test(e.key)) { take(); liveCellGo(c.row, c.col, { ArrowUp: "rowUp", ArrowDown: "rowDown", ArrowLeft: "colMoveLeft", ArrowRight: "colMoveRight" }[e.key], { caret: s }); return; }
+  if (e.altKey) return;
+  if (e.key === "Escape") { take(); liveCellClose(); return; }
+  if (e.key === "Tab") {
+    take();
+    if (e.shiftKey) { if (c.col > 0) liveCellGo(c.row, c.col - 1, "format", { select: true }); else if (c.row > 0) liveCellGo(c.row - 1, cols - 1, "format", { select: true }); return; }
+    if (c.col < cols - 1) liveCellGo(c.row, c.col + 1, "format", { select: true });
+    else if (c.row < last) liveCellGo(c.row + 1, 0, "format", { select: true });
+    else liveCellGo(c.row, 0, "rowBelow", { select: true });
+    return;
+  }
+  if (e.key === "Enter") {
+    take();
+    if (e.shiftKey) { document.execCommand("insertText", false, "<br>"); return; }
+    if (c.row === last && c.row > 0 && c.t.rows[last].every((x) => !x)) {
+      // an empty last row: it goes, and the text goes on in a new block under the table
+      c.t.rows.pop();
+      liveCellWrite(formatTable(c.t).text);
+      editor.dirty = true; setSaveState(); scheduleSave();
+      liveCellLeave(true);
+      return;
+    }
+    if (c.row < last) liveCellGo(c.row + 1, c.col, "format", { select: true }); else liveCellGo(c.row, c.col, "rowBelow", { select: true });
+    return;
+  }
+  if (s !== en || e.shiftKey) return;
+  if (e.key === "ArrowLeft" && s === 0 && (c.col > 0 || c.row > 0)) { take(); liveCellGo(c.col ? c.row : c.row - 1, c.col ? c.col - 1 : cols - 1); }
+  else if (e.key === "ArrowRight" && s === len && (c.col < cols - 1 || c.row < last)) { take(); liveCellGo(c.col < cols - 1 ? c.row : c.row + 1, c.col < cols - 1 ? c.col + 1 : 0, "format", { atStart: true }); }
+  else if (e.key === "ArrowUp") { take(); if (c.row > 0) liveCellGo(c.row - 1, c.col); else liveCellLeave(false); }
+  else if (e.key === "ArrowDown") { take(); if (c.row < last) liveCellGo(c.row + 1, c.col); else liveCellLeave(true); }
 }
 /** In live preview a rendered table gets + buttons for a new row (below) and a new column (on the right). */
 function liveTableButtons(el) {

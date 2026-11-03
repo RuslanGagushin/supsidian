@@ -327,6 +327,8 @@ describe("table editing", () => {
   const ta = ".sn-editor-text.is-live";
   const value = () => page().inputValue(ta);
   const sel = () => ev(() => { const t = $(".sn-editor-text.is-live"); return t.value.slice(t.selectionStart, t.selectionEnd); });
+  const text = () => ev(() => liveText());
+  const cell = () => ev(() => { const el = $(".sn-cell-edit"); return el && el.contains(getSelection().anchorNode) ? getSelection().toString() || el.textContent : null; });
   const op = (text, o, row, col) => ev(([text, o, r, c]) => { const tb = findTables(text)[0], out = tableEdit(text, tb, o, r, c); return text.slice(0, out.from) + out.insert + text.slice(out.to); }, [text, o, row, col]);
 
   test("tables are found outside code and quotes, and cells keep escaped pipes", async () => {
@@ -352,27 +354,42 @@ describe("table editing", () => {
     assert.equal(await op("| a |\n|---|\n| 1 |\nnext", "colDelete", 0, 0), "next", "the last column takes the table with it");
   });
 
-  test("clicking a rendered cell edits it; Tab and Enter move between cells and add rows", async () => {
-    await page().click("#editor .sn-live p");
+  test("a clicked cell is edited in the rendered table; Tab and Enter move between cells and add rows", async () => {
     await page().click("#editor .sn-live tbody tr:first-child td:nth-child(2)");
-    assert.equal(await value(), "| a | b |\n|---|:-:|\n| 1 | 22 |\n| 3 |  |");
-    assert.equal(await ev(() => $(".sn-editor-text.is-live").selectionStart), 28, "after 22");
+    assert.equal(await ev(() => !!$(".sn-editor-text.is-live")), false, "the table stays rendered");
+    assert.equal(await page().textContent(".sn-cell-edit"), "22");
+    assert.equal(await ev(() => cellCaret($(".sn-cell-edit"))[0]), 1, "the caret goes where you click: the middle of the centred 22");
+    await ev(() => cellSetCaret($(".sn-cell-edit"), 2));
+    await page().keyboard.type("3");
+    assert.equal(await text(), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 223 |\n| 3   |     |", "the source lines up as you type");
     await page().keyboard.press("Tab");
-    assert.equal(await value(), "| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   |     |", "the table lines up");
-    assert.equal(await sel(), "3");
+    assert.equal(await cell(), "3", "the next cell, selected");
     await page().keyboard.press("Shift+Tab");
-    assert.equal(await sel(), "22");
+    assert.equal(await cell(), "223");
     await page().keyboard.press("Tab"); await page().keyboard.press("Tab");
     await page().keyboard.type("4");
     await page().keyboard.press("Tab");
-    assert.match(await value(), /\| 3   \| 4   \|\n\|     \|     \|$/, "Tab in the last cell adds a row");
+    assert.equal(await ev(() => $$("#editor .sn-live tbody tr").length), 3, "Tab in the last cell adds a row");
     await page().keyboard.type("5");
     await page().keyboard.press("Enter");
     await page().keyboard.press("Enter");
     await page().keyboard.type("After");
     await page().keyboard.press("Control+s");
     await page().waitForFunction(() => vault.notes.get("T.md").raw.includes("After"));
-    assert.equal(await raw("T.md"), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   | 4   |\n| 5   |     |\n\nAfter");
+    assert.equal(await raw("T.md"), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 223 |\n| 3   | 4   |\n| 5   |     |\n\nAfter");
+    noErrors();
+  });
+
+  test("a cell escapes pipes, saves when you leave it, and arrows leave the table", async () => {
+    await page().click("#editor .sn-live tbody tr:last-child td:nth-child(2)");
+    await page().keyboard.type("x|y");
+    await page().keyboard.press("Escape");
+    assert.equal(await ev(() => !!$(".sn-cell-edit")), false);
+    assert.equal(await page().textContent("#editor .sn-live tbody tr:last-child td:nth-child(2)"), "x|y");
+    await page().waitForFunction(() => vault.notes.get("T.md").raw.includes("x\\|y"));
+    await page().click("#editor .sn-live thead th:first-child");
+    await page().keyboard.press("ArrowUp");
+    assert.equal(await page().inputValue(".sn-editor-text.is-live"), "Intro", "up from the header goes to the block above");
     noErrors();
   });
 
@@ -389,25 +406,24 @@ describe("table editing", () => {
   });
 
   test("Alt+arrows move rows and columns", async () => {
-    await page().click("#editor .sn-live p");
     await page().click("#editor .sn-live tbody tr:last-child td:first-child");
     await page().keyboard.press("Alt+ArrowUp");
     await page().keyboard.press("Alt+ArrowRight");
-    assert.equal(await value(), "| b   | a   |\n| --- | --- |\n|     | 3   |\n| 22  | 1   |".replace("| --- | --- |", "| :-: | --- |"));
+    assert.equal(await text(), "Intro\n\n| b   | a   |\n| :-: | --- |\n|     | 3   |\n| 22  | 1   |");
+    assert.equal(await cell(), "3", "the cell moves with its row and column");
   });
 
   test("the + buttons and the menu of a rendered table", async () => {
-    await page().click("#editor .sn-live p");
     await ev(() => $("#editor .sn-table-add-row").click());
-    assert.equal(await value(), "| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   |     |\n|     |     |", "a new row, being edited");
-    await page().click("#editor .sn-live p");
+    assert.equal(await text(), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   |     |\n|     |     |");
+    assert.equal(await ev(() => $(".sn-cell-edit")?.closest("tr").rowIndex), 3, "the new row is being edited");
     await page().click("#editor .sn-live tbody tr:first-child td:first-child", { button: "right" });
     await page().click(".menu-item:has-text('Delete row')");
     assert.equal(await ev(() => $$("#editor .sn-live tbody tr").length), 2);
     await page().click("#editor .sn-live thead th:first-child", { button: "right" });
     assert.equal(await page().locator(".menu-item:has-text('Delete row')").count(), 0, "the header row stays");
     await page().click(".menu-item:has-text('Add column before')");
-    assert.match(await value(), /^\|     \| a   \| b   \|/);
+    assert.match(await text(), /^Intro\n\n\|     \| a   \| b   \|/);
     noErrors();
   });
 });
