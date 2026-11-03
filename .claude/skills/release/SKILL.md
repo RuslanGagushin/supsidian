@@ -32,8 +32,9 @@ only fixes → patch (0.12.0 → 0.12.1). If the user names a version, use their
 | `src-tauri/tauri.conf.json` | `"version"` |
 | `web/supsidian.html` | `const APP_VERSION = "…"` |
 
-Then `grep -rn "<old version>" package.json package-lock.json src-tauri/Cargo.toml src-tauri/tauri.conf.json web/supsidian.html`
-should find nothing, and in Cargo.lock only other crates may still have it. Run `npm test` again.
+Check with `git diff | grep "^[-+][^-+]"`: exactly seven old/new version pairs (package-lock.json has two), nothing else.
+Don't grep the old version in `web/supsidian.html`: the bundled libraries in it are minified onto huge lines,
+and a dotted version like 0.12.0 also matches them as a regex. Run `npm test` again.
 
 ## 4. Commit, tag, push
 
