@@ -131,7 +131,7 @@ describe("board", () => {
 describe("editor", () => {
   beforeEach(async () => { await openVault({ demo: false, notes: { "Note.md": "---\ncolor: red\n---\nHello\n", "Colosseum.md": "", "Cola.md": "", "pic.md": "" } }); await ev(() => openEditor("Note.md", { focus: true })); });
   const ta = ".sn-editor-text";
-  const value = () => page().inputValue(ta);
+  const value = () => ev((sel) => $(sel).value, ta);
   const setValue = (v, s = v.length, e = s) => ev(([v, s, e]) => { const t = $(".sn-editor-text"); t.value = v; t.setSelectionRange(s, e); t.focus(); }, [v, s, e]);
 
   test("typing saves the body and keeps the frontmatter", async () => {
@@ -142,6 +142,22 @@ describe("editor", () => {
     await page().keyboard.press("Control+s");
     await page().waitForFunction(() => vault.notes.get("Note.md").raw.includes("World"));
     assert.equal(await raw("Note.md"), "---\ncolor: red\n---\nHello\nWorld");
+    noErrors();
+  });
+
+  test("the editor is CodeMirror: undo and redo cover typing and formatting", async () => {
+    assert.equal(await ev(() => !!$(".sn-editor-text").cmView), true);
+    await setValue("plain", 0, 5);
+    await page().keyboard.press("Control+b");
+    await page().keyboard.press("End");
+    await page().keyboard.type(" more");
+    assert.equal(await value(), "**plain** more");
+    await page().keyboard.press("ControlOrMeta+z");
+    assert.equal(await value(), "**plain**", "undo takes back the typing");
+    await page().keyboard.press("ControlOrMeta+z");
+    assert.equal(await value(), "plain", "then the bold");
+    await page().keyboard.press("ControlOrMeta+Shift+z");
+    assert.equal(await value(), "**plain**");
     noErrors();
   });
 
@@ -159,7 +175,7 @@ describe("editor", () => {
     await page().keyboard.press("Enter");
     assert.equal(await value(), "- one\n- ");
     await page().keyboard.press("Enter");
-    assert.equal(await value(), "- one\n");
+    assert.equal(await value(), "- one\n\n", "a blank line, so the next text doesn't join the last item");
     await setValue("1. a");
     await page().keyboard.press("Enter");
     assert.equal(await value(), "1. a\n2. ");
@@ -218,105 +234,84 @@ describe("editor", () => {
 
 describe("live preview", () => {
   const body = "# Title\n\nPara **bold** text\n\n- [ ] one\n- [ ] two\n\nLast";
-  beforeEach(async () => { await openVault({ demo: false, notes: { "L.md": "---\ncolor: red\n---\n" + body } }); await ev(() => openEditor("L.md", { focus: true })); });
+  beforeEach(async () => { await openVault({ demo: false, notes: { "L.md": "---\ncolor: red\n---\n" + body, "Other.md": "" } }); await ev(() => openEditor("L.md", { focus: true })); });
   const ta = ".sn-editor-text.is-live";
-  const value = () => page().inputValue(ta);
-  const blocks = () => ev(() => $$("#editor .sn-live-block").map((b) => b.firstElementChild?.tagName));
+  const value = () => ev((sel) => $(sel).value, ta);
+  const lines = () => ev(() => $$("#editor .cm-line").map((l) => l.textContent));
+  const caretAt = (i) => ev((i) => { const t = $(".sn-editor-text.is-live"); t.focus(); t.setSelectionRange(i); }, i);
 
-  test("the other blocks are rendered while one is edited", async () => {
-    assert.equal(await value(), "Last");
-    assert.deepEqual(await blocks(), ["H1", "P", "UL"]);
-    assert.equal(await ev(() => $("#editor .sn-live strong").textContent), "bold");
-  });
-
-  test("clicking a rendered block edits it, with the caret where it was clicked", async () => {
-    await page().click("#editor .sn-live strong");
-    assert.equal(await value(), "Para **bold** text");
-    const caret = await ev(() => $(".sn-editor-text.is-live").selectionStart);
-    assert.ok(caret >= 7 && caret <= 13, `caret ${caret} inside **bold**`);
-    assert.deepEqual(await blocks(), ["H1", "UL", "P"]);
-  });
-
-  test("Enter on an empty line renders the block and starts a new one", async () => {
-    await page().keyboard.type(" *end*");
-    await page().keyboard.press("Enter");
-    await page().keyboard.press("Enter");
-    assert.equal(await value(), "");
-    assert.equal(await ev(() => $$("#editor .sn-live-block em").length), 1);
-    await page().keyboard.type("New");
-    await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("L.md").raw.endsWith("New"));
-    assert.equal(await raw("L.md"), "---\ncolor: red\n---\n" + body + " *end*\n\nNew");
-  });
-
-  test("Enter ends a list on an empty item, and again starts a new block", async () => {
-    await page().click("#editor .sn-live ul li:last-child", { position: { x: 200, y: 5 } });
-    await ev(() => { const t = $(".sn-editor-text.is-live"); t.setSelectionRange(t.value.length, t.value.length); });
-    for (const k of ["Enter", "Enter", "Enter"]) await page().keyboard.press(k);
-    assert.equal(await value(), "");
-    await page().keyboard.type("After");
-    await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("After"));
-    assert.match(await raw("L.md"), /- \[ \] two\n\nAfter\n\nLast$/);
-  });
-
-  test("arrows move between blocks and Backspace joins with the block above", async () => {
-    await ev(() => $(".sn-editor-text.is-live").setSelectionRange(0, 0));
-    await page().keyboard.press("ArrowUp");
-    assert.equal(await value(), "- [ ] one\n- [ ] two");
-    await page().keyboard.press("ArrowDown");
-    assert.equal(await value(), "Last");
-    await ev(() => $(".sn-editor-text.is-live").setSelectionRange(0, 0));
-    await page().keyboard.press("Backspace");
-    assert.equal(await value(), "- [ ] one\n- [ ] two\nLast");
-    await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("L.md").raw.endsWith("two\nLast"));
-  });
-
-  test("selecting text shows the floating format bar, and its buttons format the selection", async () => {
-    await page().click("#editor .sn-live strong");
-    await H.tick(); // the click's own mouseup check runs first
-    await ev(() => { const t = $(".sn-editor-text.is-live"); t.setSelectionRange(0, 4); t.dispatchEvent(new Event("select")); });
-    assert.ok(await page().isVisible(".sn-fmtbar"));
-    const box = await page().locator(".sn-fmtbar").boundingBox(), tab = await page().locator(ta).boundingBox();
-    assert.ok(box.y + box.height <= tab.y + 4, "above the selected line");
-    await page().click('.sn-fmtbar [data-act="italic"]');
-    assert.equal(await value(), "*Para* **bold** text");
-    assert.deepEqual(await ev(() => { const t = $(".sn-editor-text.is-live"); return [t.selectionStart, t.selectionEnd]; }), [1, 5], "the text stays selected");
-    assert.ok(await ev(() => $('.sn-fmtbar [data-act="italic"]').classList.contains("is-active")));
-    await ev(() => { const t = $(".sn-editor-text.is-live"); t.setSelectionRange(3, 3); t.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowLeft" })); });
-    assert.equal(await page().locator(".sn-fmtbar").count(), 0, "gone when nothing is selected");
-  });
-
-  test("moveBlock moves a block before or after another and keeps the blank lines", async () => {
-    const mv = (b, from, to, after) => ev(([b, f, t, a]) => moveBlock(b, f, t, a), [b, from, to, after]);
-    const b = "A\n\nB\n\n\nC";
-    assert.equal(await mv(b, 0, 3, true), "B\n\nA\n\n\nC", "first block down");
-    assert.equal(await mv(b, 7, 0, false), "C\n\n\nA\n\nB", "last block to the top");
-    assert.equal(await mv(b, 3, 7, true), "A\n\n\nC\n\nB");
-    assert.equal(await mv(b, 3, 0, true), null, "already there");
-  });
-
-  test("dragging a block's handle moves the block in the file", async () => {
-    await ev(() => $("#editor .sn-live-block:nth-child(1)").dispatchEvent(new MouseEvent("mouseover", { bubbles: true })));
-    const handle = page().locator("#editor .sn-live-block").first().locator(".sn-live-handle");
-    const hb = await handle.boundingBox(), list = await page().locator("#editor .sn-live ul").boundingBox();
-    await page().mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
-    await page().mouse.down();
-    await page().mouse.move(hb.x + 4, list.y + list.height - 3, { steps: 6 });
-    assert.ok(await ev(() => !!$("#editor .is-drop-after")), "the drop line shows");
-    await page().mouse.up();
-    assert.deepEqual(await blocks(), ["P", "UL", "H1", "P"]);
-    await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("two\n\n# Title"));
-    assert.equal(await raw("L.md"), "---\ncolor: red\n---\nPara **bold** text\n\n- [ ] one\n- [ ] two\n\n# Title\n\nLast");
+  test("the note is one editor; away from the caret its Markdown renders in place", async () => {
+    assert.equal(await value(), body);
+    const ls = await lines();
+    assert.equal(ls[0], "Title");
+    assert.equal(ls[2], "Para bold text");
+    assert.equal(await ev(() => $("#editor .cm-sn-h1")?.textContent), "Title");
+    assert.equal(await ev(() => $("#editor .cm-sn-strong").textContent), "bold");
+    assert.equal(await ev(() => $$("#editor .lp-task").length), 2);
     noErrors();
   });
 
+  test("the Markdown shows where the caret is", async () => {
+    await page().click("#editor .cm-sn-strong");
+    assert.equal((await lines())[2], "Para **bold** text");
+    const caret = await ev(() => $(".sn-editor-text.is-live").selectionStart), at = body.indexOf("**bold**");
+    assert.ok(caret >= at && caret <= at + 8, `caret ${caret} inside **bold**`);
+    assert.equal((await lines())[0], "Title", "other lines stay rendered");
+    await caretAt(2);
+    assert.equal((await lines())[0], "# Title");
+    assert.equal((await lines())[2], "Para bold text");
+  });
+
+  test("Enter continues a list, and ends it on an empty item", async () => {
+    await caretAt(body.indexOf("two") + 3);
+    await page().keyboard.press("Enter");
+    await page().keyboard.type("three");
+    await page().keyboard.press("Enter");
+    await page().keyboard.press("Enter");
+    await page().keyboard.type("After");
+    await page().keyboard.press("Control+s");
+    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("After"));
+    assert.match(await raw("L.md"), /- \[ \] two\n- \[ \] three\n\nAfter\n\nLast$/);
+  });
+
   test("a rendered checkbox ticks its own task", async () => {
-    await ev(() => $$("#editor .sn-live input[type=checkbox]")[1].click());
+    await page().click("#editor .lp-task >> nth=1");
+    assert.match(await value(), /- \[ \] one\n- \[x\] two/);
+    await page().keyboard.press("Control+s");
     await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("- [x] two"));
-    assert.match(await raw("L.md"), /- \[ \] one/);
+    noErrors();
+  });
+
+  test("selecting text shows the floating format bar, and its buttons format the selection", async () => {
+    const at = body.indexOf("Para");
+    await ev((at) => { const t = $(".sn-editor-text.is-live"); t.focus(); t.setSelectionRange(at, at + 4); }, at);
+    await H.tick();
+    assert.ok(await page().isVisible(".sn-fmtbar"));
+    const box = await page().locator(".sn-fmtbar").boundingBox(), line = await page().locator("#editor .cm-line >> nth=2").boundingBox();
+    assert.ok(box.y + box.height <= line.y + 4, "above the selected line");
+    await page().click('.sn-fmtbar [data-act="italic"]');
+    assert.match(await value(), /\n\*Para\* \*\*bold\*\* text\n/);
+    assert.deepEqual(await ev(() => { const t = $(".sn-editor-text.is-live"); return [t.selectionStart, t.selectionEnd]; }), [at + 1, at + 5], "the text stays selected");
+    await caretAt(at + 3);
+    await H.tick();
+    assert.equal(await page().locator(".sn-fmtbar").count(), 0, "gone when nothing is selected");
+  });
+
+  test("a click on a rendered link opens it, as in reading mode (Ctrl/Cmd+click: in the editor)", async () => {
+    await caretAt(0);
+    await page().keyboard.type("See [[Other]] ");
+    await caretAt(await ev(() => $(".sn-editor-text.is-live").value.length));
+    await page().click("#editor .cm-sn-wikilink", { modifiers: ["ControlOrMeta"] });
+    assert.equal(await ev(() => editor.path), "Other.md");
+  });
+
+  test("a callout renders as a block and opens into its Markdown when clicked", async () => {
+    await ev(() => { const t = $(".sn-editor-text.is-live"); t.value = "Top\n\n> [!tip] Hint\n> inside\n\nEnd"; t.setSelectionRange(0); });
+    await page().click("#editor .cm-line >> nth=0");
+    assert.equal(await ev(() => $("#editor .lp-block .callout .callout-title-inner")?.textContent), "Hint");
+    await page().click("#editor .lp-block .callout-content");
+    assert.equal(await ev(() => !!$("#editor .lp-block .callout")), false, "the callout shows its Markdown");
+    assert.ok((await lines()).includes("> [!tip] Hint"));
     noErrors();
   });
 });
@@ -325,7 +320,7 @@ describe("table editing", () => {
   const body = "Intro\n\n| a | b |\n|---|:-:|\n| 1 | 22 |\n| 3 |  |";
   beforeEach(async () => { await openVault({ demo: false, notes: { "T.md": body } }); await ev(() => openEditor("T.md", { focus: true })); });
   const ta = ".sn-editor-text.is-live";
-  const value = () => page().inputValue(ta);
+  const value = () => ev((sel) => $(sel).value, ta);
   const sel = () => ev(() => { const t = $(".sn-editor-text.is-live"); return t.value.slice(t.selectionStart, t.selectionEnd); });
   const text = () => ev(() => liveText());
   const cell = () => ev(() => { const el = $(".sn-cell-edit"); return el && el.contains(getSelection().anchorNode) ? getSelection().toString() || el.textContent : null; });
@@ -356,7 +351,7 @@ describe("table editing", () => {
 
   test("a clicked cell is edited in the rendered table; Tab and Enter move between cells and add rows", async () => {
     await page().click("#editor .sn-live tbody tr:first-child td:nth-child(2)");
-    assert.equal(await ev(() => !!$(".sn-editor-text.is-live")), false, "the table stays rendered");
+    assert.equal(await ev(() => !!$("#editor .lp-table .sn-cell-edit")), true, "the table stays rendered");
     assert.equal(await page().textContent(".sn-cell-edit"), "22");
     assert.equal(await ev(() => cellCaret($(".sn-cell-edit"))[0]), 1, "the caret goes where you click: the middle of the centred 22");
     await ev(() => cellSetCaret($(".sn-cell-edit"), 2));
@@ -389,7 +384,7 @@ describe("table editing", () => {
     await page().waitForFunction(() => vault.notes.get("T.md").raw.includes("x\\|y"));
     await page().click("#editor .sn-live thead th:first-child");
     await page().keyboard.press("ArrowUp");
-    assert.equal(await page().inputValue(".sn-editor-text.is-live"), "Intro", "up from the header goes to the block above");
+    assert.deepEqual(await ev(() => { const t = $(".sn-editor-text.is-live"); return [document.activeElement === t, t.selectionStart]; }), [true, 5], "up from the header goes to the end of the line above");
     noErrors();
   });
 
