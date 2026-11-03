@@ -34,7 +34,7 @@
 html, body { margin: 0; height: 100%; }
 * { box-sizing: border-box; }
 body {
-  /* Workbench palette (paper + ink, level colours like an org outline) */
+  /* Base palette (paper + ink, level colours like an org outline); body.sn-app below refines it */
   --bg:#f3f4ef; --win:#fbfbf8; --panel:#e9ebe4; --fg:#1b221f; --muted:#56625c; --faint:#66716b; --line:#d4d8cf;
   --accent:#2f4fb5; --accent-soft:#e2e7f7; --sel:#dfe6fb; --flash:#fff0b3; --code-bg:#eef0e9;
   --mode-bg:#262e2a; --mode-fg:#e8ece5; --mode-dim:#a7b2ab; --mode-hi:#f3d36b;
@@ -55,7 +55,7 @@ body.theme-dark {
   color-scheme: dark;
 }
 body {
-  /* Obsidian variables the plugin styles use, mapped onto the workbench palette */
+  /* Obsidian variables the plugin styles use, mapped onto the base palette */
   --font-interface: var(--font-mono);
   --font-text: var(--font-mono);
   --font-monospace: var(--font-mono);
@@ -126,8 +126,6 @@ body {
   font-variant-ligatures: none;
   overflow: hidden;
 }
-body.font-sans { --font-interface: var(--font-ui); --font-text: var(--font-ui); }
-body.font-inter { --font-ui: var(--font-inter); }
 ::selection { background: var(--text-selection); }
 ::-webkit-scrollbar { width: 12px; height: 12px; background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 12px; border: 3px solid transparent; background-clip: padding-box; }
@@ -875,19 +873,17 @@ kbd.sn-k { display: inline-block; padding: 1px 6px; border-radius: var(--radius-
 
 
 /* ==========================================================
-   Workbench skin (Emacs-style frame: windows, mode-lines, minibuffer)
+   Frame: top bar, windows, mode-lines, minibuffer (body.sn-app below lays them out)
    ========================================================== */
 #app { flex-direction: column; gap: 8px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); background: var(--bg); }
 .wb-top { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 34px; min-width: 0; }
 .wb-top > :not(.wb-spacer) { flex: none; }
 /* When the bar runs out of room, fitTopBar() adds these one by one */
-.wb-top.fit-1 :is(.wb-btn kbd, .wb-brand small) { display: none; }
-.wb-top.fit-2 :is(.wb-files, .wb-today, .wb-commands) .wb-label { display: none; }
-.wb-top.fit-2 :is(.wb-vault-btn, .wb-sync) { max-width: 130px; }
-.wb-top.fit-3 .wb-brand { display: none; }
-.wb-top.fit-4 .wb-btn .wb-label { display: none; }
-.wb-top.fit-5 { gap: 4px; }
-.wb-top.fit-5 .wb-theme { display: none; }
+.wb-top.fit-1 .wb-files .wb-label { display: none; }
+.wb-top.fit-1 .wb-sync { max-width: 130px; }
+.wb-top.fit-2 .wb-btn .wb-label { display: none; }
+.wb-top.fit-3 { gap: 4px; }
+.wb-top.fit-3 .wb-theme { display: none; }
 .wb-brand { font-family: var(--font-display); font-size: 21px; font-weight: 500; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 0; white-space: nowrap; min-width: 0; color: var(--fg); margin: 0 4px 0 2px; }
 .wb-brand i { font-style: italic; color: var(--l1); }
 .wb-brand small { font-family: var(--font-mono); font-size: 11px; color: var(--faint); font-weight: 400; letter-spacing: 0; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; }
@@ -897,15 +893,13 @@ button.wb-btn, .wb-btn {
   border: 1px solid var(--line); border-radius: 6px; background: var(--win); box-shadow: none;
   color: var(--fg); font-family: var(--font-ui); font-size: 12.5px; font-weight: 400; white-space: nowrap; cursor: pointer;
 }
-body:not(.font-sans) .wb-btn { font-family: var(--font-mono); font-size: 12px; }
+.wb-btn { font-family: var(--font-mono); font-size: 12px; }
 button.wb-btn:hover { border-color: var(--faint); background: var(--win); }
 button.wb-btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 button.wb-btn.primary:hover { background: var(--fg); opacity: .9; }
 .wb-btn svg { width: 14px; height: 14px; }
 .wb-btn kbd { font-family: var(--font-mono); font-size: 10.5px; color: var(--faint); }
 .wb-btn.primary kbd { color: inherit; opacity: .7; }
-.wb-vault-btn { max-width: 220px; }
-.wb-vault-btn .wb-label { overflow: hidden; text-overflow: ellipsis; }
 .wb-caret svg { width: 12px; height: 12px; color: var(--faint); }
 button.clickable-icon.wb-icon { width: 30px; height: 28px; padding: 0; display: inline-flex; border: 1px solid var(--line); border-radius: 6px; background: var(--win); color: var(--muted); }
 button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--fg); background: var(--win); }
@@ -956,7 +950,7 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .sn-tree-header .clickable-icon svg { width: 13px; height: 13px; }
 .sn-tree { padding: 0 0 16px; }
 .sn-tree-section, .sn-tree-section:first-child { margin: 16px 0 6px; padding-left: 2px; font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
-body:not(.font-sans) .sn-tree-section { font-family: var(--font-mono); }
+.sn-tree-section { font-family: var(--font-mono); }
 .sn-tree-section:first-child { margin-top: 4px; }
 .sn-outline .tree-item-self.sn-tree-row { padding: 4px 8px 4px 2px; border-radius: 6px; font-family: var(--font-mono); font-size: 12.5px; gap: 6px; margin-bottom: 1px; }
 .sn-outline .tree-item-self.sn-tree-row:hover { background: var(--panel); }
@@ -1008,7 +1002,6 @@ body:not(.font-sans) .sn-tree-section { font-family: var(--font-mono); }
 .sn-card[data-lv="1"] { --lvc: var(--l1); } .sn-card[data-lv="2"] { --lvc: var(--l2); } .sn-card[data-lv="3"] { --lvc: var(--l3); } .sn-card[data-lv="4"] { --lvc: var(--l4); }
 .sn-card[data-lv="5"] { --lvc: var(--l5); } .sn-card[data-lv="6"] { --lvc: var(--l6); } .sn-card[data-lv="7"] { --lvc: var(--l7); } .sn-card[data-lv="8"] { --lvc: var(--l8); }
 .sn-board .sn-card-title { font-family: var(--font-mono); font-size: 13.5px; font-weight: 600; line-height: 1.35; color: var(--lvc, var(--fg)); }
-body.font-sans .sn-board .sn-card-title { font-family: var(--font-ui); font-size: 14px; }
 .sn-board .sn-card-title:hover { text-decoration-color: currentColor; }
 .sn-board .sn-kids { padding: 0; background: none; color: var(--l5); font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; line-height: 1; }
 .sn-board .sn-kids::before { content: "["; } .sn-board .sn-kids::after { content: "]"; }
@@ -1019,7 +1012,6 @@ body.font-sans .sn-board .sn-card-title { font-family: var(--font-ui); font-size
 .sn-chip.is-missing { border: 1px dashed var(--faint); background: transparent; }
 .sn-chip-icon svg { width: 11px; height: 11px; }
 .sn-card-body { font-size: 13px; line-height: 1.6; margin-top: 6px; }
-body.font-sans .sn-card-body { font-size: 13.5px; }
 .sn-tags { gap: 4px; margin-top: 6px; }
 .sn-tag { font-family: var(--font-mono); font-size: 11px; line-height: 1.5; }
 .sn-card-foot { min-height: 24px; margin-top: 2px; }
@@ -1095,11 +1087,13 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .markdown-rendered input[type="checkbox"] { accent-color: var(--l3); }
 .markdown-rendered li.is-checked { color: var(--faint); }
 .markdown-rendered mark, .sn-mark { background: var(--flash); color: inherit; }
-.markdown-rendered .callout { --cc: var(--l1); background: color-mix(in srgb, var(--cc) 4%, transparent); border: 1px solid color-mix(in srgb, var(--cc) 50%, transparent); border-radius: 6px; padding: 0; }
-.markdown-rendered .callout-title { padding: 7px 12px; background: color-mix(in srgb, var(--cc) 14%, transparent); border-bottom: 1px dashed color-mix(in srgb, var(--cc) 50%, transparent); color: var(--fg); margin-inline-start: 0; font-family: var(--font-ui); font-weight: 600; }
-.markdown-rendered .callout-title:last-child { border-bottom: 0; }
-.markdown-rendered .callout-icon { display: inline-flex; color: var(--cc); }
-.markdown-rendered .callout-content { margin-top: 0; padding: 8px 12px; }
+/* callouts share the code block frame; only the icon carries the callout colour */
+.markdown-rendered .callout { --cc: var(--l1); margin-block: 0 1em; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--win); }
+.markdown-rendered .callout-title { gap: 7px; margin-inline-start: 0; padding: 8px 12px 4px; color: var(--fg); font-family: var(--font-ui); font-size: 12.5px; font-weight: var(--font-medium); }
+.markdown-rendered .callout-title:last-child { padding-bottom: 8px; }
+.markdown-rendered .callout-icon { flex: none; display: inline-flex; color: var(--cc); }
+.markdown-rendered .callout-icon svg { width: 14px; height: 14px; }
+.markdown-rendered .callout-content { margin-top: 0; padding: 4px 12px 10px; }
 .markdown-rendered .callout[data-callout="tip"], .markdown-rendered .callout[data-callout="hint"], .markdown-rendered .callout[data-callout="important"] { --cc: var(--l8); }
 .markdown-rendered .callout[data-callout="success"], .markdown-rendered .callout[data-callout="check"], .markdown-rendered .callout[data-callout="done"] { --cc: var(--done); }
 .markdown-rendered .callout[data-callout="question"], .markdown-rendered .callout[data-callout="help"], .markdown-rendered .callout[data-callout="faq"], .markdown-rendered .callout[data-callout="warning"], .markdown-rendered .callout[data-callout="caution"], .markdown-rendered .callout[data-callout="attention"] { --cc: var(--next); }
@@ -1108,9 +1102,9 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .markdown-rendered .callout[data-callout="quote"], .markdown-rendered .callout[data-callout="cite"] { --cc: var(--muted); }
 /* foldable callouts: [!type]+ open, [!type]- folded; the title toggles them */
 .markdown-rendered .callout.is-collapsible > .callout-title { cursor: pointer; user-select: none; -webkit-user-select: none; }
-.markdown-rendered .callout-fold { display: inline-flex; color: var(--muted); transition: transform 120ms; }
-.markdown-rendered .callout-fold svg { width: 15px; height: 15px; }
-.markdown-rendered .callout.is-collapsed > .callout-title { border-bottom: 0; }
+.markdown-rendered .callout-fold { display: inline-flex; color: var(--faint); transition: transform 120ms; }
+.markdown-rendered .callout-fold svg { width: 14px; height: 14px; }
+.markdown-rendered .callout.is-collapsed > .callout-title { padding-bottom: 8px; }
 .markdown-rendered .callout.is-collapsed > .callout-title .callout-fold { transform: rotate(-90deg); }
 .markdown-rendered .callout.is-collapsed > .callout-content { display: none; }
 .markdown-rendered .internal-embed { border-inline-start: 2px solid var(--accent); background: var(--code-bg); }
@@ -1146,7 +1140,6 @@ button.sn-color-dot { width: 16px; height: 16px; }
 .sn-prop-other { font-size: 11.5px; }
 .sn-icon-pick { font-family: var(--font-mono); font-size: 12px; }
 .sn-editor-text { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; color: var(--fg); font-variant-ligatures: none; }
-body.font-sans .sn-editor-text:not(.is-source) { font-family: var(--font-ui); font-size: 14.5px; }
 .sn-editor-text.is-source { font-size: 13px; }
 .sn-reading { font-size: 13.5px; line-height: 1.6; }
 .sn-editor-foot h4 { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
@@ -1441,7 +1434,6 @@ button.sn-tag-pill.is-on { background: var(--accent-soft); border-color: var(--a
 #app.focus-mode .minibuf .echo.is-hint { opacity: .5; }
 
 /* Today button */
-.wb-today svg { color: var(--l2); }
 
 /* Keyboard focus is always visible; motion respects the system setting */
 :is(button, a, [tabindex], .tree-item-self):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1516,7 +1508,7 @@ button.fchip.exc { border-color: var(--todo); color: var(--todo); text-decoratio
 .ag-title { padding: 6px 12px 8px; color: var(--muted); font-size: 12px; }
 .ag-title b { color: var(--fg); font-weight: 700; }
 .ag-day { display: flex; align-items: baseline; gap: 10px; padding: 12px 12px 3px; font-family: var(--font-ui); font-weight: 600; font-size: 13.5px; color: var(--l1); text-transform: capitalize; }
-body:not(.font-sans) .ag-day { font-family: var(--font-mono); font-size: 13px; }
+.ag-day { font-family: var(--font-mono); font-size: 13px; }
 .ag-day .num { font-weight: 400; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; text-transform: none; }
 .ag-day.weekend { color: var(--l2); }
 .ag-day.today { color: var(--fg); }
@@ -1539,7 +1531,7 @@ body:not(.font-sans) .ag-day { font-family: var(--font-mono); font-size: 13px; }
 .ag-main button.kw, .ag-main button.kw:not(.clickable-icon) { display: inline; height: auto; padding: 0; border: 0; background: none; box-shadow: none; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .ag-main button.kw:hover { text-decoration: underline; }
 .ag-ttl { overflow-wrap: anywhere; font-family: var(--font-ui); font-size: 13px; color: var(--fg); }
-body:not(.font-sans) .ag-ttl { font-family: var(--font-mono); font-size: 12.5px; }
+.ag-ttl { font-family: var(--font-mono); font-size: 12.5px; }
 .ag-ttl a.tag { font-size: 11px; }
 .ag-cookie { color: var(--muted); font-size: 11.5px; }
 .is-done .ag-ttl { color: var(--faint); text-decoration: line-through; }
@@ -1605,7 +1597,7 @@ button.cap-tpl-btn[aria-pressed="true"] svg { color: var(--accent); }
 .org-cal button.cal-nav, .org-cal button.cal-nav:not(.clickable-icon) { width: 28px; height: 26px; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; box-shadow: none; font-size: 16px; line-height: 1; color: var(--muted); }
 .org-cal button.cal-nav:hover { background: var(--panel); color: var(--fg); }
 .org-cal button.cal-title, .org-cal button.cal-title:not(.clickable-icon) { flex: 1; height: 26px; padding: 0; border: 0; background: transparent; box-shadow: none; font-family: var(--font-ui); font-size: 13.5px; font-weight: 600; color: var(--l1); text-transform: capitalize; }
-body:not(.font-sans) .org-cal button.cal-title { font-family: var(--font-mono); font-size: 13px; }
+.org-cal button.cal-title { font-family: var(--font-mono); font-size: 13px; }
 .org-cal button.cal-title:hover { text-decoration: underline; }
 .cal-grid { display: grid; grid-template-columns: 22px repeat(7, minmax(0, 1fr)); gap: 2px; align-items: center; }
 .cal-wd, .cal-wk-h { text-align: center; font-size: 10.5px; color: var(--faint); text-transform: lowercase; padding-bottom: 2px; }
@@ -1735,14 +1727,14 @@ audio.fv-media { width: min(520px, 100%); }
   .fv-pbody { padding: 10px; }
 }
 /* ==========================================================
-   Evernote style (body.style-evernote, the default; Settings → Appearance → Style):
+   App style (body.sn-app):
    warm grey sidebar with search, a blue pill for new cards and the vault at the bottom;
    Inter everywhere but code; white notes on grey; neutral ink instead of outline-level colours.
    ========================================================== */
-body.style-evernote {
+body.sn-app {
   --bg:#f6f5f4; --win:#ffffff; --panel:#e7e6e5; --fg:#212121; --muted:#696564; --faint:#9c9897; --line:#e6e4e2;
   --accent:#4d64ff; --accent-soft:#ebeeff; --sel:#ebeae9; --flash:#fff1a8; --code-bg:#f4f3f2;
-  --ink:#141414; --ev-cta:#4d64ff; --ev-cta-hover:#3245bb; --ev-hover:#edeceb; --ev-avatar:#7c5cdb;
+  --ink:#141414; --cta:#4d64ff; --cta-hover:#3245bb; --hover-bg:#edeceb; --sb-avatar:#7c5cdb;
   --tbl-head:#f4f3f2; --tbl-head-line:#e6e4e2; --tag:#3e3e3e;
   --font-code: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --font-mono: var(--font-inter); --font-ui: var(--font-inter); --font-display: var(--font-inter);
@@ -1751,243 +1743,241 @@ body.style-evernote {
   --shadow-s: 0 2px 8px rgba(0,0,0,.06);
   font-size: 13px;
 }
-body.style-evernote.theme-dark {
+body.sn-app.theme-dark {
   --bg:#1b1b1b; --win:#262626; --panel:#333333; --fg:#e8e8e8; --muted:#a8a4a3; --faint:#7d7978; --line:#353535;
   --accent:#7c8eff; --accent-soft:#1f2547; --sel:#383838; --flash:#4a3f12; --code-bg:#2e2e2e;
-  --ink:#f2f2f2; --ev-cta:#4d64ff; --ev-cta-hover:#7c8eff; --ev-hover:#2c2c2c;
+  --ink:#f2f2f2; --cta:#4d64ff; --cta-hover:#7c8eff; --hover-bg:#2c2c2c;
   --tbl-head:#2e2e2e; --tbl-head-line:#3a3a3a; --tag:#d6d6d6;
 }
 
 /* Layout: the sidebar runs full height; the top bar sits over the board, not over the sidebar */
-body.style-evernote #app {
+body.sn-app #app {
   display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0; padding: 0 0 0 env(safe-area-inset-left, 0px);
 }
-body.style-evernote .wb-frame { display: contents; }
-body.style-evernote .sn-side { grid-column: 1; grid-row: 1 / 4; padding: 0; background: var(--bg); }
-body.style-evernote .sn-resizer.is-side { grid-column: 2; grid-row: 1 / 4; }
-body.style-evernote .wb-top { grid-column: 3 / 6; grid-row: 1; padding: 10px 14px 6px 8px; min-height: 48px; }
-body.style-evernote .sn-main { grid-column: 3; grid-row: 2; }
-body.style-evernote .sn-resizer.is-editor { grid-column: 4; grid-row: 2; }
-body.style-evernote .sn-editor { grid-column: 5; grid-row: 2; }
-body.style-evernote #app.editor-wide .sn-editor { grid-column: 3 / 6; }
-body.style-evernote .minibuf { grid-column: 3 / 6; grid-row: 3; padding: 2px 14px 6px 8px; }
-body.style-evernote #app.focus-mode .sn-editor { grid-column: 3 / 6; }
+body.sn-app .wb-frame { display: contents; }
+body.sn-app .sn-side { grid-column: 1; grid-row: 1 / 4; padding: 0; background: var(--bg); }
+body.sn-app .sn-resizer.is-side { grid-column: 2; grid-row: 1 / 4; }
+body.sn-app .wb-top { grid-column: 3 / 6; grid-row: 1; padding: 10px 14px 6px 8px; min-height: 48px; }
+body.sn-app .sn-main { grid-column: 3; grid-row: 2; }
+body.sn-app .sn-resizer.is-editor { grid-column: 4; grid-row: 2; }
+body.sn-app .sn-editor { grid-column: 5; grid-row: 2; }
+body.sn-app #app.editor-wide .sn-editor { grid-column: 3 / 6; }
+body.sn-app .minibuf { grid-column: 3 / 6; grid-row: 3; padding: 2px 14px 6px 8px; }
+body.sn-app #app.focus-mode .sn-editor { grid-column: 3 / 6; }
 
-/* the board sits on the grey like Evernote's note list; the note opens on a white sheet */
-body.style-evernote .win { border: 0; border-radius: 0; background: transparent; }
-body.style-evernote .sn-board { background: transparent; }
-body.style-evernote .sn-editor.win {
+/* the board sits on the grey; the note opens on a white sheet */
+body.sn-app .win { border: 0; border-radius: 0; background: transparent; }
+body.sn-app .sn-board { background: transparent; }
+body.sn-app .sn-editor.win {
   background: var(--win); border: 1px solid var(--line); border-right: 0; border-bottom: 0; border-radius: 12px 0 0 0;
   box-shadow: -2px 0 12px rgba(0,0,0,.03);
 }
-body.style-evernote #app.editor-wide .sn-editor.win { border-radius: 12px 0 0 0; }
-body.style-evernote .sn-resizer.is-editor { flex-basis: 8px; }
+body.sn-app #app.editor-wide .sn-editor.win { border-radius: 12px 0 0 0; }
+body.sn-app .sn-resizer.is-editor { flex-basis: 8px; }
 
 /* ---------- Sidebar */
-.ev-side-head, .ev-side-foot { display: none; }
-body.style-evernote .ev-side-head { display: flex; flex-direction: column; gap: 12px; padding: 14px 12px 10px 14px; }
-body.style-evernote .ev-side-foot { display: flex; padding: 8px 10px 12px 12px; }
-button.ev-search {
+body.sn-app .sb-head { display: flex; flex-direction: column; gap: 12px; padding: 14px 12px 10px 14px; }
+body.sn-app .sb-foot { display: flex; padding: 8px 10px 12px 12px; }
+button.sb-search {
   display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; height: 36px; padding: 0 12px 0 10px;
   border: 0; border-radius: 8px; background: var(--panel); color: var(--muted); font-size: 14px; font-weight: 400; cursor: text;
 }
-button.ev-search:hover { background: color-mix(in srgb, var(--panel) 85%, var(--fg) 6%); }
-button.ev-search svg { width: 16px; height: 16px; }
-.ev-actions { display: flex; align-items: center; gap: 8px; }
-body.style-evernote button.wb-btn.ev-new, body.style-evernote button.wb-btn.primary {
-  height: 38px; padding: 0 18px 0 14px; border: 0; border-radius: 48px; background: var(--ev-cta); color: #fff;
+button.sb-search:hover { background: color-mix(in srgb, var(--panel) 85%, var(--fg) 6%); }
+button.sb-search svg { width: 16px; height: 16px; }
+.sb-actions { display: flex; align-items: center; gap: 8px; }
+body.sn-app button.wb-btn.sb-new, body.sn-app button.wb-btn.primary {
+  height: 38px; padding: 0 18px 0 14px; border: 0; border-radius: 48px; background: var(--cta); color: #fff;
   font-size: 14px; font-weight: 600; gap: 7px;
 }
-body.style-evernote button.wb-btn.ev-new:hover, body.style-evernote button.wb-btn.primary:hover { background: var(--ev-cta-hover); opacity: 1; }
-body.style-evernote button.wb-btn.ev-new svg { width: 17px; height: 17px; }
-button.clickable-icon.ev-round { width: 38px; height: 38px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--win); color: var(--muted); }
-button.clickable-icon.ev-round:hover { background: var(--ev-hover); color: var(--fg); }
-button.clickable-icon.ev-round svg { width: 17px; height: 17px; }
-button.ev-account {
+body.sn-app button.wb-btn.sb-new:hover, body.sn-app button.wb-btn.primary:hover { background: var(--cta-hover); opacity: 1; }
+body.sn-app button.wb-btn.sb-new svg { width: 17px; height: 17px; }
+button.clickable-icon.sb-round { width: 38px; height: 38px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--win); color: var(--muted); }
+button.clickable-icon.sb-round:hover { background: var(--hover-bg); color: var(--fg); }
+button.clickable-icon.sb-round svg { width: 17px; height: 17px; }
+button.sb-account {
   display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; height: 36px; padding: 0 8px;
   border: 0; border-radius: 8px; background: transparent; color: var(--fg); font-size: 13px; font-weight: 400;
 }
-button.ev-account:hover { background: var(--ev-hover); }
-.ev-avatar { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ev-avatar); color: #fff; font-size: 12px; font-weight: 600; }
-.ev-account-name { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+button.sb-account:hover { background: var(--hover-bg); }
+.sb-avatar { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--sb-avatar); color: #fff; font-size: 12px; font-weight: 600; }
+.sb-account-name { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
 
-body.style-evernote .sn-tree-header { padding: 0 12px 4px 14px; gap: 2px; }
-body.style-evernote .sn-tree-header .clickable-icon { width: 28px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); }
-body.style-evernote .sn-tree-header .clickable-icon:hover { background: var(--ev-hover); color: var(--fg); }
-body.style-evernote .sn-tree { padding: 0 12px 16px 14px; }
-body.style-evernote .sn-tree-section, body.style-evernote .sn-tree-section:first-child {
+body.sn-app .sn-tree-header { padding: 0 12px 4px 14px; gap: 2px; }
+body.sn-app .sn-tree-header .clickable-icon { width: 28px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); }
+body.sn-app .sn-tree-header .clickable-icon:hover { background: var(--hover-bg); color: var(--fg); }
+body.sn-app .sn-tree { padding: 0 12px 16px 14px; }
+body.sn-app .sn-tree-section, body.sn-app .sn-tree-section:first-child {
   margin: 18px 0 4px; padding-left: 8px; font-family: var(--font-inter); font-size: 12px; font-weight: 500;
   letter-spacing: 0; text-transform: none; color: var(--muted);
 }
-body.style-evernote .sn-tree-section:first-child { margin-top: 4px; }
-body.style-evernote .sn-outline .tree-item-self.sn-tree-row { min-height: 32px; padding: 4px 8px 4px 2px; border-radius: 6px; font-family: var(--font-inter); font-size: 14px; gap: 8px; margin-bottom: 0; color: var(--fg); }
-body.style-evernote .sn-outline .tree-item-self.sn-tree-row:hover { background: var(--ev-hover); }
-body.style-evernote .sn-outline .tree-item-self.sn-tree-row.is-active { background: var(--panel); }
-body.style-evernote .sn-outline .tree-item-self.sn-tree-row.is-active .sn-tree-label { color: var(--ink); }
-body.style-evernote .sn-tree-row[data-lv] .sn-tree-label { color: var(--fg); font-weight: 400; }
-body.style-evernote .sn-tree-icon { color: var(--muted); }
-body.style-evernote .sn-tree-icon svg { width: 16px; height: 16px; }
-body.style-evernote .tree-item-flair { font-family: var(--font-inter); font-size: 12px; color: var(--faint); }
-body.style-evernote .tree-item-children { margin-inline-start: 11px; border-color: transparent; }
-body.style-evernote .sn-tag-pill { padding: 1px 9px; border: 0; border-radius: 48px; background: var(--panel); color: var(--tag); font-family: var(--font-inter); font-size: 12px; }
-body.style-evernote .sn-tag-pill:hover { background: color-mix(in srgb, var(--panel) 80%, var(--fg) 10%); }
-body.style-evernote .ev-new .wb-label { display: inline; } /* the sidebar's button keeps its label on phones */
+body.sn-app .sn-tree-section:first-child { margin-top: 4px; }
+body.sn-app .sn-outline .tree-item-self.sn-tree-row { min-height: 32px; padding: 4px 8px 4px 2px; border-radius: 6px; font-family: var(--font-inter); font-size: 14px; gap: 8px; margin-bottom: 0; color: var(--fg); }
+body.sn-app .sn-outline .tree-item-self.sn-tree-row:hover { background: var(--hover-bg); }
+body.sn-app .sn-outline .tree-item-self.sn-tree-row.is-active { background: var(--panel); }
+body.sn-app .sn-outline .tree-item-self.sn-tree-row.is-active .sn-tree-label { color: var(--ink); }
+body.sn-app .sn-tree-row[data-lv] .sn-tree-label { color: var(--fg); font-weight: 400; }
+body.sn-app .sn-tree-icon { color: var(--muted); }
+body.sn-app .sn-tree-icon svg { width: 16px; height: 16px; }
+body.sn-app .tree-item-flair { font-family: var(--font-inter); font-size: 12px; color: var(--faint); }
+body.sn-app .tree-item-children { margin-inline-start: 11px; border-color: transparent; }
+body.sn-app .sn-tag-pill { padding: 1px 9px; border: 0; border-radius: 48px; background: var(--panel); color: var(--tag); font-family: var(--font-inter); font-size: 12px; }
+body.sn-app .sn-tag-pill:hover { background: color-mix(in srgb, var(--panel) 80%, var(--fg) 10%); }
+body.sn-app .sb-new .wb-label { display: inline; } /* the sidebar's button keeps its label on phones */
 
 /* ---------- Top bar: quiet ghost buttons; search, new card, brand and vault are in the sidebar */
-body.style-evernote .wb-top :is(.wb-brand, .wb-vault-btn, .wb-today, .wb-open, .wb-commands, .wb-new, .wb-btn kbd) { display: none; }
-body.style-evernote button.wb-btn { height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
-body.style-evernote button.wb-btn:hover { background: var(--ev-hover); color: var(--fg); }
-body.style-evernote button.wb-btn.is-active { background: var(--panel); color: var(--ink); }
-body.style-evernote button.clickable-icon.wb-icon { width: 34px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
-body.style-evernote button.clickable-icon.wb-icon:hover { background: var(--ev-hover); color: var(--fg); }
-body.style-evernote .wb-icon svg, body.style-evernote .wb-btn svg { width: 16px; height: 16px; }
+body.sn-app button.wb-btn { height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
+body.sn-app button.wb-btn:hover { background: var(--hover-bg); color: var(--fg); }
+body.sn-app button.wb-btn.is-active { background: var(--panel); color: var(--ink); }
+body.sn-app button.clickable-icon.wb-icon { width: 34px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
+body.sn-app button.clickable-icon.wb-icon:hover { background: var(--hover-bg); color: var(--fg); }
+body.sn-app .wb-icon svg, body.sn-app .wb-btn svg { width: 16px; height: 16px; }
 
 /* ---------- Board */
-body.style-evernote .sn-topbar { min-height: 44px; padding: 4px 14px 4px 10px; }
-body.style-evernote .sn-crumbs { font-family: var(--font-inter); font-size: 13px; }
-body.style-evernote .sn-crumb { color: var(--muted); font-weight: 500; }
-body.style-evernote .sn-crumb.is-current { color: var(--ink); font-weight: 600; }
-body.style-evernote .sn-crumb-sep { color: var(--faint); }
-body.style-evernote .sn-board .sn-topbar .clickable-icon, body.style-evernote .sn-editor .sn-editor-head .clickable-icon, body.style-evernote .sn-board .sn-hero-tools .clickable-icon {
+body.sn-app .sn-topbar { min-height: 44px; padding: 4px 14px 4px 10px; }
+body.sn-app .sn-crumbs { font-family: var(--font-inter); font-size: 13px; }
+body.sn-app .sn-crumb { color: var(--muted); font-weight: 500; }
+body.sn-app .sn-crumb.is-current { color: var(--ink); font-weight: 600; }
+body.sn-app .sn-crumb-sep { color: var(--faint); }
+body.sn-app .sn-board .sn-topbar .clickable-icon, body.sn-app .sn-editor .sn-editor-head .clickable-icon, body.sn-app .sn-board .sn-hero-tools .clickable-icon {
   height: 30px; min-width: 30px; border: 0; border-radius: 8px; color: var(--muted);
 }
-body.style-evernote .sn-board .sn-topbar .clickable-icon:hover, body.style-evernote .sn-editor .sn-editor-head .clickable-icon:hover, body.style-evernote .sn-board .sn-hero-tools .clickable-icon:hover { background: var(--ev-hover); color: var(--fg); border: 0; }
-body.style-evernote .sn-board .sn-topbar .clickable-icon.is-active, body.style-evernote .sn-editor .sn-editor-head .clickable-icon.is-active { background: var(--panel); color: var(--ink); border: 0; }
-body.style-evernote .sn-seg { background: var(--panel); border-radius: 8px; }
-body.style-evernote .sn-board .sn-topbar .sn-seg .clickable-icon { height: 26px; font-family: var(--font-inter); font-size: 12.5px; border-radius: 6px; }
-body.style-evernote .sn-board .sn-topbar .sn-seg .clickable-icon.is-active { background: var(--win); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-body.style-evernote .sn-page { padding: 14px 24px 60px; }
-body.style-evernote .sn-hero-badge { color: var(--muted); }
-body.style-evernote .sn-board .sn-hero-title, body.style-evernote .sn-hero.is-tag .sn-hero-title { font-family: var(--font-inter); font-weight: 600; font-size: 26px; line-height: 1.2; letter-spacing: -.02em; color: var(--ink); }
-body.style-evernote .sn-hero-count { font-family: var(--font-inter); font-size: 13px; color: var(--faint); }
-body.style-evernote .sn-hero-desc { font-size: 14px; color: var(--fg); }
+body.sn-app .sn-board .sn-topbar .clickable-icon:hover, body.sn-app .sn-editor .sn-editor-head .clickable-icon:hover, body.sn-app .sn-board .sn-hero-tools .clickable-icon:hover { background: var(--hover-bg); color: var(--fg); border: 0; }
+body.sn-app .sn-board .sn-topbar .clickable-icon.is-active, body.sn-app .sn-editor .sn-editor-head .clickable-icon.is-active { background: var(--panel); color: var(--ink); border: 0; }
+body.sn-app .sn-seg { background: var(--panel); border-radius: 8px; }
+body.sn-app .sn-board .sn-topbar .sn-seg .clickable-icon { height: 26px; font-family: var(--font-inter); font-size: 12.5px; border-radius: 6px; }
+body.sn-app .sn-board .sn-topbar .sn-seg .clickable-icon.is-active { background: var(--win); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+body.sn-app .sn-page { padding: 14px 24px 60px; }
+body.sn-app .sn-hero-badge { color: var(--muted); }
+body.sn-app .sn-board .sn-hero-title, body.sn-app .sn-hero.is-tag .sn-hero-title { font-family: var(--font-inter); font-weight: 600; font-size: 26px; line-height: 1.2; letter-spacing: -.02em; color: var(--ink); }
+body.sn-app .sn-hero-count { font-family: var(--font-inter); font-size: 13px; color: var(--faint); }
+body.sn-app .sn-hero-desc { font-size: 14px; color: var(--fg); }
 
-/* Cards: white notes on the grey, parent above the title (as Evernote shows the notebook), muted preview, pill tags */
-body.style-evernote .sn-masonry, body.style-evernote .sn-col { gap: 12px; }
-body.style-evernote .sn-card {
+/* Cards: white notes on the grey, parent above the title, muted preview, pill tags */
+body.sn-app .sn-masonry, body.sn-app .sn-col { gap: 12px; }
+body.sn-app .sn-card {
   display: flex; flex-direction: column; padding: 14px 16px 8px; border-radius: 10px;
   background: var(--sn-tint, var(--win)); box-shadow: 0 0 0 1px var(--sn-card-border, var(--line));
 }
-body.style-evernote .sn-card:hover { box-shadow: 0 0 0 1px var(--sn-card-border-hover, color-mix(in srgb, var(--faint) 50%, var(--line))), 0 4px 14px rgba(0,0,0,.06); }
-body.style-evernote .sn-card.is-editing { box-shadow: 0 0 0 2px var(--accent); }
-body.style-evernote .sn-card:focus:not(.is-picked), body.style-evernote .sn-card:focus-visible, body.style-evernote .sn-board .sn-masonry .sn-card:focus { box-shadow: 0 0 0 2px var(--accent); }
-body.style-evernote .sn-card.is-picked { box-shadow: 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent-soft) 60%, var(--win)); }
-body.style-evernote .sn-card > .sn-chips { order: -1; margin: 0 0 4px; gap: 4px 10px; }
-body.style-evernote .sn-card > .sn-chips .sn-chip { padding: 0; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 500; }
-body.style-evernote .sn-card > .sn-chips .sn-chip:hover { color: var(--ink); text-decoration: underline; }
-body.style-evernote .sn-card > .sn-chips .sn-chip-icon { display: none; }
-body.style-evernote .sn-card-head { min-height: 22px; align-items: center; gap: 8px; }
-body.style-evernote .sn-card-icon { color: var(--muted); }
-body.style-evernote .sn-board .sn-card-title, body.style-evernote.font-sans .sn-board .sn-card-title { font-family: var(--font-inter); font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--ink); }
-body.style-evernote .sn-board .sn-kids { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 48px; background: var(--panel); color: var(--muted); font-family: var(--font-inter); font-size: 11px; font-weight: 500; }
-body.style-evernote .sn-board .sn-kids::before, body.style-evernote .sn-board .sn-kids::after { content: none; }
-body.style-evernote .sn-board .sn-kids:hover { background: var(--accent-soft); color: var(--accent); text-decoration: none; }
-body.style-evernote .sn-card-body, body.style-evernote.font-sans .sn-card-body { font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: 4px; }
-body.style-evernote .sn-card-body :is(h1, h2, h3, h4, h5, h6, strong, b) { color: var(--fg); }
-body.style-evernote .sn-tags { gap: 6px; margin-top: 8px; }
-body.style-evernote .sn-tag, body.style-evernote .markdown-rendered a.tag { padding: 1px 8px; border-radius: 48px; background: var(--panel); color: var(--tag); font-family: var(--font-inter); font-size: 11px; line-height: 16px; }
-body.style-evernote .sn-tag:hover { background: color-mix(in srgb, var(--panel) 80%, var(--fg) 10%); }
-body.style-evernote .sn-chip { font-family: var(--font-inter); font-size: 12px; border-radius: 48px; }
-body.style-evernote .sn-card-foot { margin-top: 6px; }
-body.style-evernote .sn-foot-meta, body.style-evernote .sn-board .sn-count, body.style-evernote .sn-board .sn-card-more-btn { font-family: var(--font-inter); font-size: 12px; color: var(--faint); }
-body.style-evernote .sn-board .sn-card .sn-card-edit { font-family: var(--font-inter); }
-body.style-evernote .sn-composer { border-radius: 10px; background: var(--win); box-shadow: 0 0 0 1px var(--line); }
-body.style-evernote .sn-composer:focus-within { box-shadow: 0 0 0 2px var(--accent); }
-body.style-evernote .sn-board .sn-composer textarea { font-family: var(--font-inter); font-size: 14px; height: 44px; min-height: 44px; padding: 12px 16px; }
-body.style-evernote .sn-composer-hint { font-family: var(--font-inter); font-size: 11.5px; }
-body.style-evernote .sn-board .sn-group-title { font-family: var(--font-inter); font-size: 15px; font-weight: 600; color: var(--ink); }
-body.style-evernote .sn-group-icon { color: var(--muted); }
-body.style-evernote .sn-group-count { font-family: var(--font-inter); font-size: 13px; color: var(--faint); }
-body.style-evernote .sn-group-count::before, body.style-evernote .sn-group-count::after { content: none; }
-body.style-evernote .sn-empty, body.style-evernote .sn-footnote { font-family: var(--font-inter); font-size: 13px; }
-body.style-evernote .sn-filterbar { padding: 8px 24px; border-bottom: 0; }
-body.style-evernote .sn-search { height: 34px; border-radius: 8px; background: var(--win); border-color: var(--line); }
-body.style-evernote .sn-search:focus-within { border-color: #5b7cf0; box-shadow: 0 0 0 1px #5b7cf0; }
-body.style-evernote .sn-board .sn-search-input { font-family: var(--font-inter); font-size: 13px; }
-body.style-evernote .sn-board .sn-filter-btn, body.style-evernote .sn-board .sn-filterbar > .clickable-icon { height: 32px; border-radius: 48px; font-family: var(--font-inter); font-size: 12.5px; }
-body.style-evernote .sn-board .sn-filter-btn.is-active { border-color: var(--line); background: var(--panel); color: var(--ink); }
-body.style-evernote .sn-board .sn-filter-chip { height: 24px; border: 0; border-radius: 48px; background: var(--panel); color: var(--tag); font-family: var(--font-inter); font-size: 11.5px; }
-body.style-evernote .sn-selbar { border-radius: 12px; }
-body.style-evernote :is(.sn-selbar-count, .sn-board .sn-selbar-btn) { font-family: var(--font-inter); }
+body.sn-app .sn-card:hover { box-shadow: 0 0 0 1px var(--sn-card-border-hover, color-mix(in srgb, var(--faint) 50%, var(--line))), 0 4px 14px rgba(0,0,0,.06); }
+body.sn-app .sn-card.is-editing { box-shadow: 0 0 0 2px var(--accent); }
+body.sn-app .sn-card:focus:not(.is-picked), body.sn-app .sn-card:focus-visible, body.sn-app .sn-board .sn-masonry .sn-card:focus { box-shadow: 0 0 0 2px var(--accent); }
+body.sn-app .sn-card.is-picked { box-shadow: 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent-soft) 60%, var(--win)); }
+body.sn-app .sn-card > .sn-chips { order: -1; margin: 0 0 4px; gap: 4px 10px; }
+body.sn-app .sn-card > .sn-chips .sn-chip { padding: 0; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 500; }
+body.sn-app .sn-card > .sn-chips .sn-chip:hover { color: var(--ink); text-decoration: underline; }
+body.sn-app .sn-card > .sn-chips .sn-chip-icon { display: none; }
+body.sn-app .sn-card-head { min-height: 22px; align-items: center; gap: 8px; }
+body.sn-app .sn-card-icon { color: var(--muted); }
+body.sn-app .sn-board .sn-card-title { font-family: var(--font-inter); font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+body.sn-app .sn-board .sn-kids { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 48px; background: var(--panel); color: var(--muted); font-family: var(--font-inter); font-size: 11px; font-weight: 500; }
+body.sn-app .sn-board .sn-kids::before, body.sn-app .sn-board .sn-kids::after { content: none; }
+body.sn-app .sn-board .sn-kids:hover { background: var(--accent-soft); color: var(--accent); text-decoration: none; }
+body.sn-app .sn-card-body { font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: 4px; }
+body.sn-app .sn-card-body :is(h1, h2, h3, h4, h5, h6, strong, b) { color: var(--fg); }
+body.sn-app .sn-tags { gap: 6px; margin-top: 8px; }
+body.sn-app .sn-tag, body.sn-app .markdown-rendered a.tag { padding: 1px 8px; border-radius: 48px; background: var(--panel); color: var(--tag); font-family: var(--font-inter); font-size: 11px; line-height: 16px; }
+body.sn-app .sn-tag:hover { background: color-mix(in srgb, var(--panel) 80%, var(--fg) 10%); }
+body.sn-app .sn-chip { font-family: var(--font-inter); font-size: 12px; border-radius: 48px; }
+body.sn-app .sn-card-foot { margin-top: 6px; }
+body.sn-app .sn-foot-meta, body.sn-app .sn-board .sn-count, body.sn-app .sn-board .sn-card-more-btn { font-family: var(--font-inter); font-size: 12px; color: var(--faint); }
+body.sn-app .sn-board .sn-card .sn-card-edit { font-family: var(--font-inter); }
+body.sn-app .sn-composer { border-radius: 10px; background: var(--win); box-shadow: 0 0 0 1px var(--line); }
+body.sn-app .sn-composer:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+body.sn-app .sn-board .sn-composer textarea { font-family: var(--font-inter); font-size: 14px; height: 44px; min-height: 44px; padding: 12px 16px; }
+body.sn-app .sn-composer-hint { font-family: var(--font-inter); font-size: 11.5px; }
+body.sn-app .sn-board .sn-group-title { font-family: var(--font-inter); font-size: 15px; font-weight: 600; color: var(--ink); }
+body.sn-app .sn-group-icon { color: var(--muted); }
+body.sn-app .sn-group-count { font-family: var(--font-inter); font-size: 13px; color: var(--faint); }
+body.sn-app .sn-group-count::before, body.sn-app .sn-group-count::after { content: none; }
+body.sn-app .sn-empty, body.sn-app .sn-footnote { font-family: var(--font-inter); font-size: 13px; }
+body.sn-app .sn-filterbar { padding: 8px 24px; border-bottom: 0; }
+body.sn-app .sn-search { height: 34px; border-radius: 8px; background: var(--win); border-color: var(--line); }
+body.sn-app .sn-search:focus-within { border-color: #5b7cf0; box-shadow: 0 0 0 1px #5b7cf0; }
+body.sn-app .sn-board .sn-search-input { font-family: var(--font-inter); font-size: 13px; }
+body.sn-app .sn-board .sn-filter-btn, body.sn-app .sn-board .sn-filterbar > .clickable-icon { height: 32px; border-radius: 48px; font-family: var(--font-inter); font-size: 12.5px; }
+body.sn-app .sn-board .sn-filter-btn.is-active { border-color: var(--line); background: var(--panel); color: var(--ink); }
+body.sn-app .sn-board .sn-filter-chip { height: 24px; border: 0; border-radius: 48px; background: var(--panel); color: var(--tag); font-family: var(--font-inter); font-size: 11.5px; }
+body.sn-app .sn-selbar { border-radius: 12px; }
+body.sn-app :is(.sn-selbar-count, .sn-board .sn-selbar-btn) { font-family: var(--font-inter); }
 
-/* ---------- Status line and minibuffer: light, like Evernote's "All changes saved" footer */
-body.style-evernote .modeline {
+/* ---------- Status line and minibuffer: light, a quiet footer */
+body.sn-app .modeline {
   min-height: 30px; padding: 4px 24px; gap: 12px; background: transparent; color: var(--faint); border-top: 1px solid var(--line);
   font-family: var(--font-inter); font-size: 12px;
 }
-body.style-evernote .modeline .dim { color: var(--faint); }
-body.style-evernote .modeline .hi { color: var(--muted); font-weight: 600; }
-body.style-evernote .minibuf, body.style-evernote .minibuf input { font-family: var(--font-inter); font-size: 12.5px; }
-body.style-evernote .minibuf .mb-prompt { color: var(--accent); font-weight: 600; }
-body.style-evernote .minibuf .echo.is-hint { color: var(--faint); }
+body.sn-app .modeline .dim { color: var(--faint); }
+body.sn-app .modeline .hi { color: var(--muted); font-weight: 600; }
+body.sn-app .minibuf, body.sn-app .minibuf input { font-family: var(--font-inter); font-size: 12.5px; }
+body.sn-app .minibuf .mb-prompt { color: var(--accent); font-weight: 600; }
+body.sn-app .minibuf .echo.is-hint { color: var(--faint); }
 
-/* ---------- Note editor: Evernote's sheet with a big bold title */
-body.style-evernote .sn-editor-head { height: 52px; padding: 0 12px 0 14px; border-bottom: 0; }
-body.style-evernote .sn-editor-path { font-family: var(--font-inter); font-size: 13px; font-weight: 500; color: var(--muted); }
-body.style-evernote .sn-editor-path b { font-weight: 500; color: var(--fg); }
-body.style-evernote .sn-editor-page { max-width: 760px; padding: 18px 40px 40vh; }
-body.style-evernote .sn-editor-badge { color: var(--muted); }
-body.style-evernote .sn-inline-title { font-family: var(--font-inter); font-weight: 700; font-size: 32px; line-height: 1.2; letter-spacing: -.02em; color: var(--ink); margin: 6px 0 12px; }
-body.style-evernote .sn-props { font-family: var(--font-inter); font-size: 13px; border-bottom-color: var(--line); }
-body.style-evernote .sn-props-head, body.style-evernote .sn-editor-foot h4 { font-family: var(--font-inter); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
-body.style-evernote .sn-prop:hover { background: var(--ev-hover); }
-body.style-evernote .sn-prop-key { color: var(--muted); }
-body.style-evernote .sn-icon-pick { font-family: var(--font-inter); }
-body.style-evernote .sn-editor-text, body.style-evernote.font-sans .sn-editor-text:not(.is-source) { font-family: var(--font-inter); font-size: 15px; line-height: 1.65; color: var(--fg); }
-body.style-evernote .sn-editor-text.is-source { font-family: var(--font-code); font-size: 13px; }
-body.style-evernote .sn-reading { font-size: 15px; line-height: 1.65; }
-body.style-evernote .sn-fm-error { font-family: var(--font-code); }
+/* ---------- Note editor: a white sheet with a big bold title */
+body.sn-app .sn-editor-head { height: 52px; padding: 0 12px 0 14px; border-bottom: 0; }
+body.sn-app .sn-editor-path { font-family: var(--font-inter); font-size: 13px; font-weight: 500; color: var(--muted); }
+body.sn-app .sn-editor-path b { font-weight: 500; color: var(--fg); }
+body.sn-app .sn-editor-page { max-width: 760px; padding: 18px 40px 40vh; }
+body.sn-app .sn-editor-badge { color: var(--muted); }
+body.sn-app .sn-inline-title { font-family: var(--font-inter); font-weight: 700; font-size: 32px; line-height: 1.2; letter-spacing: -.02em; color: var(--ink); margin: 6px 0 12px; }
+body.sn-app .sn-props { font-family: var(--font-inter); font-size: 13px; border-bottom-color: var(--line); }
+body.sn-app .sn-props-head, body.sn-app .sn-editor-foot h4 { font-family: var(--font-inter); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
+body.sn-app .sn-prop:hover { background: var(--hover-bg); }
+body.sn-app .sn-prop-key { color: var(--muted); }
+body.sn-app .sn-icon-pick { font-family: var(--font-inter); }
+body.sn-app .sn-editor-text { font-family: var(--font-inter); font-size: 15px; line-height: 1.65; color: var(--fg); }
+body.sn-app .sn-editor-text.is-source { font-family: var(--font-code); font-size: 13px; }
+body.sn-app .sn-reading { font-size: 15px; line-height: 1.65; }
+body.sn-app .sn-fm-error { font-family: var(--font-code); }
 
 /* Rendered Markdown: black bold headings, grey quotes, monospace code */
-body.style-evernote .markdown-rendered :is(h1, h2, h3, h4, h5, h6) { color: var(--ink); font-weight: 700; letter-spacing: -.01em; }
-body.style-evernote .markdown-rendered :is(ul, ol) li::marker { color: var(--muted); }
-body.style-evernote .markdown-rendered ol li::marker { font-family: var(--font-inter); }
-body.style-evernote .markdown-rendered a { color: var(--accent); }
-body.style-evernote .markdown-rendered input[type="checkbox"] { accent-color: var(--accent); }
-body.style-evernote .markdown-rendered code { font-family: var(--font-code); color: #d13438; background: var(--code-bg); }
-body.style-evernote.theme-dark .markdown-rendered code { color: #ff8a8d; }
-body.style-evernote .markdown-rendered pre code, body.style-evernote .markdown-rendered .code-body code { color: inherit; }
-body.style-evernote .markdown-rendered .code-body, body.style-evernote .fv-text { font-family: var(--font-code); }
-body.style-evernote .markdown-rendered .code-block, body.style-evernote .markdown-rendered .sn-table-wrap { border-radius: 10px; }
-body.style-evernote .markdown-rendered th { font-weight: 600; text-align: left; }
-body.style-evernote .markdown-rendered blockquote { border-inline-start: 3px solid var(--panel); font-style: normal; }
-body.style-evernote .markdown-rendered .sn-pdf-head { font-family: var(--font-inter); }
+body.sn-app .markdown-rendered :is(h1, h2, h3, h4, h5, h6) { color: var(--ink); font-weight: 700; letter-spacing: -.01em; }
+body.sn-app .markdown-rendered :is(ul, ol) li::marker { color: var(--muted); }
+body.sn-app .markdown-rendered ol li::marker { font-family: var(--font-inter); }
+body.sn-app .markdown-rendered a { color: var(--accent); }
+body.sn-app .markdown-rendered input[type="checkbox"] { accent-color: var(--accent); }
+body.sn-app .markdown-rendered code { font-family: var(--font-code); color: #d13438; background: var(--code-bg); }
+body.sn-app.theme-dark .markdown-rendered code { color: #ff8a8d; }
+body.sn-app .markdown-rendered pre code, body.sn-app .markdown-rendered .code-body code { color: inherit; }
+body.sn-app .markdown-rendered .code-body, body.sn-app .fv-text { font-family: var(--font-code); }
+body.sn-app .markdown-rendered .code-block, body.sn-app .markdown-rendered .sn-table-wrap { border-radius: 10px; }
+body.sn-app .markdown-rendered th { font-weight: 600; text-align: left; }
+body.sn-app .markdown-rendered blockquote { border-inline-start: 3px solid var(--panel); font-style: normal; }
+body.sn-app .markdown-rendered .sn-pdf-head { font-family: var(--font-inter); }
 
 /* ---------- Menus, dialogs, pickers */
-body.style-evernote .menu { border-radius: 10px; padding: 6px; font-family: var(--font-inter); font-size: 13px; box-shadow: 0 8px 28px rgba(0,0,0,.14); }
-body.style-evernote .menu-item { padding: 6px 10px; border-radius: 6px; }
-body.style-evernote .menu-item:hover, body.style-evernote .menu-item.is-selected { background: var(--ev-hover); }
-body.style-evernote .menu-label { font-size: 11.5px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--muted); }
-body.style-evernote .modal { border-radius: 14px; font-family: var(--font-inter); }
-body.style-evernote .modal-title { font-family: var(--font-inter); font-weight: 600; font-size: 18px; border-bottom: 0; }
-body.style-evernote .modal input[type="text"] { height: 36px; border-radius: 8px; font-family: var(--font-inter); font-size: 14px; }
-body.style-evernote .modal-buttons button, body.style-evernote .modal-buttons button:not(.clickable-icon) { height: 34px; padding: 0 16px; border-radius: 48px; font-family: var(--font-inter); font-size: 13px; font-weight: 600; }
-body.style-evernote .modal-buttons button.mod-cta, body.style-evernote .setting-item-control .wb-btn.is-cta, body.style-evernote button.mod-cta { background: var(--ev-cta); color: #fff; border-color: var(--ev-cta); }
-body.style-evernote .setting-heading { letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 600; color: var(--muted); }
-body.style-evernote .setting-item-name { font-size: 13.5px; }
-body.style-evernote .setting-item-description { font-size: 12px; }
-body.style-evernote .setting-item-control select, body.style-evernote .setting-item-control input { height: 32px; border-radius: 8px; font-family: var(--font-inter); font-size: 13px; background: var(--win); }
-body.style-evernote button.sn-set-tab { font-family: var(--font-inter); }
-body.style-evernote button.sn-set-tab.is-active { border-bottom-color: var(--accent); }
-body.style-evernote .checkbox-container.is-enabled { background: var(--ev-cta); }
-body.style-evernote .sn-about-name { font-family: var(--font-inter); font-weight: 700; }
-body.style-evernote .prompt { border-radius: 14px; font-family: var(--font-inter); }
-body.style-evernote .prompt-input { font-family: var(--font-inter) !important; font-size: 15px !important; }
-body.style-evernote .comp { border-radius: 10px; }
-body.style-evernote .comp li.on { background: var(--ev-hover); }
-body.style-evernote :is(.sn-kbd-table, kbd.sn-k, .wb-btn kbd, button.sn-tb-insert kbd) { font-family: var(--font-code); }
+body.sn-app .menu { border-radius: 10px; padding: 6px; font-family: var(--font-inter); font-size: 13px; box-shadow: 0 8px 28px rgba(0,0,0,.14); }
+body.sn-app .menu-item { padding: 6px 10px; border-radius: 6px; }
+body.sn-app .menu-item:hover, body.sn-app .menu-item.is-selected { background: var(--hover-bg); }
+body.sn-app .menu-label { font-size: 11.5px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--muted); }
+body.sn-app .modal { border-radius: 14px; font-family: var(--font-inter); }
+body.sn-app .modal-title { font-family: var(--font-inter); font-weight: 600; font-size: 18px; border-bottom: 0; }
+body.sn-app .modal input[type="text"] { height: 36px; border-radius: 8px; font-family: var(--font-inter); font-size: 14px; }
+body.sn-app .modal-buttons button, body.sn-app .modal-buttons button:not(.clickable-icon) { height: 34px; padding: 0 16px; border-radius: 48px; font-family: var(--font-inter); font-size: 13px; font-weight: 600; }
+body.sn-app .modal-buttons button.mod-cta, body.sn-app .setting-item-control .wb-btn.is-cta, body.sn-app button.mod-cta { background: var(--cta); color: #fff; border-color: var(--cta); }
+body.sn-app .setting-heading { letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+body.sn-app .setting-item-name { font-size: 13.5px; }
+body.sn-app .setting-item-description { font-size: 12px; }
+body.sn-app .setting-item-control select, body.sn-app .setting-item-control input { height: 32px; border-radius: 8px; font-family: var(--font-inter); font-size: 13px; background: var(--win); }
+body.sn-app button.sn-set-tab { font-family: var(--font-inter); }
+body.sn-app button.sn-set-tab.is-active { border-bottom-color: var(--accent); }
+body.sn-app .checkbox-container.is-enabled { background: var(--cta); }
+body.sn-app .sn-about-name { font-family: var(--font-inter); font-weight: 700; }
+body.sn-app .prompt { border-radius: 14px; font-family: var(--font-inter); }
+body.sn-app .prompt-input { font-family: var(--font-inter) !important; font-size: 15px !important; }
+body.sn-app .comp { border-radius: 10px; }
+body.sn-app .comp li.on { background: var(--hover-bg); }
+body.sn-app :is(.sn-kbd-table, kbd.sn-k, .wb-btn kbd, button.sn-tb-insert kbd) { font-family: var(--font-code); }
 
 @media (max-width: 820px) {
-  body.style-evernote #app { grid-template-columns: minmax(0, 1fr); padding-left: env(safe-area-inset-left, 0px); }
-  body.style-evernote :is(.wb-top, .sn-main, .minibuf) { grid-column: 1; }
-  body.style-evernote .sn-side { box-shadow: var(--shadow-l); }
-  body.style-evernote .sn-editor.win { border-radius: 0; border: 0; }
-  body.style-evernote .sn-page { padding: 12px 14px 60px; }
+  body.sn-app #app { grid-template-columns: minmax(0, 1fr); padding-left: env(safe-area-inset-left, 0px); }
+  body.sn-app :is(.wb-top, .sn-main, .minibuf) { grid-column: 1; }
+  body.sn-app .sn-side { box-shadow: var(--shadow-l); }
+  body.sn-app .sn-editor.win { border-radius: 0; border: 0; }
+  body.sn-app .sn-page { padding: 12px 14px 60px; }
 }
 </style>
 </head>
-<body>
+<body class="sn-app">
 <div id="app"></div>
 <script>/**
  * @license lucide v0.460.0 - ISC
@@ -2074,8 +2064,7 @@ const STR = {
     fmError: "The frontmatter could not be parsed: {msg}. Fix it in source mode.",
     pdfLoading: "Loading PDF…", pdfFailed: "Couldn't show this PDF: {msg}", pdfPages: "{n} pages",
     settings: "Settings", setLanguage: "Language", setTheme: "Theme", themeAuto: "System", themeLight: "Light", themeDark: "Dark",
-    setStyle: "Style", styleEvernote: "Evernote: sidebar with search, clean sans-serif", styleWorkbench: "Workbench: Emacs-style frame and mode line", searchShort: "Search", setFontDesc: "Used by the Workbench style",
-    setFont: "Font", fontMono: "JetBrains Mono everywhere", fontPlex: "IBM Plex Sans text, mono details", fontInter: "Inter text, mono details",
+    searchShort: "Search",
     cmdPalette: "M-x", commands: "Commands", cardHint: "{name} — RET edit · S-RET open · SPC select · DEL delete · drag to nest",
     scopeHere: "Here", scopeAll: "Everywhere", recent: "Recent", insertLink: "Link to", addChild: "Add child card",
     tbHeading: "Heading (cycle)", tbBold: "Bold (Ctrl+B)", tbItalic: "Italic (Ctrl+I)", tbStrike: "Strikethrough", tbCode: "Inline code",
@@ -2157,8 +2146,7 @@ const STR = {
     fmError: "Не удалось разобрать frontmatter: {msg}. Исправьте в режиме исходника.",
     pdfLoading: "Загрузка PDF…", pdfFailed: "Не удалось показать PDF: {msg}", pdfPages: "Страниц: {n}",
     settings: "Настройки", setLanguage: "Язык", setTheme: "Тема", themeAuto: "Системная", themeLight: "Светлая", themeDark: "Тёмная",
-    setStyle: "Стиль", styleEvernote: "Evernote: боковая панель с поиском, чистый шрифт без засечек", styleWorkbench: "Workbench: окна и строка режима в духе Emacs", searchShort: "Поиск", setFontDesc: "Для стиля Workbench",
-    setFont: "Шрифт", fontMono: "JetBrains Mono везде", fontPlex: "IBM Plex Sans для текста, моно для деталей", fontInter: "Inter для текста, моно для деталей",
+    searchShort: "Поиск",
     cmdPalette: "M-x", commands: "Команды", cardHint: "{name} — RET правка · S-RET открыть · SPC выбрать · DEL удалить · перетащите, чтобы вложить",
     scopeHere: "Здесь", scopeAll: "Везде", recent: "Недавние", insertLink: "Ссылка на", addChild: "Добавить дочернюю карточку",
     tbHeading: "Заголовок (по кругу)", tbBold: "Жирный (Ctrl+B)", tbItalic: "Курсив (Ctrl+I)", tbStrike: "Зачёркнутый", tbCode: "Код в строке",
@@ -2547,7 +2535,8 @@ const DEFAULTS = {
   templatesFolder: "", defaultDepth: 1, defaultLayout: "columns", defaultSort: "manual", defaultGrouped: false,
   outlineSort: "manual", previewLength: 600, cardMaxHeight: 360, maxCards: 1000,
 };
-const UI = Object.assign({ theme: "auto", style: "evernote", font: "mono", sideW: 280, editorW: 560, sideOpen: true, lang: "auto" }, lsGet("sn-ui", {}));
+const UI = Object.assign({ theme: "auto", sideW: 280, editorW: 560, sideOpen: true, lang: "auto" }, lsGet("sn-ui", {}));
+delete UI.style; delete UI.font; // retired settings
 const saveUI = () => lsSet("sn-ui", UI);
 
 const vault = {
@@ -4192,7 +4181,6 @@ function renderBoard(resetScroll = false) {
   if (focusComposer) { composer.input.value = focusComposer.value; composer.input.focus(); composer.grow(); }
   else if (focusSearch) { const si = $(".sn-search-input", root); si?.focus(); si?.setSelectionRange(focusSearch.pos, focusSearch.pos); }
   else if (focusCard) $(`.sn-card[data-path="${CSS.escape(focusCard)}"]`, root)?.focus({ preventScroll: true });
-  updateStatus();
 }
 
 function boardSig(model) {
@@ -4230,7 +4218,6 @@ function patchBoard() {
   if (hs !== board.heroSig) { $(".sn-hero", root)?.replaceWith(renderHero(model)); board.heroSig = hs; }
   board.lastModel = model;
   $("#board > .modeline")?.replaceWith(boardModeline(model));
-  updateStatus();
 }
 function renderToolbar() {
   const bar = h("div", { cls: "sn-topbar" });
@@ -5639,7 +5626,7 @@ function updateEdToolbar() {
   const hb = bar.querySelector('[data-act="heading"]');
   if (hb) setIcon(hb, st.heading ? `heading-${Math.min(st.heading, 6)}` : "heading");
 }
-/* ---------- Floating format bar: shown over a selection in the editor text, like Evernote's */
+/* ---------- Floating format bar: shown over a selection in the editor text */
 function updateFmtBar(ta) {
   const has = ta && document.activeElement === ta && ta.selectionEnd > ta.selectionStart && editor.mode !== "read" && !ac.el;
   let bar = $(".sn-fmtbar");
@@ -5783,9 +5770,6 @@ function applyTheme() {
   const dark = UI.theme === "dark" || (UI.theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.body.classList.toggle("theme-dark", dark);
   document.body.classList.toggle("theme-light", !dark);
-  document.body.classList.toggle("style-evernote", UI.style !== "workbench");
-  document.body.classList.toggle("font-sans", UI.font === "plex" || UI.font === "inter");
-  document.body.classList.toggle("font-inter", UI.font === "inter");
   document.body.classList.toggle("write-serif", UI.writeFont === "serif");
   document.body.classList.toggle("write-sans", UI.writeFont === "sans");
   document.body.classList.toggle("write-inter", UI.writeFont === "inter");
@@ -5805,10 +5789,6 @@ function setSide(open) {
 function showLoading(on) {
   $(".sn-loading")?.remove();
   if (on) document.body.append(h("div", { cls: "sn-loading" }, ic("sn-spin", "loader-2"), h("span", { text: t("indexing") })));
-}
-function updateStatus() {
-  const s = $(".wb-vault");
-  if (s) s.textContent = `${graph.nodes.size} ${t("cards")} · ${vault.notes.size} ${t("notes")}`;
 }
 let refreshQueued = false;
 function refresh(o = {}) {
@@ -5880,7 +5860,7 @@ function wbBtn(iconName, label, onClick, cls = "", kbd = null) {
   return b;
 }
 /* The bar's width depends on the language, the vault name and the sync status, so it is measured, not guessed from the window width */
-const TOP_FIT_STEPS = [1, 2, 3, 4, 5];
+const TOP_FIT_STEPS = [1, 2, 3];
 function fitTopBar(top) {
   for (const i of TOP_FIT_STEPS) top.classList.remove(`fit-${i}`);
   for (const i of TOP_FIT_STEPS) { if (top.scrollWidth <= top.clientWidth) break; top.classList.add(`fit-${i}`); }
@@ -5911,34 +5891,26 @@ function renderAll() {
     m.showBelow(e.currentTarget);
   };
   const newCard = async () => { const title = await promptModal(t("newCard")); if (title) createCard(title, board.target, "", undefined, { open: true }); };
-  const vaultBtn = wbBtn(vault.fs.kind === "demo" ? "flask-conical" : "folder", vault.fs.name, vaultMenu, "wb-vault-btn hide-narrow");
-  vaultBtn.append(ic("wb-caret", "chevron-down"));
   const top = h("div", { cls: "wb-top" },
     iconBtn("panel-left", t("toggleSidebar"), () => setSide($("#app").classList.contains("side-closed")), "wb-icon"),
-    h("div", { cls: "wb-brand" }, "Sup", h("i", { text: "sidian" }), h("small", { cls: "wb-vault" })),
     h("div", { cls: "wb-spacer" }),
     syncButton(),
-    vaultBtn,
     tasksButton(),
     filesButton(),
-    wbBtn("calendar-days", wt("today"), () => openToday(), "hide-narrow wb-today", null),
-    wbBtn("search", t("openShort"), () => quickOpen(), "wb-open", "C-o"),
-    wbBtn("terminal", t("commands"), () => commandPalette(), "hide-narrow wb-commands", "C-p"),
-    wbBtn("plus", t("newShort"), newCard, "primary wb-new"),
     iconBtn("sun-moon", t("toggleTheme"), () => { const dark = document.body.classList.contains("theme-dark"); UI.theme = dark ? "light" : "dark"; saveUI(); applyTheme(); }, "wb-icon wb-theme"),
     iconBtn("settings", t("settings"), () => settingsModal(), "wb-icon"));
-  // Evernote style: search, the new-card button and the vault live in the sidebar (hidden in the Workbench style)
-  const search = h("button", { cls: "ev-search", type: "button", title: t("openShort") + " · Ctrl+O" }, ic("", "search"), h("span", { text: t("searchShort") }));
+  // search, the new-card button and the vault live in the sidebar
+  const search = h("button", { cls: "sb-search", type: "button", title: t("openShort") + " · Ctrl+O" }, ic("", "search"), h("span", { text: t("searchShort") }));
   search.addEventListener("click", () => quickOpen());
-  const sideHead = h("div", { cls: "ev-side-head" }, search,
-    h("div", { cls: "ev-actions" },
-      wbBtn("plus", t("newShort"), newCard, "ev-new"),
-      iconBtn("calendar-days", wt("today"), () => openToday(), "ev-round"),
-      iconBtn("terminal", t("commands") + " · Ctrl+P", () => commandPalette(), "ev-round")));
-  const account = h("button", { cls: "ev-account", type: "button", title: vault.fs.name },
-    h("span", { cls: "ev-avatar", text: (vault.fs.name || "S").trim().charAt(0).toUpperCase() }), h("span", { cls: "ev-account-name", text: vault.fs.name }), ic("wb-caret", "chevron-down"));
+  const sideHead = h("div", { cls: "sb-head" }, search,
+    h("div", { cls: "sb-actions" },
+      wbBtn("plus", t("newShort"), newCard, "sb-new"),
+      iconBtn("calendar-days", wt("today"), () => openToday(), "sb-round"),
+      iconBtn("terminal", t("commands") + " · Ctrl+P", () => commandPalette(), "sb-round")));
+  const account = h("button", { cls: "sb-account", type: "button", title: vault.fs.name },
+    h("span", { cls: "sb-avatar", text: (vault.fs.name || "S").trim().charAt(0).toUpperCase() }), h("span", { cls: "sb-account-name", text: vault.fs.name }), ic("wb-caret", "chevron-down"));
   account.addEventListener("click", vaultMenu);
-  const side = h("div", { cls: "sn-side" }, sideHead, h("div", { cls: "sn-outline", id: "tree" }), h("div", { cls: "ev-side-foot" }, account));
+  const side = h("div", { cls: "sn-side" }, sideHead, h("div", { cls: "sn-outline", id: "tree" }), h("div", { cls: "sb-foot" }, account));
   const sideRes = h("div", { cls: "sn-resizer is-side" });
   makeResizer(sideRes, (dx, start) => { UI.sideW = Math.max(180, Math.min(520, start + dx)); document.documentElement.style.setProperty("--side-w", UI.sideW + "px"); }, () => UI.sideW);
   const main = h("div", { cls: "sn-main win" }, h("div", { cls: "sn-board-host" }, h("div", { id: "board", cls: "sn-board", tabindex: "0" })));
@@ -5982,8 +5954,6 @@ function settingsModal(tab) {
     ["appearance", t("sectionAppearance"), "palette", () => [
       item(t("setLanguage"), null, select(UI.lang, [["auto", "Auto"], ["en", "English"], ["ru", "Русский"]], (v) => { UI.lang = v; saveUI(); applyLanguage(); close(); settingsModal("appearance"); })),
       item(t("setTheme"), null, select(UI.theme, [["auto", t("themeAuto")], ["light", t("themeLight")], ["dark", t("themeDark")]], (v) => { UI.theme = v; saveUI(); applyTheme(); })),
-      item(t("setStyle"), null, select(UI.style === "workbench" ? "workbench" : "evernote", [["evernote", t("styleEvernote")], ["workbench", t("styleWorkbench")]], (v) => { UI.style = v; saveUI(); applyTheme(); })),
-      item(t("setFont"), t("setFontDesc"), select(UI.font === "plex" || UI.font === "inter" ? UI.font : "mono", [["mono", t("fontMono")], ["plex", t("fontPlex")], ["inter", t("fontInter")]], (v) => { UI.font = v; saveUI(); applyTheme(); })),
       item(wt("setWriteFont"), wt("setWriteFontDesc"), select(UI.writeFont || "mono", [["mono", wt("wfMono")], ["serif", wt("wfSerif")], ["sans", wt("wfSans")], ["inter", wt("wfInter")]], (v) => { UI.writeFont = v; saveUI(); applyTheme(); })),
     ]],
     ["cards", t("sectionCards"), "layers", () => [
@@ -8148,7 +8118,6 @@ function renderTasksView(root) {
   if (focusId) { const inp = $(`[data-ag-input="${focusId}"]`, root); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
   else if (hadFocus) body.focus({ preventScroll: true });
   renderTasksButton();
-  updateStatus();
 }
 const orgRowKey = (x) => `${x.e.key}\u0000${x.kind}\u0000${x.dn ?? ""}`;
 function orgRow(x) {
@@ -8387,7 +8356,7 @@ function orgCapture(pre = {}) {
 
 
 /* =========================================================
-   Files: every attachment in the vault (like Evernote's Files),
+   Files: every attachment in the vault,
    with a preview, the notes that use it, rename (links follow) and delete.
    ========================================================= */
 const FVSTR = {

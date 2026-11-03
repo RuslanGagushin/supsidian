@@ -38,22 +38,21 @@ describe("tables and fonts", () => {
     noErrors();
   });
 
-  test("Inter works as the interface font and as the writing font, and is embedded for Cyrillic too", async () => {
+  test("Inter is the interface font and a writing font, and is embedded for Cyrillic too", async () => {
     const r = await ev(async () => {
       const family = (s) => getComputedStyle(document.body).getPropertyValue(s).trim();
-      UI.font = "inter"; UI.writeFont = "sans"; applyTheme();
-      const iface = { ui: getComputedStyle(document.body).fontFamily, sans: document.body.classList.contains("font-sans") };
+      UI.writeFont = "sans"; applyTheme();
+      const ui = getComputedStyle(document.body).fontFamily;
       const reading = h("div", { cls: "sn-reading" });
       document.body.append(reading);
       const plexText = getComputedStyle(reading).fontFamily;
-      UI.font = "mono"; UI.writeFont = "inter"; applyTheme();
+      UI.writeFont = "inter"; applyTheme();
       const interText = getComputedStyle(reading).fontFamily;
       const faces = [...document.fonts].filter((f) => f.family.replace(/"/g, "") === "Inter").length;
-      return { iface, plexText, interText, faces, family: family("--font-inter") };
+      return { ui, plexText, interText, faces, family: family("--font-inter") };
     });
-    assert.match(r.iface.ui, /^"?Inter/);
-    assert.ok(r.iface.sans);
-    assert.match(r.plexText, /^"?IBM Plex Sans/, "IBM Plex Sans for writing stays Plex under an Inter interface");
+    assert.match(r.ui, /^"?Inter/);
+    assert.match(r.plexText, /^"?IBM Plex Sans/, "IBM Plex Sans for writing stays Plex under the Inter interface");
     assert.match(r.interText, /^"?Inter/);
     assert.equal(r.faces, 2);
     noErrors();
@@ -579,29 +578,22 @@ describe("palettes, settings, language and themes", () => {
   });
 });
 
-describe("top bar (Workbench style)", () => {
+describe("top bar", () => {
   const state = () => ev(async () => {
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const top = $(".wb-top");
-    return { fits: top.scrollWidth <= top.clientWidth, step: TOP_FIT_STEPS.filter((i) => top.classList.contains(`fit-${i}`)).length, brand: getComputedStyle($(".wb-brand")).display !== "none" };
+    return { fits: top.scrollWidth <= top.clientWidth, step: TOP_FIT_STEPS.filter((i) => top.classList.contains(`fit-${i}`)).length };
   });
 
-  for (const lang of ["en", "ru"]) test(`always fits, and gets its details back when the window widens (${lang})`, async () => {
-    await openVault({ viewport: { width: 1700, height: 800 }, lang, style: "workbench" });
-    assert.deepEqual(await state(), { fits: true, step: 0, brand: true });
-    for (const width of [1250, 1100, 1000, 850, 821, 700, 500, 390, 320]) {
+  for (const lang of ["en", "ru"]) test(`always fits, and gets its labels back when the window widens (${lang})`, async () => {
+    await openVault({ viewport: { width: 1700, height: 800 }, lang });
+    assert.deepEqual(await state(), { fits: true, step: 0 });
+    for (const width of [1250, 1000, 821, 700, 500, 390, 320]) {
       await H.page.setViewportSize({ width, height: 800 });
       assert.equal((await state()).fits, true, `overflows at ${width}px`);
     }
     await H.page.setViewportSize({ width: 1700, height: 800 });
     assert.equal((await state()).step, 0);
-  });
-
-  test("drops the details before the logo, and the logo before the labels", async () => {
-    await openVault({ viewport: { width: 1100, height: 800 }, style: "workbench" });
-    assert.equal((await state()).brand, true);
-    await H.page.setViewportSize({ width: 850, height: 800 });
-    assert.deepEqual(await state(), { fits: true, step: 3, brand: false });
   });
 
   test("refits when a button's text changes", async () => {
@@ -612,15 +604,13 @@ describe("top bar (Workbench style)", () => {
   });
 });
 
-describe("Evernote style", () => {
+describe("sidebar", () => {
   const shown = (sel) => ev((sel) => { const el = $(sel); return !!el && getComputedStyle(el).display !== "none"; }, sel);
 
-  test("is the default: search, the blue new-card button and the vault are in the sidebar", async () => {
+  test("holds search, the blue new-card button and the vault", async () => {
     await openVault({ viewport: { width: 1280, height: 800 } });
-    assert.equal(await ev(() => document.body.classList.contains("style-evernote")), true);
-    for (const sel of [".ev-search", ".ev-new", ".ev-account"]) assert.equal(await shown(sel), true, sel);
-    for (const sel of [".wb-brand", ".wb-top .wb-new", ".wb-top .wb-open"]) assert.equal(await shown(sel), false, sel);
-    assert.match(await page().textContent(".ev-account"), /Demo|vault/i);
+    for (const sel of [".sb-search", ".sb-new", ".sb-account"]) assert.equal(await shown(sel), true, sel);
+    assert.match(await page().textContent(".sb-account"), /Demo|vault/i);
     // the sidebar runs the full height, the top bar starts to its right
     const box = await ev(() => ({ side: $(".sn-side").getBoundingClientRect().toJSON(), top: $(".wb-top").getBoundingClientRect().toJSON() }));
     assert.equal(box.side.top, 0);
@@ -630,26 +620,17 @@ describe("Evernote style", () => {
 
   test("the sidebar search opens the card picker", async () => {
     await openVault();
-    await page().click(".ev-search");
+    await page().click(".sb-search");
     assert.equal(await ev(() => !!document.activeElement?.closest("#minibuf") && document.activeElement.getAttribute("aria-label") === t("pickCard")), true);
     noErrors();
   });
 
-  test("the top bar fits at every width", async () => {
-    await openVault({ viewport: { width: 1700, height: 800 } });
-    for (const width of [1250, 1000, 821, 700, 390, 320]) {
-      await H.page.setViewportSize({ width, height: 800 });
-      assert.equal(await ev(async () => { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const top = $(".wb-top"); return top.scrollWidth <= top.clientWidth; }), true, `overflows at ${width}px`);
-    }
-  });
-
-  test("Settings switches to the Workbench style and back", async () => {
+  test("Settings has no style or interface font choice, and old saved choices are dropped", async () => {
     await openVault();
-    await ev(() => { UI.style = "workbench"; applyTheme(); });
-    assert.equal(await shown(".ev-side-head"), false);
-    assert.equal(await shown(".wb-brand"), true);
-    await ev(() => { UI.style = "evernote"; applyTheme(); });
-    assert.equal(await shown(".ev-side-head"), true);
+    await H.page.addInitScript(() => { try { localStorage.setItem("sn-ui", JSON.stringify({ lang: "en", style: "workbench", font: "plex" })); } catch { /* file:// storage */ } });
+    await H.page.reload();
+    assert.deepEqual(await ev(() => [UI.style, UI.font, document.body.className.includes("font-")]), [undefined, undefined, false]);
+    assert.equal(await ev(() => document.body.classList.contains("sn-app")), true);
   });
 });
 

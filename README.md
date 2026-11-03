@@ -46,9 +46,9 @@ This repository wraps the Supsidian page into native apps with [Tauri 2](https:/
 - On Android the repository lives in the app's private storage and is copied to and from the folder you picked on every sync, so the vault takes up space twice there.
 
 ### Look and keyboard
-- Two styles: **Evernote** (the default: a full-height sidebar with search, a blue *New card* button and the vault at the bottom, Inter type, white cards on warm grey) and **Workbench** (the Emacs-flavoured frame below). Switch in **Settings → Appearance → Style**.
+- A full-height sidebar with search, a blue *New card* button and the vault at the bottom; Inter type, white cards on warm grey.
 - Light and dark themes; English and Russian interface.
-- An Emacs-flavoured workbench: a mode line under each board (layout, depth, sort, card count) and a minibuffer with key hints. Most actions have shortcuts. Org-style `C-c` chords work in the editor, for example `C-c C-t` to cycle a TODO state and `C-c C-s` / `C-c C-d` to schedule or set a deadline.
+- Emacs-flavoured details: a mode line under each board (layout, depth, sort, card count) and a minibuffer with key hints. Most actions have shortcuts. Org-style `C-c` chords work in the editor, for example `C-c C-t` to cycle a TODO state and `C-c C-s` / `C-c C-d` to schedule or set a deadline.
 - On phones the layout switches to a single column, the side tree becomes a drawer, and the Android **Back** button closes the editor, menus and dialogs before leaving the app.
 - **Settings** has a tab per group: Appearance, Cards, Board, Agenda, Git (in the app) and About, which shows the version and checks for updates.
 

@@ -18,16 +18,15 @@ after(async () => (await browser)?.close());
  * - demo: start from the demo vault (default) or from an empty one
  * - notes: { path: raw text }, files: { path: { data, type, mtime } } (attachments)
  * - time: freeze the clock at this date (agenda and date tests)
- * - style: the interface style ("evernote", the default, or "workbench")
  */
-export async function openVault({ demo = true, notes = {}, files = {}, viewport = { width: 1280, height: 800 }, time = null, lang = "en", style } = {}) {
+export async function openVault({ demo = true, notes = {}, files = {}, viewport = { width: 1280, height: 800 }, time = null, lang = "en" } = {}) {
   await page?.close();
   page = await (await launch()).newPage({ viewport, locale: lang === "ru" ? "ru-RU" : "en-US" });
   errors = [];
   page.setDefaultTimeout(15000); // six files run their browsers in parallel; a busy machine is slow
   page.on("pageerror", (e) => errors.push(e));
   if (time) await page.clock.setFixedTime(new Date(time));
-  await page.addInitScript(({ lang, style }) => { try { localStorage.clear(); localStorage.setItem("sn-ui", JSON.stringify({ lang, style })); } catch { /* file:// storage */ } }, { lang, style });
+  await page.addInitScript(({ lang }) => { try { localStorage.clear(); localStorage.setItem("sn-ui", JSON.stringify({ lang })); } catch { /* file:// storage */ } }, { lang });
   await page.goto(PAGE);
   await page.evaluate(async ({ demo, notes, files }) => {
     const fs = demo ? demoVault() : new MemoryFS("Test vault", "demo");
