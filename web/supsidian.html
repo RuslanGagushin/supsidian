@@ -4863,11 +4863,25 @@ function renderEditor() {
   renderEditorProps();
   setSaveState();
 }
+/** macOS turns -- into an em dash as you type, which breaks table separators (|---|), --- rules and frontmatter fences:
+   on a line of only dashes, pipes, colons and spaces the dashes go back to hyphens. */
+function undoSmartDashes(ta) {
+  const { value: v, selectionStart: s, selectionEnd: e } = ta;
+  if (s !== e || !/[–—]/.test(v)) return;
+  const a = v.lastIndexOf("\n", s - 1) + 1, b = v.indexOf("\n", s) < 0 ? v.length : v.indexOf("\n", s);
+  const line = v.slice(a, b);
+  if (!/[–—]/.test(line) || !/^[\s|:\-–—]+$/.test(line)) return;
+  const fix = (t) => t.replace(/—/g, "--").replace(/–/g, "-");
+  ta.setRangeText(fix(line), a, b, "preserve");
+  const caret = a + fix(v.slice(a, s)).length;
+  ta.setSelectionRange(caret, caret);
+}
 /** The editor's textarea: the whole note in source mode, the block being edited in live preview. */
 function editorTextarea(value, live = false) {
   const ta = h("textarea", { cls: "sn-editor-text" + (editor.mode === "source" ? " is-source" : "") + (live ? " is-live" : ""), spellcheck: "true", placeholder: editor.mode === "source" ? t("emptyBody") : t("emptyBody") + " " + wt("slashHint") });
   ta.value = value;
   ta.addEventListener("input", (e) => {
+    undoSmartDashes(ta);
     editor.dirty = true; setSaveState(); autosize(ta); scheduleSave();
     syncHook("modify", editor.path, 250);
     if (e.isTrusted || ac.el) acUpdate(ta);

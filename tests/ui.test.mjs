@@ -377,6 +377,18 @@ describe("table editing", () => {
     noErrors();
   });
 
+  test("macOS smart dashes don't break a table separator or a rule", async () => {
+    const typed = (v) => ev((v) => {
+      const t = $(".sn-editor-text.is-live");
+      t.value = v; t.setSelectionRange(v.length, v.length);
+      t.dispatchEvent(new InputEvent("input", { inputType: "insertReplacementText" }));
+      return [t.value, t.selectionStart];
+    }, v);
+    assert.deepEqual(await typed("| Hello | One |\n| \u2014- | \u2014\u2014"), ["| Hello | One |\n| --- | ----", 28]);
+    assert.deepEqual(await typed("\u2014-"), ["---", 3]);
+    assert.deepEqual(await typed("Wait \u2014 here"), ["Wait \u2014 here", 11], "dashes in text stay");
+  });
+
   test("Alt+arrows move rows and columns", async () => {
     await page().click("#editor .sn-live p");
     await page().click("#editor .sn-live tbody tr:last-child td:first-child");
