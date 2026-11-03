@@ -91,8 +91,9 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 ## How the app is put together
 
 ```
-web/supsidian.html          the whole Supsidian page in one file (copied to dist/index.html)
-scripts/web.mjs             prepares dist/index.html before every build
+web/src/                    the Supsidian page's sources: page.html, css/, js/ and vendor/ (libraries, fonts)
+scripts/page.mjs            builds them into one file, web/supsidian.html (not committed)
+scripts/web.mjs             builds the page and copies it to dist/index.html before every app build
 src-tauri/                  the Tauri app: window, permissions (capabilities/default.json), icons
 tauri-plugin-vault/         vault file access: pick the folder, list, read, write, delete
   src/desktop.rs            Windows/macOS: plain file access with atomic writes
@@ -103,7 +104,7 @@ icon.png                    source of every app icon (`npm run icons` regenerate
 tests/                      page tests: the real page in headless Chrome on an in-memory vault (`npm test`)
 ```
 
-`scripts/web.mjs` works in two layouts. Next to a full Supsidian checkout (a `../standalone` folder), it rebuilds `standalone/supsidian.html` and refreshes `web/supsidian.html` from it. On its own, as in this repository, it uses `web/supsidian.html` as is. Inside the app, the page switches its file access to the vault plugin and opens `http(s)://` and `obsidian://` links in the system browser or in Obsidian.
+The page is still a single HTML file, so it also works opened straight from disk. Its sources live in `web/src/`: `page.html` is the page with an `<!-- include: path -->` line where each stylesheet and script goes, in order, and `scripts/page.mjs` replaces those lines with the files. The scripts are plain (not modules) and share one scope, as they did in the single file, so a new file only needs its include line. `npm test` and `npm run web` build the page first; `npm run page` builds just the page. `npm run codemirror` rebuilds `web/src/vendor/codemirror.js` after a CodeMirror update. Inside the app, the page switches its file access to the vault plugin and opens `http(s)://` and `obsidian://` links in the system browser or in Obsidian.
 
 On Android the app draws edge to edge (behind the status bar and gesture bar). The vault plugin measures those bars and pads the page so nothing ends up underneath them.
 
@@ -122,7 +123,7 @@ The installed Windows and macOS apps only accept updates signed with the key who
 - Add the private key as the repository secret `TAURI_SIGNING_PRIVATE_KEY`, with the contents of `~/.tauri/supsidian.key`. If the key has a password, also add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Tagged builds are then signed, and the release gets a `latest.json` (made by `scripts/updater-manifest.mjs`) that the apps read.
 - Without the secret, the apps still build, but a release can't update them. **Check now** falls back to comparing versions with GitHub and opens the release page.
 - Keep a backup of the private key. If it is lost, installed apps can't take signed updates any more, and everyone has to download one release by hand. To start over with a new key, run `npx tauri signer generate -w ~/.tauri/supsidian.key`, then put the new `.pub` contents in `tauri.conf.json`.
-- When releasing, bump the version in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `APP_VERSION` in `web/supsidian.html`. A test checks that they match.
+- When releasing, bump the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`; the page takes its version from `package.json` when it is built. A test checks that they match.
 
 ### Android signing
 The workflow always builds a **release** APK. Android only installs signed APKs, and an update must be signed with the same key as the installed app.

@@ -1,4 +1,4 @@
-// Shared setup for the page tests: the real web/supsidian.html in headless Chrome, with an in-memory vault.
+// Shared setup for the page tests: the real web/supsidian.html (built from web/src by npm test) in headless Chrome, with an in-memory vault.
 // Each test file runs in its own process (node --test), so one browser per file.
 import { after } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";

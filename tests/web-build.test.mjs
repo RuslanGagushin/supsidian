@@ -1,10 +1,10 @@
-// scripts/web.mjs: puts the page into dist/ for Tauri, with pdf.js beside it.
+// scripts/page.mjs builds the page from web/src; scripts/web.mjs puts it into dist/ for Tauri, with pdf.js beside it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const app = fileURLToPath(new URL("..", import.meta.url));
@@ -13,20 +13,25 @@ const at = (p) => new URL("../" + p, import.meta.url);
 test("dist/index.html is the page, pdf.js is next to it", () => {
   const out = execFileSync(process.execPath, ["scripts/web.mjs"], { cwd: app, encoding: "utf8" });
   assert.match(out, /dist\/index\.html ready/);
-  // in the full repository the page comes from ../standalone; here it is web/supsidian.html
-  const source = existsSync(at("../standalone/supsidian.html")) ? at("../standalone/supsidian.html") : at("web/supsidian.html");
-  assert.ok(readFileSync(at("dist/index.html")).equals(readFileSync(source)));
+  assert.ok(readFileSync(at("dist/index.html")).equals(readFileSync(at("web/supsidian.html"))));
   for (const f of ["pdf.min.mjs", "pdf.worker.min.mjs"]) assert.ok(existsSync(at("dist/pdfjs/" + f)), f);
 });
 
+test("web/src/page.html includes every source file once, and the page has no directives left", () => {
+  const files = readdirSync(at("web/src"), { recursive: true }).filter((f) => /\.(css|js)$/.test(f)).map((f) => f.split(sep).join("/")).sort();
+  const included = [...readFileSync(at("web/src/page.html"), "utf8").matchAll(/<!-- include: (\S+) -->/g)].map((m) => m[1]);
+  assert.deepEqual([...included].sort(), files);
+  assert.doesNotMatch(readFileSync(at("web/supsidian.html"), "utf8"), /<!-- include:|__APP_VERSION__/);
+});
+
 test("the page loads pdf.js from ./pdfjs/ before the CDN, at the installed version", () => {
-  const page = readFileSync(at("web/supsidian.html"), "utf8");
+  const page = readFileSync(at("web/src/js/markdown.js"), "utf8");
   const version = JSON.parse(readFileSync(at("node_modules/pdfjs-dist/package.json"), "utf8")).version;
   assert.match(page, new RegExp(`const PDFJS_VERSION = "${version.replace(/\./g, "\\.")}"`), "PDFJS_VERSION matches package.json's pdfjs-dist");
   assert.match(page, /\.\/pdfjs\//);
 });
 
-test("the page's APP_VERSION and the app's version match package.json", () => {
+test("the page's APP_VERSION (filled in from package.json) and the app's version match package.json", () => {
   const version = JSON.parse(readFileSync(at("package.json"), "utf8")).version;
   assert.match(readFileSync(at("web/supsidian.html"), "utf8"), new RegExp(`const APP_VERSION = "${version.replace(/\./g, "\\.")}"`));
   assert.equal(JSON.parse(readFileSync(at("src-tauri/tauri.conf.json"), "utf8")).version, version);

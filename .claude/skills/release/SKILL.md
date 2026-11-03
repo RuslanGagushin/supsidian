@@ -21,7 +21,7 @@ GitHub release with generated notes. Nothing is built or uploaded by hand.
 Semver from the commits since the last tag: new features → minor (0.11.0 → 0.12.0),
 only fixes → patch (0.12.0 → 0.12.1). If the user names a version, use theirs.
 
-## 3. Bump it in all six places (keep them equal)
+## 3. Bump it in all five places (keep them equal)
 
 | File | What |
 | --- | --- |
@@ -30,15 +30,14 @@ only fixes → patch (0.12.0 → 0.12.1). If the user names a version, use their
 | `src-tauri/Cargo.toml` | `version` under `[package]` |
 | `src-tauri/Cargo.lock` | `version` of the `name = "supsidian"` package (not other crates) |
 | `src-tauri/tauri.conf.json` | `"version"` |
-| `web/supsidian.html` | `const APP_VERSION = "…"` |
 
-Check with `git diff | grep "^[-+][^-+]"`: exactly seven old/new version pairs (package-lock.json has two), nothing else.
-Don't grep the old version in `web/supsidian.html`: the bundled libraries in it are minified onto huge lines,
-and a dotted version like 0.12.0 also matches them as a regex. Run `npm test` again.
+The page's `APP_VERSION` is not one of them: `scripts/page.mjs` fills it in from `package.json` when it builds the page.
+Check with `git diff | grep "^[-+][^-+]"`: exactly six old/new version pairs (package-lock.json has two), nothing else.
+Run `npm test` again.
 
 ## 4. Commit, tag, push
 
-Commit only those six files. The message is `Release X.Y.Z`, then a short plain-language paragraph of what
+Commit only those five files. The message is `Release X.Y.Z`, then a short plain-language paragraph of what
 changed for the user (features first, no commit hashes), then the attribution line the session asks for:
 
 ```
