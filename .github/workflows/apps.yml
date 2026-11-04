@@ -136,6 +136,8 @@ jobs:
         run: |
           npx tauri android init --ci
           npx tauri icon icon.png
+          # icon.png's rounded plate shows as a square inside Android's mask: use the committed full-bleed foregrounds
+          for d in src-tauri/icons/android/mipmap-*dpi; do cp "$d/ic_launcher_foreground.png" "src-tauri/gen/android/app/src/main/res/${d##*/}/"; done
       # Optional: add these repository secrets to get a signed release APK that you can update later
       #   ANDROID_KEYSTORE_BASE64  — base64 of a .jks file (scripts/android-signing.mjs makes one)
       #   ANDROID_KEY_PASSWORD     — its password (key alias must be "supsidian")

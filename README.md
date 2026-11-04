@@ -148,7 +148,7 @@ All platforms need **Rust** (<https://rustup.rs>) and **Node.js 20+** (<https://
 | `npm run android:init` | creates the Android project in `src-tauri/gen/android` (once) |
 | `npm run android:dev` | runs the app on a phone connected by USB |
 | `npm run android:build` | builds a release APK for 64-bit ARM |
-| `npm run icons` | regenerates every icon from `icon.png` |
+| `npm run icons` | regenerates every icon from `icon.png` (then `git checkout src-tauri/icons/android/*/ic_launcher_foreground.png`: those are made by hand for the Android mask) |
 | `npm test` | runs the page tests in `tests/` with headless Chrome (set `CHROME_PATH` to use another Chromium) |
 | `npm run test:rust` | runs the vault plugin's Rust tests (file access, git sync) |
 
