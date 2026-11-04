@@ -171,6 +171,19 @@ describe("editor", () => {
     noErrors();
   });
 
+  test("lines stop wrapping only while the caret is on a table row", async () => {
+    const wraps = () => ev(() => $(".sn-editor-text").classList.contains("cm-lineWrapping"));
+    await setValue("| a | b |\n| --- | --- |\n| 1 | 2 |\n\ntext", 2);
+    await page().keyboard.press("ArrowRight");
+    assert.equal(await wraps(), false, "caret on the table");
+    await page().keyboard.press("ControlOrMeta+End");
+    assert.equal(await wraps(), true, "caret below it: wrapping is back");
+    await page().keyboard.press("ControlOrMeta+Home");
+    await page().keyboard.press("ControlOrMeta+End");
+    assert.equal(await wraps(), true, "and again the second time");
+    noErrors();
+  });
+
   test("Ctrl+B and Ctrl+I wrap the selection", async () => {
     await setValue("make bold", 5, 9);
     await page().keyboard.press("Control+b");
@@ -664,6 +677,14 @@ describe("phone layout", () => {
     const box = await page().locator("#editor").boundingBox();
     assert.ok(box.width >= 370, `editor width ${box.width}`);
     noErrors();
+  });
+
+  test("the note's text uses the editor's width, not the desktop margins", async () => {
+    await ev(() => openEditor("Cards/History.md"));
+    const pad = await ev(() => { const s = getComputedStyle($(".sn-editor-page")); return [parseFloat(s.paddingLeft), parseFloat(s.paddingRight)]; });
+    assert.ok(pad.every((p) => p <= 16), `side padding ${pad}`);
+    const box = await page().locator(".sn-editor-page .cm-content").boundingBox();
+    assert.ok(box.width >= 330, `text width ${box.width}`);
   });
 
   test("the sidebar opens as a drawer and closes on navigation", async () => {

@@ -100,9 +100,10 @@ function editorTableWrap(ta) {
   const pos = ta.selectionStart, v = ta.value;
   const line = v.slice(v.lastIndexOf("\n", pos - 1) + 1, (v.indexOf("\n", pos) + 1 || v.length + 1) - 1);
   const want = document.activeElement === ta && /^\s*\|.*\|/.test(line);
-  if (want === ta.classList.contains("is-nowrap")) return;
+  if (want === !!ta.noWrap) return; // not the class: CodeMirror rewrites its content element's classes
   // keep the caret line where it is on screen while the text reflows
   const sc = $(".sn-editor-scroll"), before = caretRect(ta, pos).top;
+  ta.noWrap = want;
   ta.classList.toggle("is-nowrap", want);
   if (ta.setWrap) ta.setWrap(!want); else ta.wrap = want ? "off" : "soft";
   autosize(ta);

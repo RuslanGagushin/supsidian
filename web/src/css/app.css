@@ -246,4 +246,5 @@ body.sn-app :is(.sn-kbd-table, kbd.sn-k, .wb-btn kbd, button.sn-tb-insert kbd) {
   body.sn-app .sn-side { box-shadow: var(--shadow-l); }
   body.sn-app .sn-editor.win { border-radius: 0; border: 0; }
   body.sn-app .sn-page { padding: 12px 14px 60px; }
+  body.sn-app .sn-editor-page { padding: 12px 14px 40vh; }
 }
