@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Supsidian",
+  "productName": "Supstack",
   "version": "0.14.3",
   "identifier": "com.supsidian.app",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Supsidian",
+        "title": "Supstack",
         "width": 1280,
         "height": 820,
         "minWidth": 360,
@@ -30,7 +30,7 @@
     "targets": "all",
     "category": "Productivity",
     "shortDescription": "Card board and agenda for Obsidian vaults",
-    "longDescription": "Supsidian shows an Obsidian vault as a board of nested cards, with Org-style TODOs, an agenda and git sync between your devices. Notes stay plain Markdown files in your vault.",
+    "longDescription": "Supstack shows an Obsidian vault as a board of nested cards, with Org-style TODOs, an agenda and git sync between your devices. Notes stay plain Markdown files in your vault.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

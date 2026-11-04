@@ -308,7 +308,7 @@ fn commit_local(repo: &Repository, sig: &Signature) -> Result<bool> {
     }
     let tree = repo.find_tree(tree_id)?;
     let parents: Vec<_> = parent.iter().collect();
-    repo.commit(Some("HEAD"), sig, sig, &format!("Supsidian sync {}", stamp()), &tree, &parents)?;
+    repo.commit(Some("HEAD"), sig, sig, &format!("Supstack sync {}", stamp()), &tree, &parents)?;
     Ok(true)
 }
 
@@ -345,7 +345,7 @@ fn merge(repo: &Repository, their: &AnnotatedCommit, sig: &Signature, report: &m
         }
     }
     let tree = repo.find_tree(idx.write_tree_to(repo)?)?;
-    repo.commit(Some("HEAD"), sig, sig, &format!("Supsidian merge {}", stamp()), &tree, &[&our, &their_commit])?;
+    repo.commit(Some("HEAD"), sig, sig, &format!("Supstack merge {}", stamp()), &tree, &[&our, &their_commit])?;
     force_checkout(repo)
 }
 
@@ -379,8 +379,8 @@ pub(crate) fn sync_repo(dir: &Path, cfg: &GitConfig) -> Result<GitReport> {
             repo.remote("origin", &cfg.remote)?;
         }
     }
-    let name = if cfg.author_name.is_empty() { "Supsidian" } else { cfg.author_name.as_str() };
-    let email = if cfg.author_email.is_empty() { "supsidian@localhost" } else { cfg.author_email.as_str() };
+    let name = if cfg.author_name.is_empty() { "Supstack" } else { cfg.author_name.as_str() };
+    let email = if cfg.author_email.is_empty() { "supstack@localhost" } else { cfg.author_email.as_str() };
     let sig = Signature::now(name, email)?;
     trace("fetch");
     let mut fo = FetchOptions::new();
@@ -402,7 +402,7 @@ pub(crate) fn sync_repo(dir: &Path, cfg: &GitConfig) -> Result<GitReport> {
         let their = repo.reference_to_annotated_commit(&r)?;
         if repo.head().is_err() {
             // nothing here yet: take the remote branch as is
-            repo.reference(&format!("refs/heads/{branch}"), their.id(), true, "supsidian: first pull")?;
+            repo.reference(&format!("refs/heads/{branch}"), their.id(), true, "supstack: first pull")?;
             repo.set_head(&format!("refs/heads/{branch}"))?;
             force_checkout(&repo)?;
             report.pulled = true;
@@ -412,7 +412,7 @@ pub(crate) fn sync_repo(dir: &Path, cfg: &GitConfig) -> Result<GitReport> {
             } else if analysis.contains(MergeAnalysis::ANALYSIS_FASTFORWARD) {
                 let head = repo.head()?;
                 let name = head.name().ok_or_else(|| Error::Msg("detached HEAD".into()))?.to_owned();
-                repo.reference(&name, their.id(), true, "supsidian: fast-forward")?;
+                repo.reference(&name, their.id(), true, "supstack: fast-forward")?;
                 force_checkout(&repo)?;
                 report.pulled = true;
             } else {

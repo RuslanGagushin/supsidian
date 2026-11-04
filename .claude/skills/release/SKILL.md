@@ -1,9 +1,9 @@
 ---
 name: release
-description: Release a new Supsidian version — bump the version everywhere, commit "Release X.Y.Z", tag vX.Y.Z and push so GitHub Actions builds the Windows, macOS and Android apps and publishes the GitHub release. Use when the user asks to release, ship, publish, cut a version or "push and release".
+description: Release a new Supstack version — bump the version everywhere, commit "Release X.Y.Z", tag vX.Y.Z and push so GitHub Actions builds the Windows, macOS and Android apps and publishes the GitHub release. Use when the user asks to release, ship, publish, cut a version or "push and release".
 ---
 
-# Releasing Supsidian
+# Releasing Supstack
 
 A release is a version bump commit plus a `vX.Y.Z` tag. Pushing the tag runs `.github/workflows/apps.yml`
 ("Build apps"), which builds the apps, signs the desktop updates, writes `latest.json` and publishes the
@@ -62,7 +62,7 @@ git push origin vX.Y.Z
   Don't poll in a loop: check once later, or `gh run watch <id>` in the background.
 - On failure: `gh run view <id> --log-failed`, fix on `main`, then move the tag:
   `git tag -f vX.Y.Z && git push -f origin vX.Y.Z` (only while the release isn't public yet), or release a patch.
-- When it's done, `gh release view vX.Y.Z` should list: the `.dmg`, `Supsidian.app.tar.gz` + `.sig`,
+- When it's done, `gh release view vX.Y.Z` should list: the `.dmg`, `Supstack.app.tar.gz` + `.sig`,
   the `.msi`, the `-setup.exe` + `.sig`, `app-universal-release.apk` and `latest.json`.
   A missing `.sig` / `latest.json` means the `TAURI_SIGNING_PRIVATE_KEY` secret is gone: the apps won't self-update.
 

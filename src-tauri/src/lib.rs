@@ -12,5 +12,5 @@ pub fn run() {
         .plugin(tauri_plugin_process::init());
     builder
         .run(tauri::generate_context!())
-        .expect("error while running Supsidian");
+        .expect("error while running Supstack");
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the Supsidian window may do: open the vault folder, read and write inside it, open links outside the app.",
+  "description": "What the Supstack window may do: open the vault folder, read and write inside it, open links outside the app.",
   "windows": [
     "main"
   ],

@@ -1,4 +1,4 @@
-// Builds the single-file page web/supsidian.html from its sources in web/src/.
+// Builds the single-file page web/supstack.html from its sources in web/src/.
 // web/src/page.html is the page with <!-- include: path --> where each source file goes, in order;
 // a directive on a line of its own takes its line break with it. __APP_VERSION__ becomes package.json's version.
 // npm test and npm run web build it first; on its own: npm run page
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const app = join(dirname(fileURLToPath(import.meta.url)), "..");
 const src = join(app, "web", "src");
-export const PAGE = join(app, "web", "supsidian.html");
+export const PAGE = join(app, "web", "supstack.html");
 
 export function buildPage() {
   const { version } = JSON.parse(readFileSync(join(app, "package.json"), "utf8"));
@@ -21,5 +21,5 @@ export function buildPage() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const html = buildPage();
-  console.log(`web/supsidian.html ready (${(html.length / 1024).toFixed(0)} KB)`);
+  console.log(`web/supstack.html ready (${(html.length / 1024).toFixed(0)} KB)`);
 }

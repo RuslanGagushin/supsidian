@@ -577,7 +577,7 @@ describe("palettes, settings, language and themes", () => {
   test("About shows the version; the web page has nothing to update", async () => {
     await ev(() => settingsModal("about"));
     const body = await page().textContent(".sn-set-body");
-    assert.match(body, /Supsidian/);
+    assert.match(body, /Supstack/);
     assert.match(body, new RegExp("Version " + (await ev(() => APP_VERSION)).replace(/\./g, "\\.") + " · web page"));
     assert.match(body, /Release notes/);
     assert.doesNotMatch(body, /Check now/, "no update check in the browser");

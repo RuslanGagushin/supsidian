@@ -13,7 +13,7 @@ const at = (p) => new URL("../" + p, import.meta.url);
 test("dist/index.html is the page, pdf.js is next to it", () => {
   const out = execFileSync(process.execPath, ["scripts/web.mjs"], { cwd: app, encoding: "utf8" });
   assert.match(out, /dist\/index\.html ready/);
-  assert.ok(readFileSync(at("dist/index.html")).equals(readFileSync(at("web/supsidian.html"))));
+  assert.ok(readFileSync(at("dist/index.html")).equals(readFileSync(at("web/supstack.html"))));
   for (const f of ["pdf.min.mjs", "pdf.worker.min.mjs"]) assert.ok(existsSync(at("dist/pdfjs/" + f)), f);
 });
 
@@ -21,7 +21,7 @@ test("web/src/page.html includes every source file once, and the page has no dir
   const files = readdirSync(at("web/src"), { recursive: true }).filter((f) => /\.(css|js)$/.test(f)).map((f) => f.split(sep).join("/")).sort();
   const included = [...readFileSync(at("web/src/page.html"), "utf8").matchAll(/<!-- include: (\S+) -->/g)].map((m) => m[1]);
   assert.deepEqual([...included].sort(), files);
-  assert.doesNotMatch(readFileSync(at("web/supsidian.html"), "utf8"), /<!-- include:|__APP_VERSION__/);
+  assert.doesNotMatch(readFileSync(at("web/supstack.html"), "utf8"), /<!-- include:|__APP_VERSION__/);
 });
 
 test("the page loads pdf.js from ./pdfjs/ before the CDN, at the installed version", () => {
@@ -33,7 +33,7 @@ test("the page loads pdf.js from ./pdfjs/ before the CDN, at the installed versi
 
 test("the page's APP_VERSION (filled in from package.json) and the app's version match package.json", () => {
   const version = JSON.parse(readFileSync(at("package.json"), "utf8")).version;
-  assert.match(readFileSync(at("web/supsidian.html"), "utf8"), new RegExp(`const APP_VERSION = "${version.replace(/\./g, "\\.")}"`));
+  assert.match(readFileSync(at("web/supstack.html"), "utf8"), new RegExp(`const APP_VERSION = "${version.replace(/\./g, "\\.")}"`));
   assert.equal(JSON.parse(readFileSync(at("src-tauri/tauri.conf.json"), "utf8")).version, version);
 });
 
@@ -46,21 +46,21 @@ test("the updater checks this repository's latest release and has a signing key"
 test("scripts/updater-manifest.mjs lists the signed Windows and macOS bundles in latest.json", () => {
   const out = mkdtempSync(join(tmpdir(), "sn-release-"));
   const put = (p, text) => { mkdirSync(dirname(join(out, p)), { recursive: true }); writeFileSync(join(out, p), text); };
-  put("Supsidian-Windows/nsis/Supsidian_0.8.0_x64-setup.exe", "exe");
-  put("Supsidian-Windows/nsis/Supsidian_0.8.0_x64-setup.exe.sig", "WINSIG\n");
-  put("Supsidian-Windows/msi/Supsidian_0.8.0_x64_en-US.msi", "msi");
-  put("Supsidian-macOS/macos/Supsidian.app.tar.gz", "tgz");
-  put("Supsidian-macOS/macos/Supsidian.app.tar.gz.sig", "MACSIG");
-  put("Supsidian-Android/app-universal-release.apk", "apk");
+  put("Supstack-Windows/nsis/Supstack_0.8.0_x64-setup.exe", "exe");
+  put("Supstack-Windows/nsis/Supstack_0.8.0_x64-setup.exe.sig", "WINSIG\n");
+  put("Supstack-Windows/msi/Supstack_0.8.0_x64_en-US.msi", "msi");
+  put("Supstack-macOS/macos/Supstack.app.tar.gz", "tgz");
+  put("Supstack-macOS/macos/Supstack.app.tar.gz.sig", "MACSIG");
+  put("Supstack-Android/app-universal-release.apk", "apk");
   execFileSync(process.execPath, ["scripts/updater-manifest.mjs", out, "v0.8.0", "you/repo"], { cwd: app });
   const m = JSON.parse(readFileSync(join(out, "latest.json"), "utf8"));
   assert.equal(m.version, "0.8.0");
-  assert.deepEqual(m.platforms["windows-x86_64"], { signature: "WINSIG", url: "https://github.com/you/repo/releases/download/v0.8.0/Supsidian_0.8.0_x64-setup.exe" });
-  assert.deepEqual(m.platforms["darwin-aarch64"], { signature: "MACSIG", url: "https://github.com/you/repo/releases/download/v0.8.0/Supsidian.app.tar.gz" });
+  assert.deepEqual(m.platforms["windows-x86_64"], { signature: "WINSIG", url: "https://github.com/you/repo/releases/download/v0.8.0/Supstack_0.8.0_x64-setup.exe" });
+  assert.deepEqual(m.platforms["darwin-aarch64"], { signature: "MACSIG", url: "https://github.com/you/repo/releases/download/v0.8.0/Supstack.app.tar.gz" });
   assert.deepEqual(m.platforms["darwin-x86_64"], m.platforms["darwin-aarch64"]);
   // unsigned builds: nothing to offer, no manifest
   const bare = mkdtempSync(join(tmpdir(), "sn-release-"));
-  writeFileSync(join(bare, "Supsidian_0.8.0_x64-setup.exe"), "exe");
+  writeFileSync(join(bare, "Supstack_0.8.0_x64-setup.exe"), "exe");
   execFileSync(process.execPath, ["scripts/updater-manifest.mjs", bare, "v0.8.0", "you/repo"], { cwd: app, stdio: "pipe" });
   assert.ok(!existsSync(join(bare, "latest.json")));
 });

@@ -1,4 +1,4 @@
-//! Vault access for Supsidian: the user picks a folder once, then the page lists, reads,
+//! Vault access for Supstack: the user picks a folder once, then the page lists, reads,
 //! writes and deletes files inside it by vault-relative paths ("Cards/Note.md").
 
 use tauri::{

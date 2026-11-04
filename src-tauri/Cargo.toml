@@ -1,7 +1,7 @@
 [package]
 name = "supsidian"
 version = "0.14.3"
-description = "Supsidian — a card board and Org-style agenda for Obsidian vaults"
+description = "Supstack — a card board and Org-style agenda for Obsidian vaults"
 edition = "2021"
 publish = false
 

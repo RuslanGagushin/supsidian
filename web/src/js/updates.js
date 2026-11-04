@@ -15,7 +15,7 @@ const USTR = {
     available: "Version {v} is available.", availableAndroid: "Version {v} is available — download the APK and open it to install.",
     downloading: "Downloading version {v}… {p}", restarting: "Installed — restarting…", error: "Couldn't check for updates: {msg}",
     auto: "Check for updates automatically", autoDesc: "When the app starts and twice a day. Nothing is installed without asking.",
-    availableNotice: "Supsidian {v} is available", open: "Open",
+    availableNotice: "Supstack {v} is available", open: "Open",
     releaseNotes: "Release notes", releaseNotesDesc: "What changed in each version, and downloads for every platform.",
     webNote: "This page is always the version it was loaded at. The Windows, macOS and Android apps keep themselves up to date.",
   },
@@ -25,7 +25,7 @@ const USTR = {
     available: "Доступна версия {v}.", availableAndroid: "Доступна версия {v} — скачайте APK и откройте его, чтобы установить.",
     downloading: "Скачиваем версию {v}… {p}", restarting: "Установлено — перезапускаем…", error: "Не удалось проверить обновления: {msg}",
     auto: "Проверять обновления автоматически", autoDesc: "При запуске и дважды в день. Без вашего согласия ничего не устанавливается.",
-    availableNotice: "Доступна Supsidian {v}", open: "Открыть",
+    availableNotice: "Доступна Supstack {v}", open: "Открыть",
     releaseNotes: "Что нового", releaseNotesDesc: "Изменения в каждой версии и файлы для всех платформ.",
     webNote: "Эта страница остаётся той версией, с которой была загружена. Приложения для Windows, macOS и Android обновляются сами.",
   },
@@ -91,7 +91,7 @@ function aboutBody(item, toggle) {
   appVersion().then((v) => (ver.textContent = v));
   const ua = navigator.userAgent;
   const platform = !IS_NATIVE ? ut("web") : IS_ANDROID ? "Android" : /Mac/i.test(ua) ? "macOS" : /Win/i.test(ua) ? "Windows" : "Linux";
-  const out = [h("div", { cls: "sn-about" }, h("div", { cls: "sn-about-name", text: "Supsidian" }), h("div", { cls: "sn-about-ver" }, ut("version") + " ", ver, " · " + platform))];
+  const out = [h("div", { cls: "sn-about" }, h("div", { cls: "sn-about-name", text: "Supstack" }), h("div", { cls: "sn-about-ver" }, ut("version") + " ", ver, " · " + platform))];
   if (IS_NATIVE) {
     const btn = h("button", { cls: "wb-btn", type: "button", onClick: () => (upd.state === "available" ? installUpdate() : checkUpdate()) });
     const row = item(ut("updates"), " ", btn);
@@ -132,7 +132,7 @@ setInterval(() => pollChanges(), 4000);
 window.addEventListener("focus", () => pollChanges(true));
 window.addEventListener("beforeunload", (e) => { if (editor.dirty) { saveEditor(); e.preventDefault(); } });
 window.addEventListener("resize", debounce(() => { for (const m of masonries) m.relayout(false); }, 100));
-window.SupsidianApp = { loadVault, HandleFS, MemoryFS, demoVault, vault, board, get graph() { return graph; } };
+window.SupstackApp = { loadVault, HandleFS, MemoryFS, demoVault, vault, board, get graph() { return graph; } };
 /** On launch, go straight back into the last vault when that needs no prompt; the welcome screen stays as the fallback. */
 async function autoReopen() {
   try {

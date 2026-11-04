@@ -1,10 +1,10 @@
-# Supsidian
+# Supstack
 
-**Supsidian shows an Obsidian vault as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
+**Supstack (formerly Supsidian) shows an Obsidian vault as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
 
-Every card is an ordinary Markdown note in your vault. Supsidian adds nothing to your files except the frontmatter it needs to link cards together, so Obsidian, Git, Syncthing and any other tool keep working on the same folder.
+Every card is an ordinary Markdown note in your vault. Supstack adds nothing to your files except the frontmatter it needs to link cards together, so Obsidian, Git, Syncthing and any other tool keep working on the same folder.
 
-This repository wraps the Supsidian page into native apps with [Tauri 2](https://v2.tauri.app):
+This repository wraps the Supstack page into native apps with [Tauri 2](https://v2.tauri.app):
 
 | Platform | Download | Vault access |
 |---|---|---|
@@ -64,7 +64,7 @@ This repository wraps the Supsidian page into native apps with [Tauri 2](https:/
 Open the repository's **Releases** page (or the latest **Actions → Build apps** run, under **Artifacts**) and download the file for your platform.
 
 - **Windows:** run the `-setup.exe` or the `.msi`.
-- **macOS:** open the `.dmg` and drag Supsidian to Applications. The app is not signed with an Apple Developer ID, so the first time, **right-click the app → Open**.
+- **macOS:** open the `.dmg` and drag Supstack to Applications. The app is not signed with an Apple Developer ID, so the first time, **right-click the app → Open**.
 - **Android:** copy the `.apk` to the phone and open it, allowing installs from that app when Android asks. With USB debugging on, `adb install -r <file>.apk` works too.
 
 ### First start
@@ -91,8 +91,8 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 ## How the app is put together
 
 ```
-web/src/                    the Supsidian page's sources: page.html, css/, js/ and vendor/ (libraries, fonts)
-scripts/page.mjs            builds them into one file, web/supsidian.html (not committed)
+web/src/                    the Supstack page's sources: page.html, css/, js/ and vendor/ (libraries, fonts)
+scripts/page.mjs            builds them into one file, web/supstack.html (not committed)
 scripts/web.mjs             builds the page and copies it to dist/index.html before every app build
 src-tauri/                  the Tauri app: window, permissions (capabilities/default.json), icons
 tauri-plugin-vault/         vault file access: pick the folder, list, read, write, delete
@@ -114,7 +114,7 @@ On Android the app draws edge to edge (behind the status bar and gesture bar). T
 
 1. Push the repository to GitHub.
 2. Open **Actions → Build apps → Run workflow**. A run takes about 15–25 minutes, less on later runs thanks to the cache.
-3. Download the results from the run's **Artifacts**: **Supsidian-Windows**, **Supsidian-macOS**, **Supsidian-Android**.
+3. Download the results from the run's **Artifacts**: **Supstack-Windows**, **Supstack-macOS**, **Supstack-Android**.
 4. To publish a release, push a tag: `git tag v0.1.0 && git push --tags`. The same files are attached to a GitHub Release.
 
 ### Desktop update signing

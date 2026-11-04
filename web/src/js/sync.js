@@ -14,7 +14,7 @@ const sync = { crash: "", busy: false, last: null, error: "", report: null, time
 
 const SYNC_STR = {
   en: {
-    unavailable: "Git sync works in the Supsidian app with a vault folder opened from disk.",
+    unavailable: "Git sync works in the Supstack app with a vault folder opened from disk.",
     unavailableShort: "no sync",
     noRemote: "Git: set up a remote", noRemoteShort: "set up git",
     syncing: "Git: syncing…", syncingShort: "syncing…",
@@ -35,7 +35,7 @@ const SYNC_STR = {
     crashNote: "The previous sync did not finish. Last steps: {steps}",
   },
   ru: {
-    unavailable: "Git-синхронизация работает в приложении Supsidian с папкой хранилища, открытой с диска.",
+    unavailable: "Git-синхронизация работает в приложении Supstack с папкой хранилища, открытой с диска.",
     unavailableShort: "без синхр.",
     noRemote: "Git: укажите репозиторий", noRemoteShort: "настроить git",
     syncing: "Git: синхронизация…", syncingShort: "синхр…",
@@ -187,7 +187,7 @@ function syncSettingsBody(item, toggle) {
     item(st("branch"), null, text("branch", "main")),
     item(st("username"), st("usernameDesc"), text("username", "git")),
     item(st("token"), st("tokenDesc"), text("token", "", "password")),
-    item(st("authorName"), null, text("authorName", "Supsidian")),
+    item(st("authorName"), null, text("authorName", "Supstack")),
     item(st("authorEmail"), null, text("authorEmail", "you@example.com")),
     item(st("auto"), st("autoDesc"), toggle(SS.auto, (v) => { SS.auto = v; saveSyncSettings(); })),
     item(st("minutes"), null, text("minutes", "5", "number")),
