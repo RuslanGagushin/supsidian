@@ -30,7 +30,7 @@ test("web/src/page.html includes every stylesheet and library once, the bundle t
 });
 
 test("the page loads pdf.js from ./pdfjs/ before the CDN, at the installed version", () => {
-  const page = readFileSync(at("web/src/js/markdown.js"), "utf8");
+  const page = readFileSync(at("web/src/js/ui/markdown.js"), "utf8");
   const version = JSON.parse(readFileSync(at("node_modules/pdfjs-dist/package.json"), "utf8")).version;
   assert.match(page, new RegExp(`const PDFJS_VERSION = "${version.replace(/\./g, "\\.")}"`), "PDFJS_VERSION matches package.json's pdfjs-dist");
   assert.match(page, /\.\/pdfjs\//);

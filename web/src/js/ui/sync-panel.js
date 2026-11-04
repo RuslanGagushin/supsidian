@@ -1,0 +1,54 @@
+import { st } from "../core/i18n.js";
+import { GIT_DEFAULTS, runSync, saveSyncSettings, SS, sync, syncAvailable, syncStatus } from "../services/sync.js";
+import { $, h, ic } from "./dom.js";
+import { notice } from "./ui.js";
+import { settingsModal } from "./shell.js";
+
+export function renderSyncButton() {
+  const b = $("#sync-btn");
+  if (!b) return;
+  const s = syncStatus();
+  b.className = `wb-btn wb-sync is-${s.state}` + (s.spin ? " is-spin" : "");
+  b.title = s.text;
+  b.replaceChildren(ic("wb-sync-icon", s.icon, "refresh-cw"), h("span", { cls: "wb-label", text: s.short }));
+}
+export function syncButton() {
+  const b = h("button", { id: "sync-btn", type: "button", cls: "wb-btn wb-sync" });
+  b.addEventListener("click", () => openSyncPanel());
+  setTimeout(renderSyncButton, 0);
+  return b;
+}
+function openSyncPanel() { if (!syncAvailable()) { notice(st("unavailable")); return; } syncSettingsModal(); }
+export function renderSyncPanel() { sync.panel?.render(); }
+export function syncSettingsModal() {
+  if (!syncAvailable()) { notice(st("unavailable")); return; }
+  settingsModal("sync");
+}
+/** The Git tab of the settings: status, sync now, remote and access. `item` and `toggle` are the settings' row builders. */
+export function syncSettingsBody(item, toggle) {
+  const text = (key, ph, type = "text", after) => { const i = h("input", { type, placeholder: ph || "", spellcheck: "false", autocomplete: "off" }); i.value = String(SS[key] ?? ""); i.addEventListener("change", () => { SS[key] = type === "number" ? Number(i.value) || GIT_DEFAULTS[key] : i.value.trim(); saveSyncSettings(); after?.(); }); return i; };
+  const status = h("div", { cls: "sn-sync-status" });
+  const result = h("p", { cls: "sn-sync-note" });
+  const syncBtn = h("button", { cls: "mod-cta", type: "button", text: st("syncNow"), onClick: async () => { await runSync(); } });
+  const render = () => {
+    const s = syncStatus();
+    status.className = `sn-sync-status is-${s.state}` + (s.spin ? " is-spin" : "");
+    status.replaceChildren(ic("", s.icon), h("span", { text: s.text }));
+    const r = sync.report;
+    result.textContent = sync.crash && !sync.busy ? st("crashNote", { steps: sync.crash }) : !r ? "" : r.conflicts.length ? st("conflicts", { n: r.conflicts.length }) : [r.pulled && st("pulled"), r.pushed && st("pushed")].filter(Boolean).join(", ") || st("upToDate");
+    syncBtn.disabled = sync.busy;
+  };
+  sync.panel = { render };
+  render();
+  return [status, result,
+    item(st("remote"), st("remoteDesc"), text("remote", "https://github.com/you/notes.git")),
+    item(st("branch"), null, text("branch", "main")),
+    item(st("username"), st("usernameDesc"), text("username", "git")),
+    item(st("token"), st("tokenDesc"), text("token", "", "password")),
+    item(st("authorName"), null, text("authorName", "Supstack")),
+    item(st("authorEmail"), null, text("authorEmail", "you@example.com")),
+    item(st("auto"), st("autoDesc"), toggle(SS.auto, (v) => { SS.auto = v; saveSyncSettings(); })),
+    item(st("minutes"), null, text("minutes", "5", "number")),
+    h("p", { cls: "sn-sync-note", text: st("note") }),
+    h("div", { cls: "modal-buttons" }, syncBtn)];
+}
