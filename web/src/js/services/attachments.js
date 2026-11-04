@@ -5,7 +5,7 @@
 import { dirName } from "../core/util.js";
 import { formatMoment } from "../core/dates.js";
 import { stripCode } from "../core/frontmatter.js";
-import { vault } from "./state.js";
+import { S, vault } from "./state.js";
 import { addAttachment, isMd, resolveAttachment } from "./vault.js";
 import { syncHook } from "./sync.js";
 
@@ -56,10 +56,9 @@ export async function moveVaultFile(from, to) {
   } else { await vault.fs.write(to, file); await vault.fs.remove(from); }
   return file.size;
 }
-async function attachmentFolderFor(notePath) {
-  let cfg = {};
-  try { cfg = JSON.parse(await vault.fs.read(".obsidian/app.json")); } catch { /* defaults */ }
-  const setting = (cfg.attachmentFolderPath ?? "/").trim();
+/** The folder for a file attached to notePath, from the attachments folder setting. */
+function attachmentFolderFor(notePath) {
+  const setting = (S.attachmentFolder ?? "./").trim();
   const here = dirName(notePath);
   if (setting === "/" || setting === "") return "";
   if (setting === "./" || setting === ".") return here;
@@ -67,7 +66,7 @@ async function attachmentFolderFor(notePath) {
   return setting.replace(/^\/+|\/+$/g, "");
 }
 export async function saveAttachment(file, notePath, pasted) {
-  const folder = await attachmentFolderFor(notePath);
+  const folder = attachmentFolderFor(notePath);
   const ext = (file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".") + 1) : (file.type.split("/")[1] || "png").replace("jpeg", "jpg")).toLowerCase();
   const stem = pasted || !file.name ? `Pasted image ${formatMoment(new Date(), "YYYYMMDDHHmmss")}` : file.name.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|#^[\]]/g, " ").trim() || "file";
   let path = (folder ? folder + "/" : "") + `${stem}.${ext}`, i = 1;

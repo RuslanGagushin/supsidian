@@ -22,9 +22,6 @@
       "identifier": "opener:allow-open-url",
       "allow": [
         {
-          "url": "obsidian://*"
-        },
-        {
           "url": "https://*"
         },
         {

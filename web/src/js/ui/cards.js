@@ -1,16 +1,15 @@
 /* =========================================================
-   Card rendering (port of src/views/CardRenderer.ts)
+   Card rendering: a card on the board, its body preview, chips and menu
    ========================================================= */
 import { LANG, t, tt } from "../core/i18n.js";
 import { baseName, norm } from "../core/util.js";
-import { openExternal } from "../services/native.js";
 import { board, editor, graph, S, vault } from "../services/state.js";
 import { cardColor, cardIcon, linkText } from "../services/vault.js";
 import { cardTaskProgress } from "../services/tasks.js";
 import { $, h, ic, iconBtn, isMod } from "./dom.js";
 import { echo, Menu, notice, promptModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
-import { createCard, deleteCards, obsidianUri, promptAddParent, promptIcon, promptMove, promptRemoveParent, promptTemplate, removeParent, setChildTemplate, templateFor, togglePin } from "./actions.js";
+import { createCard, deleteCards, promptAddParent, promptIcon, promptMove, promptRemoveParent, promptTemplate, removeParent, setChildTemplate, templateFor, togglePin } from "./actions.js";
 import { openTagView, setLastFocused, setTarget, toggleSelect } from "./board.js";
 import { dnd } from "./dnd.js";
 import { openEditor } from "./editor.js";
@@ -208,7 +207,6 @@ export function cardMenu(path, via = null) {
   m.add(t("menuOpenOnBoard"), "layout-dashboard", () => setTarget(path));
   m.add(t("menuEdit"), "pencil", () => openEditor(path));
   m.add(t("menuEditWide"), "maximize-2", () => openEditor(path, { wide: true }));
-  if (vault.fs.kind === "disk") m.add(t("menuOpenObsidian"), "external-link", () => openExternal(obsidianUri(path)));
   m.sep();
   m.add(t("menuNewChild"), "plus", async () => { const title = await promptModal(t("menuNewChild")); if (title) createCard(title, path); });
   const tpl = templateFor(path);

@@ -1,5 +1,5 @@
 /* =========================================================
-   Masonry (port of src/views/Masonry.ts)
+   Masonry: cards in columns of even height
    ========================================================= */
 import { board } from "../services/state.js";
 import { h } from "./dom.js";

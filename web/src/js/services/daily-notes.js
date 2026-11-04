@@ -1,14 +1,8 @@
 /* =========================================================
-   Daily notes: Obsidian's core plugin settings in .obsidian/daily-notes.json.
+   Daily notes: where today's note goes, its name and its template (the Notes tab of the settings).
    ========================================================= */
-import { vault } from "./state.js";
+import { S } from "./state.js";
 
-export let dailyCfg = null;
-export const resetDailyConfig = () => { dailyCfg = null; };
-export function dailyConfig() { return dailyCfg || { folder: "", format: "YYYY-MM-DD", template: "" }; }
-export async function loadDailyConfig() {
-  dailyCfg = { folder: "", format: "YYYY-MM-DD", template: "" };
-  try { Object.assign(dailyCfg, JSON.parse(await vault.fs.read(".obsidian/daily-notes.json"))); } catch { /* defaults */ }
-  dailyCfg.folder = (dailyCfg.folder || "").replace(/^\/+|\/+$/g, "");
-  dailyCfg.format = dailyCfg.format || "YYYY-MM-DD";
+export function dailyConfig() {
+  return { folder: (S.dailyFolder || "").replace(/^\/+|\/+$/g, ""), format: S.dailyFormat || "YYYY-MM-DD", template: S.dailyTemplate || "" };
 }

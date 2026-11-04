@@ -1,5 +1,5 @@
 /* =========================================================
-   Keyboard on the board (port of src/views/board/keyboard.ts)
+   Keyboard on the board
    ========================================================= */
 import { board, editor, graph, UI, vault } from "../services/state.js";
 import { manualCmp } from "../services/vault.js";

@@ -47,7 +47,7 @@ export class NativeFS {
 }
 
 export const lastNative = () => lsGet("sn-native-last", null);
-/** Open links outside the app (browser, obsidian://). */
+/** Open links outside the app (the system browser, mail). */
 export function openExternal(url) {
   if (IS_NATIVE) TAURI.invoke("plugin:opener|open_url", { url }).catch((e) => emit("notice", String(e?.message || e)));
   else location.href = url;

@@ -9,6 +9,7 @@ export const DEFAULTS = {
   pinned: [], savedViews: [], language: "auto", parentsField: "parents", cardsFolder: "", onlyCardsFolder: false,
   templatesFolder: "", defaultDepth: 1, defaultLayout: "columns", defaultSort: "manual", defaultGrouped: false,
   outlineSort: "manual", previewLength: 600, cardMaxHeight: 360, maxCards: 1000,
+  dailyFolder: "", dailyFormat: "YYYY-MM-DD", dailyTemplate: "", attachmentFolder: "./",
 };
 export const UI = Object.assign({ theme: "auto", sideW: 280, editorW: 560, sideOpen: true, lang: "auto" }, lsGet("sn-ui", {}));
 delete UI.style; delete UI.font; // retired settings
@@ -22,10 +23,8 @@ export const vault = {
   allPaths: new Set(),
   sizes: new Map(), // path -> bytes (for the sync size limit)
   mtimes: new Map(), // attachment path -> last modified (for the Files view)
-  pluginData: null, // parsed data.json (null — no plugin folder)
-  hasObsidian: false,
 };
-export const S = { ...DEFAULTS }; // card settings (shared with the plugin when possible)
+export const S = { ...DEFAULTS }; // the vault's settings (services/vault.js keeps them in .supstack/settings.json)
 /** Settings of a newly opened vault: the defaults, then `saved`. */
 export function resetSettings(saved) { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, DEFAULTS, saved); }
 export let graph = new HierarchyGraph();

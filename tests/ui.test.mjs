@@ -512,20 +512,21 @@ describe("rendering", () => {
 
 describe("pasted and dropped files", () => {
   const saveIn = (setting, note = "Notes/A.md", name = "photo.png", pasted = false) => ev(async ([setting, note, name, pasted]) => {
-    if (setting != null) await vault.fs.write(".obsidian/app.json", JSON.stringify({ attachmentFolderPath: setting }));
+    if (setting != null) S.attachmentFolder = setting;
     return saveAttachment(new File(["png"], name, { type: "image/png" }), note, pasted);
   }, [setting, note, name, pasted]);
   beforeEach(() => openVault({ demo: false, time: "2026-10-29T10:11:12", notes: { "Notes/A.md": "text" } }));
 
-  test("Obsidian's attachment folder setting decides where files go", async () => {
-    assert.equal(await saveIn(null), "photo.png", "default: vault root");
-    assert.equal(await saveIn("./"), "Notes/photo.png");
+  test("the attachments folder setting decides where files go", async () => {
+    assert.equal(await saveIn(null), "Notes/photo.png", "default: next to the note");
+    assert.equal(await saveIn("/"), "photo.png");
+    assert.equal(await saveIn("./"), "Notes/photo 1.png", "no overwrite");
     assert.equal(await saveIn("./assets"), "Notes/assets/photo.png");
     assert.equal(await saveIn("Files/"), "Files/photo.png");
     assert.equal(await saveIn("Files/"), "Files/photo 1.png", "no overwrite");
   });
 
-  test("pasted images get Obsidian's timestamp name", async () => {
+  test("pasted images get a timestamp name", async () => {
     assert.equal(await saveIn("/", "Notes/A.md", "image.png", true), "Pasted image 20261029101112.png");
   });
 
@@ -569,7 +570,7 @@ describe("palettes, settings, language and themes", () => {
   test("settings have a tab per group, arrow keys move between them and the last tab is remembered", async () => {
     await ev(() => settingsModal("appearance"));
     const tabs = () => page().$$eval(".sn-set-tab", (b) => b.map((x) => [x.textContent, x.getAttribute("aria-selected")]));
-    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Cards", "Board", "Agenda", "About"], "no Git tab outside the app");
+    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Cards", "Board", "Notes", "Agenda", "About"], "no Git tab outside the app");
     assert.match(await page().textContent(".sn-set-body"), /Theme/);
     assert.doesNotMatch(await page().textContent(".sn-set-body"), /Parents field/, "one group at a time");
     const height = await page().$eval(".modal", (m) => m.offsetHeight);
@@ -578,10 +579,11 @@ describe("palettes, settings, language and themes", () => {
     assert.equal(await page().$eval(".modal", (m) => m.offsetHeight), height, "the dialog keeps its size between tabs");
     await page().focus(".sn-set-tab.is-active");
     await page().keyboard.press("ArrowRight");
-    assert.equal((await tabs()).find((x) => x[1] === "true")[0], "Agenda");
+    assert.equal((await tabs()).find((x) => x[1] === "true")[0], "Notes");
+    assert.match(await page().textContent(".sn-set-body"), /Daily notes folder.*Attachments folder/s);
     await page().keyboard.press("Escape");
     await ev(() => settingsModal());
-    assert.equal(await page().textContent(".sn-set-tab.is-active"), "Agenda");
+    assert.equal(await page().textContent(".sn-set-tab.is-active"), "Notes");
     await ev(() => settingsModal("about")); // already open: switches tabs instead of stacking a second dialog
     assert.equal(await page().$$eval(".modal", (m) => m.length), 1);
     noErrors();

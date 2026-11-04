@@ -39,7 +39,7 @@ fn mtime_ms(meta: &fs::Metadata) -> f64 {
         .unwrap_or(0.0)
 }
 
-/// Every file under `dir`, skipping hidden names (".obsidian", ".trash", ".git", …) like the web version does.
+/// Every file under `dir`, skipping hidden names (".supstack", ".trash", ".git", …) like the web version does.
 fn walk(dir: &Path, prefix: &str, out: &mut Vec<Entry>) -> Result<()> {
     for item in fs::read_dir(dir)? {
         let item = item?;
@@ -120,7 +120,7 @@ fn read(root: &str, path: &str, binary: bool) -> Result<ReadResult> {
     Ok(ReadResult { data, mtime: mtime_ms(&meta), size: bytes.len() as u64 })
 }
 
-/// Writes through a temporary file and a rename, so Obsidian never sees a half-written note.
+/// Writes through a temporary file and a rename, so other apps never see a half-written note.
 fn write(root: &str, path: &str, text: Option<String>, base64: Option<String>) -> Result<f64> {
     let p = join(root, path)?;
     let bytes = match (text, base64) {
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn list_walks_folders_and_skips_hidden_names() {
         let t = Tmp::new("list");
-        for p in ["a.md", "Cards/b.md", "Cards/Deep/c.png", ".obsidian/app.json", ".trash/old.md", "Cards/.hidden.md"] {
+        for p in ["a.md", "Cards/b.md", "Cards/Deep/c.png", ".supstack/settings.json", ".trash/old.md", "Cards/.hidden.md"] {
             write(t.root(), p, Some("x".into()), None).unwrap();
         }
         let mut paths: Vec<String> = list(t.root()).unwrap().into_iter().map(|e| e.path).collect();

@@ -1,5 +1,5 @@
 /* =========================================================
-   Hierarchy graph (port of src/index/HierarchyGraph.ts)
+   Hierarchy graph: cards and their parents (a card can have several), children, roots and backlinks
    ========================================================= */
 const INFINITE_DEPTH_CAP = 64;
 export class HierarchyGraph {

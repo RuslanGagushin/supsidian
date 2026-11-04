@@ -186,7 +186,7 @@ export function fuzzyScore(q, text) {
   }
   return score;
 }
-/** Obsidian-style suggest modal. items: [{value,title,icon,color,note}] */
+/** Suggest modal (pick from a filtered list). items: [{value,title,icon,color,note}] */
 export function suggestModal({ placeholder, items, allowCreate = false, grid = false, render, limit = 200, hint = false, current }) {
   if (!grid && $("#minibuf")) return minibufPick({ placeholder, items, allowCreate, limit });
   return new Promise((resolve) => {

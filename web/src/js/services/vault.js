@@ -38,7 +38,7 @@ export function addAttachment(path) {
   const arr = vault.files.get(k) || vault.files.set(k, []).get(k);
   if (!arr.includes(path)) arr.push(path);
 }
-/** Obsidian-like link resolution: exact path, then by name (same folder first, then the shortest path). */
+/** Link resolution: exact path, then by name (same folder first, then the shortest path). */
 export function resolveLink(linkpath, source = "") {
   if (!linkpath) return null;
   let lp = linkpath.trim().replace(/\\/g, "/");
@@ -157,7 +157,7 @@ export async function readVault(fs) {
   };
   await Promise.all(Array.from({ length: 8 }, worker));
   indexNames();
-  await loadPluginData();
+  await loadSettings();
   const saved = lsGet(boardKey(), null);
   Object.assign(board, {
     target: null, depth: S.defaultDepth, layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
@@ -179,36 +179,33 @@ export function persistBoard() {
     heroCollapsed: board.heroCollapsed, filter: board.filter, tagView: board.tagView || null, view: board.view || null, treeExpanded: [...tree.expanded],
   });
 }
-export const DATA_PATH = ".obsidian/plugins/supsidian/data.json";
-async function loadPluginData() {
+/** The vault's settings travel with it (Git sync included): pins, saved views, card, board and note options. */
+export const SETTINGS_PATH = ".supstack/settings.json";
+export const OLD_SETTINGS_PATH = ".obsidian/plugins/supsidian/data.json"; // where versions up to 0.15 kept them; moved on first open
+async function loadSettings() {
   resetSettings(lsGet("sn-settings:" + vault.fs.name, {}));
-  vault.pluginData = null;
-  vault.hasObsidian = false;
   if (vault.fs.kind === "demo") { S.templatesFolder = S.templatesFolder || "Templates"; return; }
-  try { await vault.fs.dir?.(".obsidian", false); vault.hasObsidian = !!vault.fs.dir; } catch { vault.hasObsidian = false; }
-  if (vault.fs.kind === "copy") vault.hasObsidian = false;
-  try {
-    const text = await vault.fs.read(DATA_PATH);
-    vault.pluginData = JSON.parse(text);
-    for (const k of Object.keys(DEFAULTS)) if (vault.pluginData[k] !== undefined) S[k] = vault.pluginData[k];
-  } catch { /* plugin not installed in this vault */ }
+  let saved = null, moved = false;
+  try { saved = JSON.parse(await vault.fs.read(SETTINGS_PATH)); } catch {
+    try { saved = JSON.parse(await vault.fs.read(OLD_SETTINGS_PATH)); moved = true; } catch { /* none yet */ }
+  }
+  if (saved) for (const k of Object.keys(DEFAULTS)) if (saved[k] !== undefined) S[k] = saved[k];
   if (!Array.isArray(S.pinned)) S.pinned = [];
   if (!Array.isArray(S.savedViews)) S.savedViews = [];
+  if (moved) await saveSettings();
 }
+/** This device keeps a copy; a vault on disk also gets them in SETTINGS_PATH. */
 export async function saveSettings() {
   lsSet("sn-settings:" + vault.fs.name, S);
-  if (vault.fs.kind !== "disk" || (!vault.pluginData && !vault.hasObsidian)) return;
+  if (vault.fs.kind !== "disk") return;
   try {
-    let current = {};
-    try { current = JSON.parse(await vault.fs.read(DATA_PATH)); } catch { /* new file */ }
-    const merged = { ...current };
-    for (const k of Object.keys(DEFAULTS)) merged[k] = S[k];
-    await vault.fs.write(DATA_PATH, JSON.stringify(merged, null, 2));
-    vault.pluginData = merged;
-  } catch (e) { console.warn("settings not saved to vault", e); }
+    const out = {};
+    for (const k of Object.keys(DEFAULTS)) out[k] = S[k];
+    await vault.fs.write(SETTINGS_PATH, JSON.stringify(out, null, 2));
+  } catch (e) { console.warn("settings not saved to the vault", e); }
 }
 
-/* Watch for changes made elsewhere (Obsidian, sync) */
+/* Watch for changes made elsewhere (other apps, sync) */
 let polling = false;
 /** Pick up what changed on disk since the last look (main.js calls it every few seconds while the page is visible). */
 export async function pollChanges() {

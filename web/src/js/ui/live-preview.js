@@ -14,7 +14,7 @@ import { updateEdToolbar } from "./editor-toolbar.js";
 import { ORG_DECOR_RE } from "./org-editing.js";
 import { openAttachment } from "./files.js";
 
-/* ---------- Live preview, as in modern Obsidian: the note body is one CodeMirror document, and away from the caret its Markdown
+/* ---------- Live preview: the note body is one CodeMirror document, and away from the caret its Markdown
    renders in place. Formatting marks (**, *, ~~, ==, `, [[ ]], [](…), #, >) hide unless the caret is in that piece of text; headings,
    links, tags, highlights, tasks, bullets and Org keywords show as they read. Callouts, code blocks and embeds render as blocks that turn
    back into Markdown when the caret goes in; tables stay rendered and are edited a cell at a time. editor.live = { path, body } holds the

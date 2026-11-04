@@ -1,8 +1,8 @@
 # Supstack
 
-**Supstack (formerly Supsidian) shows an Obsidian vault as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
+**Supstack (formerly Supsidian) shows a folder of Markdown notes (a vault) as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
 
-Every card is an ordinary Markdown note in your vault. Supstack adds nothing to your files except the frontmatter it needs to link cards together, so Obsidian, Git, Syncthing and any other tool keep working on the same folder.
+Every card is an ordinary Markdown note in your vault. Supstack adds nothing to your files except the frontmatter it needs to link cards together, so other editors, Git, Syncthing and any other tool keep working on the same folder.
 
 This repository wraps the Supstack page into native apps with [Tauri 2](https://v2.tauri.app):
 
@@ -25,8 +25,8 @@ This repository wraps the Supstack page into native apps with [Tauri 2](https://
 - **Select mode:** select several cards to move, re-parent or delete them together. **Undo** reverts the last card action.
 
 ### Editor
-- **Live preview editing, as in Obsidian:** the note is one editor (CodeMirror 6) that shows its Markdown rendered: headings, bold, italic, highlights, code, links, tags, tasks, bullets and TODO keywords read as they will look, and their Markdown shows only where the caret is. Callouts and code blocks render as blocks and open into their Markdown when you click or arrow into them; tables stay rendered and are edited a cell at a time. Click a link to follow it (Ctrl/Cmd+click opens a card in the editor), tick a checkbox to toggle its task, select text for a floating format bar (bold, italic, highlight, code, link, heading, lists, quote). Undo and redo cover every edit. Your files stay plain Markdown.
-- **Foldable callouts and table editing, as in Obsidian:** `> [!info]+` makes a callout that starts open and `> [!info]-` one that starts folded; click its title to fold or unfold it. Click a table cell to edit it in place; Tab and Shift+Tab go to the next and previous cell, Enter goes to the cell below (Tab or Enter at the end adds a row, Enter on an empty last row leaves the table), Shift+Enter breaks a line in a cell, and Alt+arrows move the row or column. The table's Markdown keeps its columns lined up. Right-click a cell (or use the toolbar's table button) to add, move, delete, align or sort rows and columns; the + buttons under and beside a table add a row or a column.
+- **Live preview editing:** the note is one editor (CodeMirror 6) that shows its Markdown rendered: headings, bold, italic, highlights, code, links, tags, tasks, bullets and TODO keywords read as they will look, and their Markdown shows only where the caret is. Callouts and code blocks render as blocks and open into their Markdown when you click or arrow into them; tables stay rendered and are edited a cell at a time. Click a link to follow it (Ctrl/Cmd+click opens a card in the editor), tick a checkbox to toggle its task, select text for a floating format bar (bold, italic, highlight, code, link, heading, lists, quote). Undo and redo cover every edit. Your files stay plain Markdown.
+- **Foldable callouts and table editing:** `> [!info]+` makes a callout that starts open and `> [!info]-` one that starts folded; click its title to fold or unfold it. Click a table cell to edit it in place; Tab and Shift+Tab go to the next and previous cell, Enter goes to the cell below (Tab or Enter at the end adds a row, Enter on an empty last row leaves the table), Shift+Enter breaks a line in a cell, and Alt+arrows move the row or column. The table's Markdown keeps its columns lined up. Right-click a cell (or use the toolbar's table button) to add, move, delete, align or sort rows and columns; the + buttons under and beside a table add a row or a column.
 - A source mode for the whole file, a reading view, **full-width** and **focus** modes, and a toolbar for formatting, images and files.
 - `[[` or `Ctrl+L` links to another card; `/` opens the insert menu.
 - Turn a selection into a **new child card**.
@@ -42,7 +42,7 @@ This repository wraps the Supstack page into native apps with [Tauri 2](https://
 ### Sync
 - **Git sync:** the vault folder is a git repository. **Sync now** (or the automatic sync, after edits and every few minutes) commits your changes, merges the remote branch and pushes. Set the remote URL (HTTPS) and a personal access token in the sync button's panel.
 - If a note changed on two devices, your text stays in place and the other version is saved next to it as `Note (conflict …).md`, so nothing is lost.
-- The access token is kept in the app, not in the vault, so it is never committed. A `.gitignore` is created on the first sync for Obsidian workspace files and `.trash`.
+- The access token is kept in the app, not in the vault, so it is never committed. A `.gitignore` is created on the first sync for `.trash` and temporary files.
 - On Android the repository lives in the app's private storage and is copied to and from the folder you picked on every sync, so the vault takes up space twice there.
 
 ### Look and keyboard
@@ -68,7 +68,7 @@ Open the repository's **Releases** page (or the latest **Actions → Build apps*
 - **Android:** copy the `.apk` to the phone and open it, allowing installs from that app when Android asks. With USB debugging on, `adb install -r <file>.apk` works too.
 
 ### First start
-1. Tap **Open vault folder** and choose your vault. On Android, go to the folder (Obsidian for Android keeps vaults under `Documents/` by default), tap **Use this folder**, then **Allow**.
+1. Tap **Open vault folder** and choose your vault. On Android, go to the folder, tap **Use this folder**, then **Allow**.
 2. After that, **Reopen** opens the same vault straight away.
 
 Want to look around first? **Try the demo vault** loads a sample board in memory; nothing is saved.
@@ -81,10 +81,10 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 |---|---|
 | Notes (cards) | plain `.md` files in your vault |
 | Card parents | a frontmatter property in each note |
-| Vault settings: pins, saved views, sync filters | `.obsidian/plugins/supsidian/data.json` in the vault |
+| Vault settings: pins, saved views, card, board and note options (daily notes, attachments folder) | `.supstack/settings.json` in the vault (versions up to 0.15 kept them in `.obsidian/plugins/supsidian/data.json`; they move on first open) |
 | App settings, fold state, agenda view | stored per installation, not in the vault |
 
-**Changes made outside the app**, in Obsidian or by Obsidian Sync or Syncthing, are picked up every few seconds while the app is in front, and whenever you switch back to it. Desktop writes go through a temporary file and a rename, so Obsidian never sees a half-written note.
+**Changes made outside the app**, in another editor or by a sync tool such as Syncthing, are picked up every few seconds while the app is in front, and whenever you switch back to it. Desktop writes go through a temporary file and a rename, so other apps never see a half-written note.
 
 ---
 
@@ -109,7 +109,7 @@ tests/                      page tests: the real page in headless Chrome on an i
                             of js/core/ in Node and a check of the layers (`npm test`)
 ```
 
-The page is still a single HTML file, so it also works opened straight from disk. Its sources live in `web/src/`: `page.html` is the page with an `<!-- include: path -->` line where each stylesheet and library goes, and a `<!-- bundle: js/main.js -->` line where the app goes; `scripts/page.mjs` fills them in, bundling the app's ES modules with esbuild into one plain script. `npm test` and `npm run web` build the page first; `npm run page` builds just the page. `npm run codemirror` rebuilds `web/src/vendor/codemirror.js` after a CodeMirror update. Inside the app, the page switches its file access to the vault plugin and opens `http(s)://` and `obsidian://` links in the system browser or in Obsidian.
+The page is still a single HTML file, so it also works opened straight from disk. Its sources live in `web/src/`: `page.html` is the page with an `<!-- include: path -->` line where each stylesheet and library goes, and a `<!-- bundle: js/main.js -->` line where the app goes; `scripts/page.mjs` fills them in, bundling the app's ES modules with esbuild into one plain script. `npm test` and `npm run web` build the page first; `npm run page` builds just the page. `npm run codemirror` rebuilds `web/src/vendor/codemirror.js` after a CodeMirror update. Inside the app, the page switches its file access to the vault plugin and opens `http(s)://` and `mailto:` links in the system browser or mail app.
 
 The app's modules come in three layers, and each uses only the ones before it (`tests/architecture.test.mjs` checks this):
 
