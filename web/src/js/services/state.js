@@ -1,5 +1,6 @@
 /* =========================================================
-   App state
+   App state: the open vault, the card settings (S), the page's own settings (UI), the graph, and the
+   board, tree and editor state. Shared by reference; S and the graph change only through resetSettings / setGraph.
    ========================================================= */
 import { HierarchyGraph } from "../core/graph.js";
 import { lsGet, lsSet } from "./storage.js";

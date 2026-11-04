@@ -1,23 +1,12 @@
 /* =========================================================
-   Org-style TODOs and an Org-agenda for plain Markdown notes.
-   No plugin format — the notes stay readable everywhere:
-
-     ## TODO [#A] Write the report :work:
-     SCHEDULED: <2026-10-29 Thu 10:00> DEADLINE: <2026-10-31 Sat -2d>
-
-     - NEXT Call the plumber #home
-       SCHEDULED: <2026-10-28 Wed +1w>
-     - Dentist <2026-10-30 Fri 14:00-15:00>        ← a plain line with a date is an event
-     - [ ] checkbox items count towards progress [2/5]
-
-   Keywords: TODO NEXT WAIT | DONE CANCELLED (settings, or per note: `todo:` in frontmatter).
-   Repeaters +1w ++1m .+2d, warnings -3d, CLOSED: [..] on done, tags :a:b: or #a, inherited
-   from parent headings and the note's tags. `category:` in frontmatter names the agenda column.
+   Org entries changed from the agenda and the editor's commands: TODO state, priority,
+   SCHEDULED / DEADLINE and tags, each an undoable edit of the note (core/org.js does the text).
    ========================================================= */
 import { tt } from "../core/i18n.js";
-import { orgNextKw, orgSet, orgSetBox, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgTsStr } from "../core/org.js";
+import { orgNextKw, orgSetBox, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgTsStr } from "../core/org.js";
 import { board, editor, vault } from "../services/state.js";
 import { txn, writeRaw } from "../services/save.js";
+import { todoSet } from "../services/tasks.js";
 import { $ } from "./dom.js";
 import { echo, minibufPick, minibufRead } from "./ui.js";
 import { saveEditor } from "./editor.js";
@@ -42,7 +31,7 @@ export async function orgEdit(e, fn) {
   const lines = n.raw.split("\n");
   let li = e.line;
   if (lines[li] !== e.raw) { li = lines.indexOf(e.raw); if (li < 0) { echo(tt("lost")); return false; } }
-  const msg = fn(lines, li, orgSet(n));
+  const msg = fn(lines, li, todoSet(n));
   if (msg == null || msg === false) return false;
   await txn(String(msg).slice(0, 90), () => writeRaw(e.path, lines.join("\n")));
   return true;

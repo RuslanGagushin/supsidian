@@ -1,10 +1,10 @@
 import { ct, ft, LANG, tt } from "../core/i18n.js";
 import { debounce } from "../core/util.js";
 import { splitNote } from "../core/frontmatter.js";
-import { oaddMonths, odn, oFmt, ohm, oIndentW, oisoWeek, onow, opad, OPLAN_RE, orgHead, orgKwClass, orgLine, orgNextKw, orgPlanMap, orgReadDate, orgSet, orgSetBox, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgSkip, orgTsParse, orgTsStr, oymd } from "../core/org.js";
+import { oaddMonths, odn, oFmt, ohm, oIndentW, oisoWeek, onow, opad, OPLAN_RE, orgHead, orgKwClass, orgLine, orgNextKw, orgPlanMap, orgReadDate, orgSetBox, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgSkip, orgTsParse, orgTsStr, oymd } from "../core/org.js";
 import { lsGet, lsSet } from "../services/storage.js";
 import { editor, vault } from "../services/state.js";
-import { orgAll } from "../services/tasks.js";
+import { orgAll, todoSet } from "../services/tasks.js";
 import { $, $$, h, ic, isMod, setIcon } from "./dom.js";
 import { echo, mbBegin, mbEnd, minibufRead, promptModal } from "./ui.js";
 import { editorModeline, openEditor } from "./editor.js";
@@ -193,7 +193,7 @@ function orgEd(ta, fn) {
   const cl = v.slice(0, s).split("\n").length - 1;
   const col = s - (v.lastIndexOf("\n", s - 1) + 1);
   const before = lines.length;
-  const r = fn(lines, cl, orgSet(vault.notes.get(editor.path)));
+  const r = fn(lines, cl, todoSet(vault.notes.get(editor.path)));
   if (r === false || r == null) { if (r === false) echo(tt("noEntry")); return; }
   const nv = lines.join("\n");
   if (nv !== v) {
@@ -255,7 +255,7 @@ async function edOrgAsk(ta, kind) {
   if (kind === "tags") {
     const info = orgLine(lines0[orgHeadAt(lines0, cl0, false)]);
     if (!info) { echo(tt("noEntry")); return; }
-    const o = orgHead(info.rest, orgSet(vault.notes.get(editor.path)));
+    const o = orgHead(info.rest, todoSet(vault.notes.get(editor.path)));
     value = await minibufRead(tt("tags"), o.tags.length ? ":" + o.tags.join(":") + ":" : "");
     if (value == null && !o.tags.length) return;
   } else if (kind === "priority") {
@@ -335,7 +335,7 @@ export const orgLineIsEntry = (ta) => {
   const ls = v.lastIndexOf("\n", s - 1) + 1;
   let le = v.indexOf("\n", s); if (le < 0) le = v.length;
   const info = orgLine(v.slice(ls, le));
-  return !!info && !!orgHead(info.rest, orgSet(vault.notes.get(editor.path))).kw;
+  return !!info && !!orgHead(info.rest, todoSet(vault.notes.get(editor.path))).kw;
 };
 
 /** Open a note in the editor with the caret at the end of a line. */
@@ -366,7 +366,7 @@ export function openEditorAtLine(path, lineIndex) {
 /* ---------- reading view: show keywords, priorities and dates like Org does */
 export const ORG_DECOR_RE = /(SCHEDULED:|DEADLINE:|CLOSED:)|(<\d{4}-\d{2}-\d{2}[^>\n]*>(?:--<\d{4}-\d{2}-\d{2}[^>\n]*>)?)|(\[\d{4}-\d{2}-\d{2}[^\]\n]*\])/g;
 export function orgDecorate(el, path) {
-  const set = orgSet(vault.notes.get(path));
+  const set = todoSet(vault.notes.get(path));
   for (const blk of el.querySelectorAll("h1, h2, h3, h4, h5, h6, li")) {
     let n = blk.firstChild;
     if (n && n.nodeType === 1 && n.tagName === "INPUT") { n = n.nextSibling; }

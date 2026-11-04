@@ -91,7 +91,11 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 ## How the app is put together
 
 ```
-web/src/                    the Supstack page's sources: page.html, css/, js/ and vendor/ (libraries, fonts)
+web/src/                    the Supstack page's sources: page.html, css/, js/ (ES modules) and vendor/ (libraries, fonts)
+  js/core/                  pure logic: frontmatter, hierarchy graph, board model, Org TODOs and dates, tables, texts
+  js/services/              app state, the vault, saving and undo, attachments, Git sync, updates (no DOM)
+  js/ui/                    everything on screen: board, tree, editor, agenda, files, menus, settings
+  js/main.js                the entry point: loads the layers in order and starts the page
 scripts/page.mjs            builds them into one file, web/supstack.html (not committed)
 scripts/web.mjs             builds the page and copies it to dist/index.html before every app build
 src-tauri/                  the Tauri app: window, permissions (capabilities/default.json), icons
@@ -101,10 +105,19 @@ tauri-plugin-vault/         vault file access: pick the folder, list, read, writ
 .github/workflows/apps.yml  builds all three apps on GitHub
 scripts/android-signing.mjs creates an Android signing key and wires it into Gradle
 icon.png                    source of every app icon (`npm run icons` regenerates them)
-tests/                      page tests: the real page in headless Chrome on an in-memory vault (`npm test`)
+tests/                      page tests: the real page in headless Chrome on an in-memory vault, plus unit tests
+                            of js/core/ in Node and a check of the layers (`npm test`)
 ```
 
-The page is still a single HTML file, so it also works opened straight from disk. Its sources live in `web/src/`: `page.html` is the page with an `<!-- include: path -->` line where each stylesheet and script goes, in order, and `scripts/page.mjs` replaces those lines with the files. The scripts are plain (not modules) and share one scope, as they did in the single file, so a new file only needs its include line. `npm test` and `npm run web` build the page first; `npm run page` builds just the page. `npm run codemirror` rebuilds `web/src/vendor/codemirror.js` after a CodeMirror update. Inside the app, the page switches its file access to the vault plugin and opens `http(s)://` and `obsidian://` links in the system browser or in Obsidian.
+The page is still a single HTML file, so it also works opened straight from disk. Its sources live in `web/src/`: `page.html` is the page with an `<!-- include: path -->` line where each stylesheet and library goes, and a `<!-- bundle: js/main.js -->` line where the app goes; `scripts/page.mjs` fills them in, bundling the app's ES modules with esbuild into one plain script. `npm test` and `npm run web` build the page first; `npm run page` builds just the page. `npm run codemirror` rebuilds `web/src/vendor/codemirror.js` after a CodeMirror update. Inside the app, the page switches its file access to the vault plugin and opens `http(s)://` and `obsidian://` links in the system browser or in Obsidian.
+
+The app's modules come in three layers, and each uses only the ones before it (`tests/architecture.test.mjs` checks this):
+
+- `core/` is pure logic. It doesn't touch the DOM, the browser's storage or the app's state; everything it needs comes in as arguments. That is why `tests/core.test.mjs` can run it in Node.
+- `services/` holds the app state and everything that reads and writes the vault. It never draws anything. When something happens that the page should show (a message, notes changed on disk, the editor should save first), it emits an event from `services/events.js`, and the `ui/` modules subscribe to those events.
+- `ui/` renders and handles input, calling into `services/` and `core/`.
+
+Each module imports what it uses, so a new file is just a new module imported where it is needed. A module that only sets itself up also goes into the list in `main.js`. For the page tests, `js/expose.js` makes every export a global when the page sets `window.__SN_EXPOSE__` before it loads; `tests/harness.mjs` does that.
 
 On Android the app draws edge to edge (behind the status bar and gesture bar). The vault plugin measures those bars and pads the page so nothing ends up underneath them.
 

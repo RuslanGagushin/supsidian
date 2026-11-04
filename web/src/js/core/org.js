@@ -1,9 +1,25 @@
+/* =========================================================
+   Org-style TODOs and an Org-agenda for plain Markdown notes.
+   No plugin format — the notes stay readable everywhere:
+
+     ## TODO [#A] Write the report :work:
+     SCHEDULED: <2026-10-29 Thu 10:00> DEADLINE: <2026-10-31 Sat -2d>
+
+     - NEXT Call the plumber #home
+       SCHEDULED: <2026-10-28 Wed +1w>
+     - Dentist <2026-10-30 Fri 14:00-15:00>        ← a plain line with a date is an event
+     - [ ] checkbox items count towards progress [2/5]
+
+   Keywords: TODO NEXT WAIT | DONE CANCELLED (settings, or per note: `todo:` in frontmatter).
+   Repeaters +1w ++1m .+2d, warnings -3d, CLOSED: [..] on done, tags :a:b: or #a, inherited
+   from parent headings and the note's tags. `category:` in frontmatter names the agenda column.
+   This module is the pure part: dates, timestamps, the line grammar, parsing a note into
+   entries and the agenda's day lists. services/tasks.js applies it to the vault.
+   ========================================================= */
 import { tt } from "./i18n.js";
 import { baseName } from "./util.js";
 import { formatMoment } from "./dates.js";
 import { stripCode, TAG_RE } from "./frontmatter.js";
-import { UI } from "../services/state.js";
-import { AG } from "../ui/agenda.js";
 
 const ODAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const opad = (n) => String(n).padStart(2, "0");
@@ -110,9 +126,10 @@ export function orgParseKw(str) {
   orgKwCache.set(str, set);
   return set;
 }
-export function orgSet(note) {
+/** The TODO keywords of a note: its frontmatter `todo:`, else `fallback` (the settings). */
+export function orgSet(note, fallback = ORG_DEFAULT_KW) {
   const v = note?.fm?.todo ?? note?.fm?.TODO;
-  const s = Array.isArray(v) ? v.join(" ") : typeof v === "string" && v.trim() ? v : UI.todoKeywords || ORG_DEFAULT_KW;
+  const s = Array.isArray(v) ? v.join(" ") : typeof v === "string" && v.trim() ? v : fallback || ORG_DEFAULT_KW;
   return orgParseKw(s);
 }
 export function orgKwClass(kw, set) {
@@ -266,8 +283,7 @@ export function orgShift(lines, li, kind, days) {
   return tt("stampTo", { ts: orgTsStr(ts) });
 }
 export const orgCache = new Map();
-export function orgParse(note) {
-  const set = orgSet(note);
+export function orgParse(note, set = orgSet(note)) {
   const c = orgCache.get(note.path);
   if (c && c.raw === note.raw && c.set === set) return c.list;
   const lines = note.raw.split("\n");
@@ -370,7 +386,8 @@ export function orgStats(all) {
 }
 export const orgPriRank = (e) => (e.pri ? 4 - Math.min(3, e.pri.charCodeAt(0) - 64) : 2);
 const orgWarnDays = (ts) => (ts.warn ? ounitDays(ts.warn.n, ts.warn.u) : 14);
-export function orgDayEntries(dn, all, T) {
+/** The agenda lines of day `dn` (today is T); `log` adds the entries closed that day. */
+export function orgDayEntries(dn, all, T, { log = false } = {}) {
   const out = [];
   for (const e of all) {
     if (orgSkip(e)) continue;
@@ -390,7 +407,7 @@ export function orgDayEntries(dn, all, T) {
       if (b) { if (dn >= a.dn && dn <= b.dn) push("ts", `(${dn - a.dn + 1}/${b.dn - a.dn + 1}):`, dn === a.dn ? a : dn === b.dn && b.time != null ? { time: b.time } : null, { rank: 5 }); }
       else if (orgOccursOn(a, dn) && (dn === a.dn || dn >= T)) push("ts", "", a, { rank: 5 });
     }
-    if (AG.log && e.closed && e.closed.dn === dn) push("closed", tt("lClosed"), e.closed, { rank: 6 });
+    if (log && e.closed && e.closed.dn === dn) push("closed", tt("lClosed"), e.closed, { rank: 6 });
   }
   out.sort((a, b) => {
     const at = a.time != null, bt = b.time != null;

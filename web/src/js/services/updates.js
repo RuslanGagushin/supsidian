@@ -5,18 +5,9 @@
    so it compares with the latest release and opens the APK download. The web page has nothing to
    install; it only shows its version.
    ========================================================= */
-import { ut } from "../core/i18n.js";
-import { debounce } from "../core/util.js";
-import { HandleFS, idb, MemoryFS } from "./fs.js";
-import { IS_ANDROID, IS_NATIVE, lastNative, NativeFS, openExternal, vinvoke } from "./native.js";
-import { board, editor, graph, saveUI, UI, vault } from "./state.js";
-import { loadVault, pollChanges } from "./vault.js";
-import { h } from "../ui/dom.js";
-import { notice } from "../ui/ui.js";
-import { masonries } from "../ui/masonry.js";
-import { saveEditor } from "../ui/editor.js";
-import { applyLanguage, applyTheme, settingsModal } from "../ui/shell.js";
-import { demoVault, hasFsApi, loadCopy, showWelcome } from "../ui/welcome.js";
+import { emit } from "./events.js";
+import { IS_ANDROID, IS_NATIVE, openExternal } from "./native.js";
+import { saveUI, UI } from "./state.js";
 
 export const APP_VERSION = "__APP_VERSION__"; // the page's own version (the apps ask Tauri for theirs); scripts/page.mjs puts package.json's here
 const REPO = "RuslanGagushin/supsidian";
@@ -60,13 +51,13 @@ export async function checkUpdate({ quiet = false } = {}) {
     saveUI();
   } catch (e) { setUpd({ state: "error", error: String(e?.message || e) }); }
   upd.view?.();
-  if (quiet && upd.state === "available" && !upd.view) notice(ut("availableNotice", { v: upd.version }), { keep: true, action: { label: ut("open"), run: () => settingsModal("about") } });
+  if (quiet && upd.state === "available" && !upd.view) emit("update");
 }
 export async function installUpdate() {
   if (!upd.update) { openExternal(upd.url || RELEASES); return; }
   setUpd({ state: "installing", got: 0, total: 0 });
   try {
-    if (editor.dirty) await saveEditor();
+    await emit("flush");
     await upd.update.downloadAndInstall((e) => {
       if (e.event === "Started") setUpd({ total: e.data?.contentLength || 0 });
       else if (e.event === "Progress") setUpd({ got: upd.got + (e.data?.chunkLength || 0) });
@@ -75,36 +66,10 @@ export async function installUpdate() {
     await window.__TAURI__.process.relaunch();
   } catch (e) { setUpd({ state: "error", error: String(e?.message || e) }); }
 }
-// check on launch and twice a day while the app stays open
-if (IS_NATIVE) {
+/** Check on launch (after a few seconds) and twice a day while the app stays open, unless turned off. */
+export function startUpdateChecks() {
+  if (!IS_NATIVE) return;
   const autoCheck = () => { if (UI.autoUpdate !== false && upd.state !== "available") checkUpdate({ quiet: true }); };
   setTimeout(autoCheck, 8000);
   setInterval(autoCheck, 12 * 3600e3);
 }
-
-
-/* Boot */
-applyTheme();
-applyLanguage();
-const folderInput = h("input", { type: "file", id: "folder-input", webkitdirectory: true, multiple: true, style: "display:none" });
-folderInput.addEventListener("change", () => loadCopy(folderInput.files));
-document.body.append(folderInput);
-setInterval(() => pollChanges(), 4000);
-window.addEventListener("focus", () => pollChanges(true));
-window.addEventListener("beforeunload", (e) => { if (editor.dirty) { saveEditor(); e.preventDefault(); } });
-window.addEventListener("resize", debounce(() => { for (const m of masonries) m.relayout(false); }, 100));
-window.SupstackApp = { loadVault, HandleFS, MemoryFS, demoVault, vault, board, get graph() { return graph; } };
-/** On launch, go straight back into the last vault when that needs no prompt; the welcome screen stays as the fallback. */
-async function autoReopen() {
-  try {
-    if (IS_NATIVE) {
-      const ln = lastNative();
-      if (ln && (await vinvoke("exists", { root: ln.root, path: "" }))) await loadVault(new NativeFS(ln.root, ln.name));
-    } else if (hasFsApi) {
-      const last = await idb.get("lastVault");
-      if (last && (await last.queryPermission({ mode: "readwrite" })) === "granted") await loadVault(new HandleFS(last));
-    }
-  } catch (e) { /* keep the welcome screen */ }
-}
-if (!window.__SN_NO_AUTOSTART) showWelcome().then(autoReopen);
-

@@ -5,10 +5,9 @@ import { nt, t } from "../core/i18n.js";
 import { HandleFS, idb, MemoryFS } from "../services/fs.js";
 import { IS_ANDROID, IS_NATIVE, lastNative } from "../services/native.js";
 import { saveUI, UI, vault } from "../services/state.js";
-import { loadVault } from "../services/vault.js";
 import { $, h, ic, iconBtn } from "./dom.js";
 import { Menu, notice } from "./ui.js";
-import { applyLanguage, applyTheme } from "./shell.js";
+import { applyLanguage, applyTheme, loadVault } from "./shell.js";
 import { nativePick, nativeReopen } from "./native-shell.js";
 
 export const hasFsApi = typeof window.showDirectoryPicker === "function";

@@ -3,10 +3,12 @@
    ========================================================= */
 import { ft, fvt, LANG, setLang, st, t, tt, ut, wt } from "../core/i18n.js";
 import { ORG_DEFAULT_KW, orgCache } from "../core/org.js";
+import { on } from "../services/events.js";
 import { board, editor, graph, S, saveUI, setGraph, tree, UI, vault } from "../services/state.js";
-import { buildGraph, loadVault, persistBoard, saveSettings } from "../services/vault.js";
+import { buildGraph, persistBoard, readVault, saveSettings } from "../services/vault.js";
 import { undo } from "../services/save.js";
-import { runSync, stopSync, sync, syncAvailable } from "../services/sync.js";
+import { loadDailyConfig, resetDailyConfig } from "../services/daily-notes.js";
+import { runSync, stopSync, sync, syncAvailable, syncBoot } from "../services/sync.js";
 import { upd } from "../services/updates.js";
 import { $, h, ic, iconBtn } from "./dom.js";
 import { defaultEcho, echo, Menu, minibufPick, notice, openLayer, promptModal } from "./ui.js";
@@ -44,7 +46,7 @@ export function setSide(open) {
   $("#app").classList.toggle("side-closed", !open);
   for (const m of masonries) m.relayout(false);
 }
-export function showLoading(on) {
+function showLoading(on) {
   $(".sn-loading")?.remove();
   if (on) document.body.append(h("div", { cls: "sn-loading" }, ic("sn-spin", "loader-2"), h("span", { text: t("indexing") })));
 }
@@ -133,7 +135,7 @@ function watchTopBar(top) {
   document.fonts?.ready.then(() => { if (top.isConnected) fit(); });
   topBarWatch = () => { resize.disconnect(); changes.disconnect(); };
 }
-export function renderAll() {
+function renderAll() {
   applyLanguage();
   const app = $("#app");
   app.replaceChildren();
@@ -282,3 +284,18 @@ export function hotkeysModal() {
     h("table", { cls: "sn-kbd-table" }, rows.map(([k, d]) => h("tr", {}, h("td", {}, k), h("td", { text: d })))));
 }
 
+/** Open a vault: read it (services/vault.js readVault), then show it and start syncing. */
+export async function loadVault(fs) {
+  showLoading(true);
+  try {
+    await readVault(fs);
+    applyLanguage();
+    closeEditor(true);
+    $("#welcome")?.remove();
+    renderAll();
+    $("#board")?.focus();
+    syncBoot();
+    resetDailyConfig(); loadDailyConfig();
+  } finally { showLoading(false); }
+}
+on("changed", () => refresh());

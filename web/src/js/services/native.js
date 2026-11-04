@@ -1,16 +1,10 @@
 /* =========================================================
-   Native app shell (Tauri on Windows, macOS and Android).
-   The page stays the same; only file access goes through the app's
-   "vault" plugin instead of the browser's File System Access API.
+   Native app (Tauri on Windows, macOS and Android): file access through the app's "vault" plugin
+   instead of the browser's File System Access API, and opening links outside the app.
+   ui/native-shell.js does the parts on screen.
    ========================================================= */
 import { lsGet } from "./storage.js";
-import { board, editor, UI, vault } from "./state.js";
-import { $ } from "../ui/dom.js";
-import { closeMenu, notice, openMenuEl } from "../ui/ui.js";
-import { goBack } from "../ui/board.js";
-import { closeEditor } from "../ui/editor.js";
-import { setSide } from "../ui/shell.js";
-import { setFocusMode } from "../ui/completion.js";
+import { emit } from "./events.js";
 
 export const TAURI = window.__TAURI__?.core || null;
 export const IS_NATIVE = !!TAURI;
@@ -55,38 +49,6 @@ export class NativeFS {
 export const lastNative = () => lsGet("sn-native-last", null);
 /** Open links outside the app (browser, obsidian://). */
 export function openExternal(url) {
-  if (IS_NATIVE) TAURI.invoke("plugin:opener|open_url", { url }).catch((e) => notice(String(e?.message || e)));
+  if (IS_NATIVE) TAURI.invoke("plugin:opener|open_url", { url }).catch((e) => emit("notice", String(e?.message || e)));
   else location.href = url;
 }
-if (IS_NATIVE) {
-  document.documentElement.classList.add("is-native");
-  if (IS_ANDROID) document.documentElement.classList.add("is-android");
-  // links with target=_blank would silently do nothing inside the app window
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest?.("a[href]");
-    if (!a || a.hasAttribute("download")) return;
-    const href = a.getAttribute("href") || "";
-    if (/^(https?|mailto|tel|obsidian):/i.test(href)) { e.preventDefault(); openExternal(href); }
-  }, true);
-  // Android back button: close what's open, then go back, then leave the app
-  if (IS_ANDROID) {
-    history.replaceState({ sn: 0 }, "");
-    history.pushState({ sn: 1 }, "");
-    addEventListener("popstate", () => {
-      const consumed = (() => {
-        if (document.querySelector(".modal-bg")) { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); return true; }
-        if (typeof openMenuEl !== "undefined" && openMenuEl) { closeMenu(); return true; }
-        if (!vault.fs) return false;
-        if (UI.focus) { setFocusMode(false); return true; }
-        if (editor.path) { closeEditor(); return true; }
-        if (!$("#app").classList.contains("side-closed") && innerWidth <= 820) { setSide(false); return true; }
-        if (board.history.length) { goBack(); return true; }
-        return false;
-      })();
-      if (consumed) history.pushState({ sn: 1 }, "");
-      else history.back();
-    });
-  }
-}
-
-

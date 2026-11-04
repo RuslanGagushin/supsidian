@@ -4,6 +4,7 @@
 import { t, wt } from "../core/i18n.js";
 import { baseName, debounce, dirName } from "../core/util.js";
 import { splitNote } from "../core/frontmatter.js";
+import { on } from "../services/events.js";
 import { board, editor, UI, vault } from "../services/state.js";
 import { cardColor, cardIcon } from "../services/vault.js";
 import { writeRaw } from "../services/save.js";
@@ -305,3 +306,7 @@ export function editorTextarea(value, live = false) {
   return ta;
 }
 
+// what services/ report about notes (services/events.js)
+on("flush", async (path) => { if (editor.dirty && (path === undefined || editor.path === path)) await saveEditor(); });
+on("written", (path, { silentEditor }) => { if (!silentEditor && editor.path === path && !editor.dirty) syncEditorFromDisk(); });
+on("changed", (o) => { if (o?.disk && editor.path && !editor.dirty) syncEditorFromDisk(); });

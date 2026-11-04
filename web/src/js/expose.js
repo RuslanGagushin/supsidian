@@ -1,5 +1,6 @@
-// The tests (tests/harness.mjs) drive the page through its modules' exports: with window.__SN_EXPOSE__ set before
-// the page loads, each export becomes a global that reads the live binding. Generated list — one line per module.
+// The page tests (tests/harness.mjs) drive the page through its modules' exports: with window.__SN_EXPOSE__ set
+// before the page loads, each export becomes a global that reads the live binding. One line per module that exports
+// anything (tests/architecture.test.mjs checks the list is complete).
 import * as m0 from "./core/strings.js";
 import * as m1 from "./core/i18n.js";
 import * as m2 from "./core/util.js";
@@ -45,9 +46,10 @@ import * as m41 from "./ui/agenda.js";
 import * as m42 from "./ui/files.js";
 import * as m43 from "./ui/native-shell.js";
 import * as m44 from "./ui/about.js";
+import * as m45 from "./ui/boot.js";
 
 export function exposeGlobals() {
-  for (const ns of [m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21, m22, m23, m24, m25, m26, m27, m28, m29, m30, m31, m32, m33, m34, m35, m36, m37, m38, m39, m40, m41, m42, m43, m44]) {
+  for (const ns of [m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21, m22, m23, m24, m25, m26, m27, m28, m29, m30, m31, m32, m33, m34, m35, m36, m37, m38, m39, m40, m41, m42, m43, m44, m45]) {
     for (const k of Object.keys(ns)) Object.defineProperty(globalThis, k, { get: () => ns[k], configurable: true });
   }
 }

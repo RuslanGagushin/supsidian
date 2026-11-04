@@ -1,8 +1,14 @@
+/* =========================================================
+   The About tab of the settings: version, updates, release notes.
+   ========================================================= */
 import { LANG, st, ut } from "../core/i18n.js";
+import { on } from "../services/events.js";
 import { IS_ANDROID, IS_NATIVE, openExternal } from "../services/native.js";
 import { saveUI, UI } from "../services/state.js";
 import { APP_VERSION, appVersion, checkUpdate, installUpdate, RELEASES, upd } from "../services/updates.js";
 import { h } from "./dom.js";
+import { notice } from "./ui.js";
+import { settingsModal } from "./shell.js";
 
 /** The About tab of the settings: version, updates, release notes. */
 export function aboutBody(item, toggle) {
@@ -33,3 +39,4 @@ export function aboutBody(item, toggle) {
   out.push(item(ut("releaseNotes"), ut("releaseNotesDesc"), h("button", { cls: "wb-btn", type: "button", text: st("open"), onClick: () => openExternal(RELEASES) })));
   return out;
 }
+on("update", () => notice(ut("availableNotice", { v: upd.version }), { keep: true, action: { label: ut("open"), run: () => settingsModal("about") } }));

@@ -1,3 +1,9 @@
+/* =========================================================
+   Tables, edited like Obsidian's: Tab and Enter move between cells, the source stays aligned in columns,
+   and a menu (right click, the toolbar's table button, the + buttons on a rendered table) adds, moves, sorts, aligns and deletes rows and columns.
+   A parsed table is { rows: [[cell text]], align: ["" | "left" | "center" | "right"] }; rows[0] is the header.
+   This module is the text side: finding, parsing and formatting tables, and the row / column operations.
+   ========================================================= */
 const TABLE_SEP_RE = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
 /** [start, end) of each cell's trimmed text in a row; pipes escaped as \| stay in their cell. */
 export function tableSpans(line) {

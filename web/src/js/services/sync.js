@@ -10,29 +10,27 @@
    ========================================================= */
 import { st } from "../core/i18n.js";
 import { lsGet, lsSet } from "./storage.js";
+import { emit } from "./events.js";
 import { IS_NATIVE, vinvoke } from "./native.js";
-import { editor, vault } from "./state.js";
+import { vault } from "./state.js";
 import { pollChanges } from "./vault.js";
-import { notice } from "../ui/ui.js";
-import { saveEditor } from "../ui/editor.js";
-import { renderSyncButton, renderSyncPanel, syncSettingsModal } from "../ui/sync-panel.js";
 
 export const GIT_DEFAULTS = { remote: "", branch: "main", username: "git", token: "", authorName: "", authorEmail: "", auto: true, minutes: 5 };
-export let SS = { ...GIT_DEFAULTS };
+export const SS = { ...GIT_DEFAULTS }; // this vault's settings, changed in place
 export const sync = { crash: "", busy: false, last: null, error: "", report: null, timer: null, debounce: null, dirty: false, info: null };
 
 export const syncAvailable = () => !!(IS_NATIVE && vault.fs?.native);
 const gitKey = () => "sn-git:" + vault.fs.root;
 const gitConfigured = () => !!SS.remote.trim();
 
-function loadSyncSettings(saved) { SS = { ...GIT_DEFAULTS, ...(lsGet(gitKey(), {}) || {}), ...(saved || {}) }; }
+function loadSyncSettings(saved) { Object.assign(SS, GIT_DEFAULTS, lsGet(gitKey(), {}) || {}, saved || {}); }
 export function saveSyncSettings() { lsSet(gitKey(), SS); saveRepoSettings(); scheduleAuto(); syncChanged(); }
 /** Writes the settings into the repository's .git/config (creating the repository once there is a remote). */
 async function saveRepoSettings() {
   const settings = { remote: SS.remote.trim(), branch: SS.branch.trim(), username: SS.username.trim(), token: SS.token,
     authorName: SS.authorName.trim(), authorEmail: SS.authorEmail.trim(), auto: !!SS.auto, minutes: Math.max(1, Number(SS.minutes) || 5) };
   try { await vinvoke("git_save_settings", { root: vault.fs.root, settings }); }
-  catch (e) { notice(st("failed", { msg: String(e?.message || e) })); }
+  catch (e) { emit("notice", st("failed", { msg: String(e?.message || e) })); }
 }
 
 /** Local edits: schedule a sync soon after the last one. */
@@ -67,7 +65,7 @@ export async function syncBoot() {
   scheduleAuto();
   syncChanged();
   // after a crash, wait for the user instead of crashing again at every launch
-  if (sync.crash) notice(st("crashed"));
+  if (sync.crash) emit("notice", st("crashed"));
   else if (SS.auto && gitConfigured()) runSync({ quiet: true });
 }
 export async function stopSync() {
@@ -77,22 +75,22 @@ export async function stopSync() {
 }
 export async function runSync({ quiet = false } = {}) {
   if (sync.busy || !syncAvailable()) return;
-  if (!gitConfigured()) { if (!quiet) syncSettingsModal(); return; }
+  if (!gitConfigured()) { if (!quiet) emit("sync-setup"); return; }
   sync.busy = true; sync.error = ""; sync.crash = "";
   syncChanged();
   try {
-    if (editor.dirty) await saveEditor();
+    await emit("flush");
     sync.dirty = false;
     const r = await vinvoke("git_sync", { root: vault.fs.root, config: {
       remote: SS.remote.trim(), branch: SS.branch.trim() || "main", username: SS.username.trim(), token: SS.token,
       authorName: SS.authorName.trim(), authorEmail: SS.authorEmail.trim() } });
     sync.report = r; sync.last = Date.now();
-    if (r.pulled || r.conflicts.length) await pollChanges(true);
-    if (r.conflicts.length) notice(st("conflictsNotice", { n: r.conflicts.length }));
-    else if (!quiet) notice(st("synced", { time: new Date(sync.last).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }));
+    if (r.pulled || r.conflicts.length) await pollChanges();
+    if (r.conflicts.length) emit("notice", st("conflictsNotice", { n: r.conflicts.length }));
+    else if (!quiet) emit("notice", st("synced", { time: new Date(sync.last).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }));
   } catch (e) {
     sync.error = String(e?.message || e);
-    if (!quiet) notice(st("failed", { msg: sync.error }));
+    if (!quiet) emit("notice", st("failed", { msg: sync.error }));
   } finally { sync.busy = false; syncChanged(); }
 }
 
@@ -107,7 +105,7 @@ export function syncStatus() {
   const time = new Date(sync.last).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return { text: st("synced", { time }), short: time, icon: "check", state: sync.report?.conflicts?.length ? "warn" : "ok" };
 }
-function syncChanged() { renderSyncButton(); if (sync.panel) renderSyncPanel(); }
+function syncChanged() { emit("sync"); }
 
 /* ---------- panel: status, sync now, settings */
 

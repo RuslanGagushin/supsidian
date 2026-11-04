@@ -1,3 +1,6 @@
+/* =========================================================
+   Daily notes: Obsidian's core plugin settings in .obsidian/daily-notes.json.
+   ========================================================= */
 import { vault } from "./state.js";
 
 export let dailyCfg = null;

@@ -1,3 +1,7 @@
+/* =========================================================
+   The editor's frontmatter panel, its keys, and the formatting toolbar with the commands it runs
+   (insert, wrap, prefix lines, headings).
+   ========================================================= */
 import { LANG, t, wt } from "../core/i18n.js";
 import { baseName, colorLabel, COLORS } from "../core/util.js";
 import { dumpYaml } from "../core/frontmatter.js";

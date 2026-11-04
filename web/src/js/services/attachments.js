@@ -1,3 +1,7 @@
+/* =========================================================
+   Attachments: the vault's non-note files — their URLs for display, where pasted files are saved,
+   and which notes link to a file.
+   ========================================================= */
 import { dirName } from "../core/util.js";
 import { formatMoment } from "../core/dates.js";
 import { stripCode } from "../core/frontmatter.js";

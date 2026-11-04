@@ -3,9 +3,9 @@
    ========================================================= */
 import { LANG, t } from "../core/i18n.js";
 import { baseName, colorLabel, COLORS, debounce } from "../core/util.js";
-import { computeModel, filterActive } from "../core/board-model.js";
+import { filterActive } from "../core/board-model.js";
 import { board, editor, graph, S, vault } from "../services/state.js";
-import { cardColor, cardIcon, cardTags, makeComparator, persistBoard } from "../services/vault.js";
+import { boardModel, cardColor, cardIcon, cardTags, makeComparator, persistBoard } from "../services/vault.js";
 import { $, $$, h, ic, iconBtn, isMod, setIcon } from "./dom.js";
 import { Menu } from "./ui.js";
 import { wireRendered } from "./markdown.js";
@@ -103,7 +103,7 @@ export function renderBoard(resetScroll = false) {
 
   if (board.target && !graph.has(board.target)) board.target = null;
   if (board.tagView && !board.filter.tags.includes(board.tagView)) board.tagView = null;
-  const model = computeModel();
+  const model = boardModel();
   root.className = "sn-board" + (board.layout === "list" ? " is-list" : "") + (board.selectMode ? " is-select-mode" : "");
   root.replaceChildren();
   masonries.length = 0;
@@ -207,7 +207,7 @@ export function patchBoard() {
   const root = $("#board");
   if (!root || !root.querySelector(".sn-scroll") || board.flashPath) return renderBoard();
   if (board.target && !graph.has(board.target)) return renderBoard();
-  const model = computeModel();
+  const model = boardModel();
   if (boardSig(model) !== board.sig) return renderBoard();
   const focused = document.activeElement?.closest?.(".sn-card")?.dataset.path;
   for (const el of $$(".sn-card", root)) {

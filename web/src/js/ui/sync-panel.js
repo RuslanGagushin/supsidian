@@ -1,10 +1,14 @@
+/* =========================================================
+   Git sync on screen: the status button, and the Git tab of the settings.
+   ========================================================= */
 import { st } from "../core/i18n.js";
+import { on } from "../services/events.js";
 import { GIT_DEFAULTS, runSync, saveSyncSettings, SS, sync, syncAvailable, syncStatus } from "../services/sync.js";
 import { $, h, ic } from "./dom.js";
 import { notice } from "./ui.js";
 import { settingsModal } from "./shell.js";
 
-export function renderSyncButton() {
+function renderSyncButton() {
   const b = $("#sync-btn");
   if (!b) return;
   const s = syncStatus();
@@ -19,7 +23,7 @@ export function syncButton() {
   return b;
 }
 function openSyncPanel() { if (!syncAvailable()) { notice(st("unavailable")); return; } syncSettingsModal(); }
-export function renderSyncPanel() { sync.panel?.render(); }
+function renderSyncPanel() { sync.panel?.render(); }
 export function syncSettingsModal() {
   if (!syncAvailable()) { notice(st("unavailable")); return; }
   settingsModal("sync");
@@ -52,3 +56,5 @@ export function syncSettingsBody(item, toggle) {
     h("p", { cls: "sn-sync-note", text: st("note") }),
     h("div", { cls: "modal-buttons" }, syncBtn)];
 }
+on("sync", () => { renderSyncButton(); if (sync.panel) renderSyncPanel(); });
+on("sync-setup", () => syncSettingsModal());

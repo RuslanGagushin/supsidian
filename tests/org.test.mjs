@@ -111,7 +111,7 @@ describe("keywords and states", () => {
 });
 
 describe("parsing a note", () => {
-  const entries = () => ev(() => orgParse(vault.notes.get("Work.md")).map((e) => ({ kind: e.kind, kw: e.kw, pri: e.pri, title: e.title, tags: e.alltags, inh: e.inherited, cb: [e.cbDone, e.cbTotal], sched: e.sched?.dn ?? null, dead: e.dead?.dn ?? null, closed: !!e.closed, outline: e.outline })));
+  const entries = () => ev(() => orgEntries(vault.notes.get("Work.md")).map((e) => ({ kind: e.kind, kw: e.kw, pri: e.pri, title: e.title, tags: e.alltags, inh: e.inherited, cb: [e.cbDone, e.cbTotal], sched: e.sched?.dn ?? null, dead: e.dead?.dn ?? null, closed: !!e.closed, outline: e.outline })));
 
   test("headings, items, checkboxes, events; nothing from code blocks", async () => {
     const es = await entries();

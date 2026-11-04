@@ -3,6 +3,7 @@
    ========================================================= */
 import { t } from "../core/i18n.js";
 import { colorLabel, COLORS, norm } from "../core/util.js";
+import { on } from "../services/events.js";
 import { vault } from "../services/state.js";
 import { undo } from "../services/save.js";
 import { $, $$, allIconNames, h, ic } from "./dom.js";
@@ -265,3 +266,4 @@ export function confirmModal(title, text, okText) {
   });
 }
 
+on("notice", (text, opts) => notice(text, opts));

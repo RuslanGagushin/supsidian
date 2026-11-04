@@ -1,3 +1,6 @@
+/* =========================================================
+   Moment-style date formatting (Obsidian's daily notes and templates use it).
+   ========================================================= */
 import { LANG } from "./i18n.js";
 
 export function formatMoment(d, fmt) {

@@ -1,3 +1,6 @@
+/* =========================================================
+   Small helpers for strings and paths, and the card colors.
+   ========================================================= */
 import { t } from "./i18n.js";
 
 export const debounce = (fn, ms) => { let tm; const d = (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; d.cancel = () => clearTimeout(tm); return d; };

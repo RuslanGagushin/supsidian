@@ -1,3 +1,7 @@
+/* =========================================================
+   Tables in the editor: the table menu, Tab / Enter between cells in the source,
+   and cells edited one at a time in a rendered table (live preview). core/tables.js does the text.
+   ========================================================= */
 import { wt } from "../core/i18n.js";
 import { findTables, formatTable, parseTable, TABLE_OPS, tableCellAt, tableEdit } from "../core/tables.js";
 import { editor } from "../services/state.js";
@@ -8,9 +12,6 @@ import { editorModeline, saveEditor, scheduleSave, setSaveState } from "./editor
 import { liveActivate, liveTa, lpTableFill } from "./live-preview.js";
 import { edInsert, updateEdToolbar } from "./editor-toolbar.js";
 
-/* ---------- Tables, edited like Obsidian's: Tab and Enter move between cells, the source stays aligned in columns,
-   and a menu (right click, the toolbar's table button, the + buttons on a rendered table) adds, moves, sorts, aligns and deletes rows and columns.
-   A parsed table is { rows: [[cell text]], align: ["" | "left" | "center" | "right"] }; rows[0] is the header. */
 export function tableMenu(run, row) {
   const m = new Menu();
   m.label(wt("tblRow"));

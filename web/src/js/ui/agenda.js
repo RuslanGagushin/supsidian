@@ -1,14 +1,17 @@
+/* =========================================================
+   The agenda view (Org-agenda style): day / week agenda, TODO list, tag match, search, and Capture.
+   ========================================================= */
 import { LANG, t, tt } from "../core/i18n.js";
 import { baseName, debounce, norm } from "../core/util.js";
 import { formatMoment } from "../core/dates.js";
 import { fillTemplate } from "../core/frontmatter.js";
-import { oFmt, ohm, oisoWeek, onow, opad, orgCache, orgDayEntries, orgNowTs, orgPriRank, orgReadDate, orgSet, orgShift, orgSkip, orgStats, orgTsStr, orgWithGrid, oymd } from "../core/org.js";
+import { oFmt, ohm, oisoWeek, onow, opad, orgCache, orgDayEntries, orgNowTs, orgPriRank, orgReadDate, orgShift, orgSkip, orgStats, orgTsStr, orgWithGrid, oymd } from "../core/org.js";
 import { lsGet, lsSet } from "../services/storage.js";
 import { board, vault } from "../services/state.js";
 import { cardColor, persistBoard, resolveLink } from "../services/vault.js";
 import { txn, writeRaw } from "../services/save.js";
 import { dailyCfg, dailyConfig, loadDailyConfig } from "../services/daily-notes.js";
-import { orgAll } from "../services/tasks.js";
+import { orgAll, todoSet } from "../services/tasks.js";
 import { $, $$, h, ic, iconBtn, isMod } from "./dom.js";
 import { echo, Menu, minibufRead, openLayer } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
@@ -136,7 +139,7 @@ export function renderTasksView(root) {
       btn(tt("goTo"), tt("goTo") + " (j)", () => orgNav("jump")), btn(tt("log"), tt("log") + " (l)", () => { AG.log = !AG.log; saveAG(); renderBoard(); }, AG.log));
   } else if (AG.view === "todo") {
     const kws = [...new Set(all.filter((e) => e.kind !== "box").flatMap((e) => e.set.todo))];
-    for (const k of ["ALL", ...(kws.length ? kws : orgSet(null).todo)]) agbar.append(btn(k, k, () => { AG.todoKw = k; saveAG(); renderBoard(); }, AG.todoKw === k));
+    for (const k of ["ALL", ...(kws.length ? kws : todoSet(null).todo)]) agbar.append(btn(k, k, () => { AG.todoKw = k; saveAG(); renderBoard(); }, AG.todoKw === k));
     agbar.append(btn(tt("boxes"), tt("boxesHint"), () => { AG.boxes = !AG.boxes; saveAG(); renderBoard(); }, AG.boxes));
   } else {
     const isM = AG.view === "match";
@@ -176,7 +179,7 @@ export function renderTasksView(root) {
     body.append(h("div", { cls: "ag-title" }, h("b", { text: tt(AG.span === "week" ? "weekAgenda" : "dayAgenda") }), ` (W${opad(oisoWeek(days[0]))})`, AG.log ? h("span", { cls: "ag-flag", text: " · " + tt("log") }) : null));
     for (const dn of days) {
       const o = oymd(dn);
-      let ents = orgDayEntries(dn, all, T).filter((x) => pass(x.e));
+      let ents = orgDayEntries(dn, all, T, { log: AG.log }).filter((x) => pass(x.e));
       count += ents.length;
       const card = h("section", { cls: "ag-card" + (dn === T ? " is-today" : "") + (ents.length ? "" : " is-empty") });
       card.append(h("div", { cls: "ag-day" + (dn === T ? " today" : "") + (o.w === 0 || o.w === 6 ? " weekend" : "") },
@@ -456,7 +459,7 @@ export function orgCapture(pre = {}) {
     const extra = notes.value.replace(/\s+$/, "").split("\n").filter((l, i, a) => a.join("").trim()).map((l) => "  " + l);
     const ts = r ? orgTsStr({ active: true, dn: r.dn, time: r.time, end: r.end, rep: r.rep, warn: r.warn }) : null;
     let out;
-    if (tpl === "t") out = [`- ${orgSet(null).todo[0] || "TODO"} ${title}`, ...(ts ? [`  SCHEDULED: ${ts}`] : []), ...extra];
+    if (tpl === "t") out = [`- ${todoSet(null).todo[0] || "TODO"} ${title}`, ...(ts ? [`  SCHEDULED: ${ts}`] : []), ...extra];
     else if (tpl === "n") out = [`- ${title} ${orgNowTs()}`, ...extra];
     else if (tpl === "m") out = [`- ${title} ${ts} #meeting`, ...extra];
     else out = [`- ${ohm(onow().min)} ${title}`, ...extra];

@@ -1,17 +1,16 @@
 /* =========================================================
-   Vault loading and indexing
+   The vault: notes and their index, link resolution, the hierarchy graph, card sorting, the settings,
+   reading a vault and picking up changes made outside the page.
    ========================================================= */
 import { baseName, COLORS, dirName } from "../core/util.js";
 import { fmInner, noteLinks, noteTags, parentLinkpaths, parseYaml, splitNote } from "../core/frontmatter.js";
 import { HierarchyGraph } from "../core/graph.js";
+import { computeModel } from "../core/board-model.js";
 import { lsGet, lsSet } from "./storage.js";
-import { board, DEFAULTS, editor, graph, resetSettings, S, setGraph, tree, undoStack, vault } from "./state.js";
+import { emit } from "./events.js";
+import { board, DEFAULTS, graph, resetSettings, S, setGraph, tree, undoStack, vault } from "./state.js";
 import { dropAttachment } from "./attachments.js";
-import { loadDailyConfig, resetDailyConfig } from "./daily-notes.js";
-import { stopSync, syncBoot, syncHook } from "./sync.js";
-import { $ } from "../ui/dom.js";
-import { closeEditor, syncEditorFromDisk } from "../ui/editor.js";
-import { applyLanguage, refresh, renderAll, showLoading } from "../ui/shell.js";
+import { stopSync, syncHook } from "./sync.js";
 
 export function isMd(p) { return /\.md$/i.test(p); }
 export function isCard(path) {
@@ -127,59 +126,51 @@ export function makeComparator(mode) {
 }
 export const manualCmp = (a, b, p) => makeComparator("manual")(a, b, p);
 
-export async function loadVault(fs) {
-  if (typeof stopSync === "function") await stopSync();
+/** Read a vault: every note, the attachments' sizes and dates, the settings, and the board and tree as they were left.
+ *  ui/shell.js loadVault shows it. */
+export async function readVault(fs) {
+  await stopSync();
   vault.fs = fs;
   vault.notes.clear(); vault.files.clear(); vault.allPaths.clear(); vault.sizes.clear(); vault.mtimes.clear();
-  showLoading(true);
-  try {
-    const list = await fs.list();
-    const md = [], others = [];
-    for (const f of list) {
-      vault.allPaths.add(f.path);
-      if (isMd(f.path)) md.push(f);
-      else { addAttachment(f.path); if (f.mtime) vault.mtimes.set(f.path, f.mtime); if (f.handle) others.push(f); }
+  const list = await fs.list();
+  const md = [], others = [];
+  for (const f of list) {
+    vault.allPaths.add(f.path);
+    if (isMd(f.path)) md.push(f);
+    else { addAttachment(f.path); if (f.mtime) vault.mtimes.set(f.path, f.mtime); if (f.handle) others.push(f); }
+  }
+  let i = 0;
+  const worker = async () => {
+    while (i < md.length) {
+      const f = md[i++];
+      try {
+        const file = f.handle ? await f.handle.getFile() : await fs.readFile(f.path);
+        const raw = await file.text();
+        vault.notes.set(f.path, parseNote(f.path, raw, file.lastModified || Date.now()));
+        vault.sizes.set(f.path, file.size);
+      } catch (e) { console.warn("read failed", f.path, e); }
     }
-    let i = 0;
-    const worker = async () => {
-      while (i < md.length) {
-        const f = md[i++];
-        try {
-          const file = f.handle ? await f.handle.getFile() : await fs.readFile(f.path);
-          const raw = await file.text();
-          vault.notes.set(f.path, parseNote(f.path, raw, file.lastModified || Date.now()));
-          vault.sizes.set(f.path, file.size);
-        } catch (e) { console.warn("read failed", f.path, e); }
-      }
-      while (others.length) {
-        const f = others.pop();
-        try { const file = await f.handle.getFile(); vault.sizes.set(f.path, file.size); if (file.lastModified) vault.mtimes.set(f.path, file.lastModified); } catch { /* gone */ }
-      }
-    };
-    await Promise.all(Array.from({ length: 8 }, worker));
-    indexNames();
-    await loadPluginData();
-    applyLanguage();
-    const saved = lsGet(boardKey(), null);
-    Object.assign(board, {
-      target: null, depth: S.defaultDepth, layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
-      filter: { query: "", colors: [], tags: [] }, searchOpen: false, history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
-    });
-    if (saved) {
-      for (const k of ["target", "depth", "layout", "sort", "grouped", "heroCollapsed", "tagView", "view"]) if (saved[k] !== undefined) board[k] = saved[k];
-      if (saved.filter) board.filter = { query: saved.filter.query || "", colors: saved.filter.colors || [], tags: saved.filter.tags || [], scope: saved.filter.scope === "all" ? "all" : "here" };
-      board.searchOpen = !!(board.filter.query || board.filter.colors.length || board.filter.tags.length);
-      tree.expanded = new Set(saved.treeExpanded || []);
-    } else tree.expanded = new Set();
-    closeEditor(true);
-    undoStack.length = 0;
-    setGraph(buildGraph());
-    $("#welcome")?.remove();
-    renderAll();
-    $("#board")?.focus();
-    if (typeof syncBoot === "function") syncBoot();
-    resetDailyConfig(); loadDailyConfig();
-  } finally { showLoading(false); }
+    while (others.length) {
+      const f = others.pop();
+      try { const file = await f.handle.getFile(); vault.sizes.set(f.path, file.size); if (file.lastModified) vault.mtimes.set(f.path, file.lastModified); } catch { /* gone */ }
+    }
+  };
+  await Promise.all(Array.from({ length: 8 }, worker));
+  indexNames();
+  await loadPluginData();
+  const saved = lsGet(boardKey(), null);
+  Object.assign(board, {
+    target: null, depth: S.defaultDepth, layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
+    filter: { query: "", colors: [], tags: [] }, searchOpen: false, history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
+  });
+  if (saved) {
+    for (const k of ["target", "depth", "layout", "sort", "grouped", "heroCollapsed", "tagView", "view"]) if (saved[k] !== undefined) board[k] = saved[k];
+    if (saved.filter) board.filter = { query: saved.filter.query || "", colors: saved.filter.colors || [], tags: saved.filter.tags || [], scope: saved.filter.scope === "all" ? "all" : "here" };
+    board.searchOpen = !!(board.filter.query || board.filter.colors.length || board.filter.tags.length);
+    tree.expanded = new Set(saved.treeExpanded || []);
+  } else tree.expanded = new Set();
+  undoStack.length = 0;
+  setGraph(buildGraph());
 }
 const boardKey = () => "sn-board:" + (vault.fs?.kind || "") + ":" + (vault.fs?.name || "");
 export function persistBoard() {
@@ -219,9 +210,9 @@ export async function saveSettings() {
 
 /* Watch for changes made elsewhere (Obsidian, sync) */
 let polling = false;
-export async function pollChanges(force = false) {
+/** Pick up what changed on disk since the last look (main.js calls it every few seconds while the page is visible). */
+export async function pollChanges() {
   if (polling || !vault.fs || vault.fs.kind !== "disk") return;
-  if (!force && document.visibilityState !== "visible") return;
   polling = true;
   try {
     const list = await vault.fs.list();
@@ -254,9 +245,15 @@ export async function pollChanges(force = false) {
     }
     if (changed) {
       indexNames();
-      refresh();
-      if (editor.path && !editor.dirty) syncEditorFromDisk();
+      emit("changed", { disk: true });
     }
   } catch (e) { console.warn("poll failed", e); } finally { polling = false; }
 }
 
+/** The board's cards right now: core/board-model.js on this vault, the board's state and settings. */
+export function boardModel() {
+  return computeModel(graph, board, {
+    cmp: makeComparator(board.sort), colorOf: cardColor, tagsOf: cardTags, maxCards: S.maxCards,
+    textOf: (p) => { const n = vault.notes.get(p); return n.name + "\n" + n.raw; },
+  });
+}

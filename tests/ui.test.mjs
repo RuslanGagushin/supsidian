@@ -7,7 +7,7 @@ import * as H from "./harness.mjs";
 const page = () => H.page;
 // cards in reading order (the masonry DOM is in column order); checks that each one is on the page too
 const titles = () => ev(() => {
-  const shown = computeModel().shown.map((c) => c.path);
+  const shown = boardModel().shown.map((c) => c.path);
   const onPage = new Set([...document.querySelectorAll("#board .sn-masonry .sn-card")].map((c) => c.dataset.path));
   return shown.filter((p) => onPage.has(p)).map((p) => p.replace(/^Cards\/|\.md$/g, ""));
 });

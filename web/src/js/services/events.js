@@ -18,6 +18,6 @@ export function on(type, fn) {
   handlers.get(type).add(fn);
   return () => handlers.get(type).delete(fn);
 }
-function emit(type, ...args) {
+export function emit(type, ...args) {
   return Promise.all([...(handlers.get(type) ?? [])].map((fn) => fn(...args)));
 }

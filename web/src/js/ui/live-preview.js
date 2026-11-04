@@ -1,8 +1,9 @@
 import { CODE_RE, extractLinkpath } from "../core/frontmatter.js";
-import { orgKwClass, orgSet } from "../core/org.js";
+import { orgKwClass } from "../core/org.js";
 import { findTables, tableSpans } from "../core/tables.js";
 import { editor, graph, vault } from "../services/state.js";
 import { resolveFileLink, resolveLink } from "../services/vault.js";
+import { todoSet } from "../services/tasks.js";
 import { $, $$, h, isMod } from "./dom.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
 import { createCard } from "./actions.js";
@@ -220,7 +221,7 @@ function lpInline(view) {
   }
   // what the Markdown parser doesn't know: [[links]], ![[embeds]], ==highlights==, #tags and Org keywords, outside code and links
   const inSkip = (a, b) => skip.some(([s, e]) => a < e && b > s);
-  const set = orgSet(vault.notes.get(editor.path));
+  const set = todoSet(vault.notes.get(editor.path));
   for (const { from, to } of view.visibleRanges) {
     for (let pos = from; pos <= to; ) {
       const l = state.doc.lineAt(pos), text = l.text, at = (i) => l.from + i;
