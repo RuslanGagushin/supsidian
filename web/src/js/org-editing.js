@@ -1,6 +1,18 @@
 /* ---------- calendar popup (date + time + repeat), used by every date prompt and by Capture */
 /** Text the date reader understands, e.g. "2026-11-05 14:00-15:00 +1w". */
-function orgDateText(r) {
+import { LANG } from "./i18n.js";
+import { $, $$, debounce, h, ic, isMod, lsGet, lsSet, setIcon } from "./dom.js";
+import { splitNote } from "./frontmatter.js";
+import { editor, vault } from "./state.js";
+import { echo, mbBegin, mbEnd, minibufRead, promptModal } from "./ui.js";
+import { editorModeline, openEditor } from "./editor.js";
+import { liveActivate, liveText } from "./live-preview.js";
+import { edInsert, updateEdToolbar } from "./tables.js";
+import { caretRect } from "./completion.js";
+import { oaddMonths, odn, oFmt, ohm, oIndentW, oisoWeek, onow, opad, OPLAN_RE, orgAll, orgHead, orgKwClass, orgLine, orgNextKw, orgPickPriority, orgPlanMap, orgReadDate, orgSet, orgSetBox, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgSkip, orgTsParse, orgTsStr, oymd, tt } from "./org.js";
+import { openTasksView, orgCapture } from "./agenda.js";
+
+export function orgDateText(r) {
   if (!r) return "";
   const o = oymd(r.dn);
   let s = `${o.y}-${opad(o.m)}-${opad(o.d)}`;
@@ -17,7 +29,7 @@ const CSTR = {
 };
 const ct = (k) => CSTR[LANG]?.[k] ?? CSTR.en[k];
 /** A month calendar with time and repeat controls. opts: { value, base, dateOnly, onChange(r), onAccept(r), onClear } */
-function orgCalendar(opts) {
+export function orgCalendar(opts) {
   const T = onow().dn;
   const st = { dn: opts.value?.dn ?? null, time: opts.value?.time ?? null, end: opts.value?.end ?? null, rep: opts.value?.rep ?? null, warn: opts.value?.warn ?? null };
   let view = st.dn ?? opts.base ?? T;
@@ -102,7 +114,7 @@ function orgCalendar(opts) {
 }
 
 /** Minibuffer date prompt with a live preview and the calendar popup. undefined = cancelled, null = remove ("-"). */
-function orgAskDate(label, cur, o = {}) {
+export function orgAskDate(label, cur, o = {}) {
   return new Promise((resolve) => {
     const mb = $("#minibuf");
     if (!mb) { promptModal(label).then((v) => resolve(v == null ? undefined : v.trim() === "-" ? null : orgReadDate(v, cur?.dn) || undefined)); return; }
@@ -284,7 +296,7 @@ async function edOrgAsk(ta, kind) {
 }
 /** Emacs C-c prefix in the editor (only with no selection, so Ctrl+C still copies). Returns true when handled. */
 let orgPrefix = false;
-function orgEditorKey(e, ta) {
+export function orgEditorKey(e, ta) {
   if (orgPrefix) {
     if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return true;
     orgPrefix = false;
@@ -314,14 +326,14 @@ function orgEditorKey(e, ta) {
   return false;
 }
 /** Toolbar buttons for the editor (called from renderEdToolbar). */
-function orgToolbar(btn, g) {
+export function orgToolbar(btn, g) {
   btn(g, "list-todo", tt("cycle"), (el) => edToggleTask(el), "C-c C-t · Ctrl+Enter");
   btn(g, "flag", tt("priority"), (el) => edOrgAsk(el, "priority"), "C-c ,");
   btn(g, "calendar-clock", tt("schedule"), (el) => edOrgAsk(el, "SCHEDULED"), "C-c C-s");
   btn(g, "alarm-clock", tt("deadline"), (el) => edOrgAsk(el, "DEADLINE"), "C-c C-d");
   btn(g, "calendar-plus", tt("timestamp"), (el) => edOrgAsk(el, "active"), "C-c .");
 }
-const orgLineIsEntry = (ta) => {
+export const orgLineIsEntry = (ta) => {
   const v = ta.value, s = ta.selectionStart;
   const ls = v.lastIndexOf("\n", s - 1) + 1;
   let le = v.indexOf("\n", s); if (le < 0) le = v.length;
@@ -330,7 +342,7 @@ const orgLineIsEntry = (ta) => {
 };
 
 /** Open a note in the editor with the caret at the end of a line. */
-function openEditorAtLine(path, lineIndex) {
+export function openEditorAtLine(path, lineIndex) {
   openEditor(path, { focus: true, keepCaret: true });
   setTimeout(() => {
     const ta = $(".sn-editor-text");
@@ -355,8 +367,8 @@ function openEditorAtLine(path, lineIndex) {
 }
 
 /* ---------- reading view: show keywords, priorities and dates like Org does */
-const ORG_DECOR_RE = /(SCHEDULED:|DEADLINE:|CLOSED:)|(<\d{4}-\d{2}-\d{2}[^>\n]*>(?:--<\d{4}-\d{2}-\d{2}[^>\n]*>)?)|(\[\d{4}-\d{2}-\d{2}[^\]\n]*\])/g;
-function orgDecorate(el, path) {
+export const ORG_DECOR_RE = /(SCHEDULED:|DEADLINE:|CLOSED:)|(<\d{4}-\d{2}-\d{2}[^>\n]*>(?:--<\d{4}-\d{2}-\d{2}[^>\n]*>)?)|(\[\d{4}-\d{2}-\d{2}[^\]\n]*\])/g;
+export function orgDecorate(el, path) {
   const set = orgSet(vault.notes.get(path));
   for (const blk of el.querySelectorAll("h1, h2, h3, h4, h5, h6, li")) {
     let n = blk.firstChild;
@@ -412,7 +424,7 @@ const ORG_FOLD = new Map(Object.entries(lsGet("sn-fold", {})));
 const saveFold = debounce(() => { const o = {}; [...ORG_FOLD.entries()].slice(-600).forEach(([k, v]) => { if (v) o[k] = 1; }); lsSet("sn-fold", o); }, 300);
 const FSTR = { en: { fold: "Fold (Shift+click: all in this note)", unfold: "Unfold (Shift+click: all in this note)", foldAll: "Fold all headings and TODO entries", unfoldAll: "Unfold all headings and TODO entries", hidden: "{n} hidden" },
   ru: { fold: "Свернуть (Shift+клик — все в заметке)", unfold: "Развернуть (Shift+клик — все в заметке)", foldAll: "Свернуть все TODO", unfoldAll: "Развернуть все TODO", hidden: "скрыто: {n}" } };
-const ft = (k, v = {}) => (FSTR[LANG]?.[k] ?? FSTR.en[k]).replace(/\{(\w+)\}/g, (m, x) => (v[x] ?? m));
+export const ft = (k, v = {}) => (FSTR[LANG]?.[k] ?? FSTR.en[k]).replace(/\{(\w+)\}/g, (m, x) => (v[x] ?? m));
 const HLEVEL = (x) => (x?.nodeType === 1 && /^H[1-6]$/.test(x.tagName) ? +x.tagName[1] : 0);
 function orgFoldSetup(el, path) {
   const entries = [...el.querySelectorAll(".org-entry, h1, h2, h3, h4, h5, h6")].filter((x) => !x.closest("pre, code"));
@@ -484,7 +496,7 @@ function orgToggleFold(blk, force, scope) {
   for (const r of new Set([root, ...$$(".markdown-rendered").filter((x) => x.querySelector(".org-foldable") && !x.parentElement.closest(".markdown-rendered"))])) orgApplyFold(r);
 }
 /** Palette commands: fold or unfold every TODO entry of the note in the editor's reading view. */
-function orgFoldNote(fold) {
+export function orgFoldNote(fold) {
   const root = $("#editor .sn-reading") || $("#editor .markdown-rendered");
   if (!root) { echo(LANG === "ru" ? "Откройте заметку в режиме чтения (Ctrl+E)" : "Open the note in reading view first (Ctrl+E)"); return; }
   const first = root.querySelector(".org-foldable");

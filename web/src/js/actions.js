@@ -1,7 +1,21 @@
 /* =========================================================
    Card actions (port of src/actions.ts)
    ========================================================= */
-const sanitizeTitle = (s) => s.replace(/[\\/:*?"<>|#^[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+import { t } from "./i18n.js";
+import { baseName, dirName } from "./dom.js";
+import { composeBody, dumpYaml, extractLinkpath, fillTemplate, parentLinkpaths, TEMPLATE_SKIP_KEYS, toStringList } from "./frontmatter.js";
+import { reorderBlock } from "./graph.js";
+import { board, editor, graph, S, tree, vault } from "./state.js";
+import { cardColor, cardIcon, indexNames, linkText, manualCmp, parseNote, persistBoard, resolveLink, saveSettings } from "./vault.js";
+import { removeNote, txn, updateFM, writeRaw } from "./save.js";
+import { confirmModal, iconModal, notice, promptModal, suggestModal } from "./ui.js";
+import { renderBoard, setTarget } from "./board.js";
+import { renderTree } from "./tree.js";
+import { closeEditor, openEditor, saveEditor } from "./editor.js";
+import { refresh } from "./shell.js";
+import { syncHook } from "./sync.js";
+
+export const sanitizeTitle = (s) => s.replace(/[\\/:*?"<>|#^[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
 function uniquePath(folder, title) {
   const base = (folder ? folder + "/" : "") + title;
   let p = base + ".md", i = 1;
@@ -9,11 +23,11 @@ function uniquePath(folder, title) {
   while (taken(p)) p = `${base} ${i++}.md`;
   return p;
 }
-function templateFor(path) {
+export function templateFor(path) {
   const lp = parentLinkpaths(vault.notes.get(path)?.fm?.child_template)[0];
   return lp ? resolveLink(lp, path) : null;
 }
-async function createCard(title, parentPath, body = "", templatePath = undefined, { open = false, tags = [] } = {}) {
+export async function createCard(title, parentPath, body = "", templatePath = undefined, { open = false, tags = [] } = {}) {
   const field = S.parentsField || "parents";
   const clean = sanitizeTitle(title) || t("untitled");
   const folder = S.cardsFolder || (parentPath ? dirName(parentPath) : "");
@@ -37,7 +51,7 @@ async function createCard(title, parentPath, body = "", templatePath = undefined
   if (open) openEditor(path, { focus: true });
   return path;
 }
-async function addParent(child, parent) {
+export async function addParent(child, parent) {
   if (child === parent) return notice(t("selfParent"));
   if (graph.isDescendant(child, parent)) return notice(t("cannotNest", { child: baseName(child), parent: baseName(parent) }));
   if (graph.parentsOf(child).includes(parent)) return notice(t("alreadyParent", { parent: baseName(parent) }));
@@ -56,7 +70,7 @@ function withoutParent(list, child, parentPath) {
     return dest ? dest !== parentPath : lp !== parentPath;
   });
 }
-async function removeParent(child, parentPathOrLinkpath) {
+export async function removeParent(child, parentPathOrLinkpath) {
   const field = S.parentsField;
   await txn(t("parentRemoved", { name: baseName(parentPathOrLinkpath) }), () => updateFM(child, (fm) => {
     const list = withoutParent(toStringList(fm[field]), child, parentPathOrLinkpath);
@@ -64,7 +78,7 @@ async function removeParent(child, parentPathOrLinkpath) {
   }));
 }
 /** Drop or bulk move: items [{child, from}], to (null — root), move (true) or add a parent, anchor before/after a sibling. */
-async function dropCards(items, toParent, move, anchor) {
+export async function dropCards(items, toParent, move, anchor) {
   const field = S.parentsField;
   const seen = new Set();
   const ok = [];
@@ -120,18 +134,18 @@ async function dropCards(items, toParent, move, anchor) {
   });
   if (order && board.sort !== "manual") { board.sort = "manual"; persistBoard(); renderBoard(); notice(t("switchedManual")); }
 }
-async function setColor(paths, color) {
+export async function setColor(paths, color) {
   await txn(t("colorChanged"), async () => { for (const p of paths) await updateFM(p, (fm) => { if (color) fm.color = color; else delete fm.color; }); });
 }
-async function setIconFor(paths, iconName) {
+export async function setIconFor(paths, iconName) {
   await txn(t("iconChanged"), async () => { for (const p of paths) await updateFM(p, (fm) => { if (iconName) fm.icon = iconName; else delete fm.icon; }); });
 }
-async function setChildTemplate(parent, tplPath) {
+export async function setChildTemplate(parent, tplPath) {
   await txn(tplPath ? t("templateSet", { name: baseName(tplPath) }) : t("templateRemoved"), () => updateFM(parent, (fm) => {
     if (tplPath) fm.child_template = `[[${linkText(tplPath)}]]`; else delete fm.child_template;
   }));
 }
-async function deleteCards(paths) {
+export async function deleteCards(paths) {
   paths = paths.filter((p) => vault.notes.has(p));
   if (!paths.length) return;
   if (paths.length > 1) {
@@ -155,7 +169,7 @@ async function deleteCards(paths) {
   });
 }
 /** Rename a card and update links to it everywhere (like Obsidian with “Automatically update internal links”). */
-async function renameCard(path, newTitle) {
+export async function renameCard(path, newTitle) {
   const clean = sanitizeTitle(newTitle);
   if (!clean || clean === baseName(path)) return path;
   const newPath = (dirName(path) ? dirName(path) + "/" : "") + clean + ".md";
@@ -206,12 +220,12 @@ function resolveLinkWith(cands, source) {
   const same = cands.find((p) => dirName(p) === dirName(source));
   return same || [...cands].sort((a, b) => a.length - b.length)[0];
 }
-async function togglePin(path) {
+export async function togglePin(path) {
   S.pinned = S.pinned.includes(path) ? S.pinned.filter((p) => p !== path) : [...S.pinned, path];
   await saveSettings();
   renderTree();
 }
-async function saveCurrentView() {
+export async function saveCurrentView() {
   const name = await promptModal(t("viewName"), board.target ? baseName(board.target) : t("allCards"));
   if (!name) return;
   S.savedViews = [...S.savedViews, {
@@ -222,7 +236,7 @@ async function saveCurrentView() {
   renderTree();
   notice(t("viewSaved", { name }));
 }
-function applyView(v) {
+export function applyView(v) {
   board.history.push(board.target);
   Object.assign(board, { target: v.target && graph.has(v.target) ? v.target : null, depth: v.depth ?? board.depth, layout: v.layout === "list" ? "list" : "columns", sort: v.sort ?? board.sort, grouped: !!v.grouped });
   board.filter = { query: v.filter?.query || "", colors: v.filter?.colors || [], tags: v.filter?.tags || [] };
@@ -231,7 +245,7 @@ function applyView(v) {
   persistBoard();
   renderBoard(); renderTree();
 }
-function obsidianUri(path) { return `obsidian://open?vault=${encodeURIComponent(vault.fs.name)}&file=${encodeURIComponent(path.replace(/\.md$/i, ""))}`; }
+export function obsidianUri(path) { return `obsidian://open?vault=${encodeURIComponent(vault.fs.name)}&file=${encodeURIComponent(path.replace(/\.md$/i, ""))}`; }
 
 /* Prompts for actions */
 function cardItems(exclude = new Set()) {
@@ -239,7 +253,7 @@ function cardItems(exclude = new Set()) {
     value: p, title: baseName(p), icon: cardIcon(p) || "file-text", color: cardColor(p), note: dirName(p),
   }));
 }
-async function promptAddParent(paths) {
+export async function promptAddParent(paths) {
   const ex = new Set(paths);
   const pick = await suggestModal({ placeholder: t("pickParent"), items: cardItems(ex), allowCreate: true });
   if (!pick) return;
@@ -248,13 +262,13 @@ async function promptAddParent(paths) {
   if (paths.length === 1) return addParent(paths[0], parent);
   await dropCards(paths.map((c) => ({ child: c, from: null })), parent, false, null);
 }
-async function promptMove(items) {
+export async function promptMove(items) {
   const ex = new Set(items.map((i) => i.child));
   const pick = await suggestModal({ placeholder: t("pickMoveTarget"), items: [{ value: null, title: t("rootTarget"), icon: "home" }, ...cardItems(ex)] });
   if (!pick) return;
   await dropCards(items, pick.value, true, null);
 }
-async function promptRemoveParent(path) {
+export async function promptRemoveParent(path) {
   const ps = graph.parentsOf(path).filter((p) => graph.has(p));
   const un = graph.unresolvedParentsOf(path);
   const all = [...ps.map((p) => ({ value: p, title: baseName(p), icon: cardIcon(p) || "layers", color: cardColor(p) })), ...un.map((u) => ({ value: u, title: u, icon: "alert-triangle", note: t("parentMissing") }))];
@@ -263,18 +277,18 @@ async function promptRemoveParent(path) {
   const pick = await suggestModal({ placeholder: t("pickRemoveParent"), items: all });
   if (pick) await removeParent(path, pick.value);
 }
-async function promptIcon(paths) {
+export async function promptIcon(paths) {
   const cur = paths.length === 1 ? cardIcon(paths[0]) : null;
   const pick = await iconModal(cur);
   if (pick === undefined) return;
   await setIconFor(paths, pick);
 }
-async function promptTemplate(parent) {
+export async function promptTemplate(parent) {
   const pool = [...vault.notes.keys()].filter((p) => p !== parent && (!S.templatesFolder || p.startsWith(S.templatesFolder + "/")));
   const pick = await suggestModal({ placeholder: t("pickTemplate"), items: pool.map((p) => ({ value: p, title: baseName(p), icon: "layout-template", note: dirName(p) })) });
   if (pick) await setChildTemplate(parent, pick.value);
 }
-async function quickOpen() {
+export async function quickOpen() {
   const pick = await suggestModal({ placeholder: t("pickCard"), items: cardItems(), allowCreate: true, hint: true });
   if (!pick) return;
   if (pick.create) { await createCard(pick.create, board.target, "", undefined, { open: true }); return; }

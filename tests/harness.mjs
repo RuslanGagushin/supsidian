@@ -26,7 +26,7 @@ export async function openVault({ demo = true, notes = {}, files = {}, viewport 
   page.setDefaultTimeout(15000); // six files run their browsers in parallel; a busy machine is slow
   page.on("pageerror", (e) => errors.push(e));
   if (time) await page.clock.setFixedTime(new Date(time));
-  await page.addInitScript(({ lang }) => { try { localStorage.clear(); localStorage.setItem("sn-ui", JSON.stringify({ lang })); } catch { /* file:// storage */ } }, { lang });
+  await page.addInitScript(({ lang }) => { window.__SN_EXPOSE__ = true; try { localStorage.clear(); localStorage.setItem("sn-ui", JSON.stringify({ lang })); } catch { /* file:// storage */ } }, { lang });
   await page.goto(PAGE);
   await page.evaluate(async ({ demo, notes, files }) => {
     const fs = demo ? demoVault() : new MemoryFS("Test vault", "demo");

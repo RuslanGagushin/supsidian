@@ -8,9 +8,18 @@
    never pushed, so they stay with the vault folder; this app keeps a copy for vaults
    that are not repositories yet.
    ========================================================= */
+import { LANG } from "./i18n.js";
+import { $, h, ic, lsGet, lsSet } from "./dom.js";
+import { editor, vault } from "./state.js";
+import { pollChanges } from "./vault.js";
+import { notice } from "./ui.js";
+import { saveEditor } from "./editor.js";
+import { settingsModal } from "./shell.js";
+import { IS_NATIVE, vinvoke } from "./native.js";
+
 const GIT_DEFAULTS = { remote: "", branch: "main", username: "git", token: "", authorName: "", authorEmail: "", auto: true, minutes: 5 };
 let SS = { ...GIT_DEFAULTS };
-const sync = { crash: "", busy: false, last: null, error: "", report: null, timer: null, debounce: null, dirty: false, info: null };
+export const sync = { crash: "", busy: false, last: null, error: "", report: null, timer: null, debounce: null, dirty: false, info: null };
 
 const SYNC_STR = {
   en: {
@@ -56,8 +65,8 @@ const SYNC_STR = {
     crashNote: "Прошлая синхронизация не завершилась. Последние шаги: {steps}",
   },
 };
-const st = (k, v = {}) => (SYNC_STR[LANG]?.[k] ?? SYNC_STR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
-const syncAvailable = () => !!(IS_NATIVE && vault.fs?.native);
+export const st = (k, v = {}) => (SYNC_STR[LANG]?.[k] ?? SYNC_STR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
+export const syncAvailable = () => !!(IS_NATIVE && vault.fs?.native);
 const gitKey = () => "sn-git:" + vault.fs.root;
 const gitConfigured = () => !!SS.remote.trim();
 
@@ -72,7 +81,7 @@ async function saveRepoSettings() {
 }
 
 /** Local edits: schedule a sync soon after the last one. */
-function syncHook() {
+export function syncHook() {
   if (!syncAvailable()) return;
   sync.dirty = true;
   if (!SS.auto || !gitConfigured()) return;
@@ -84,7 +93,7 @@ function scheduleAuto() {
   sync.timer = null;
   if (syncAvailable() && SS.auto && gitConfigured()) sync.timer = setInterval(() => runSync({ quiet: true }), Math.max(1, Number(SS.minutes) || 5) * 60000);
 }
-async function syncBoot() {
+export async function syncBoot() {
   if (!syncAvailable()) { syncChanged(); return; }
   loadSyncSettings();
   sync.last = null; sync.error = ""; sync.report = null; sync.dirty = false;
@@ -106,12 +115,12 @@ async function syncBoot() {
   if (sync.crash) notice(st("crashed"));
   else if (SS.auto && gitConfigured()) runSync({ quiet: true });
 }
-async function stopSync() {
+export async function stopSync() {
   clearInterval(sync.timer); clearTimeout(sync.debounce);
   sync.timer = sync.debounce = null;
   if (sync.dirty && gitConfigured() && !sync.busy && syncAvailable()) await runSync({ quiet: true });
 }
-async function runSync({ quiet = false } = {}) {
+export async function runSync({ quiet = false } = {}) {
   if (sync.busy || !syncAvailable()) return;
   if (!gitConfigured()) { if (!quiet) syncSettingsModal(); return; }
   sync.busy = true; sync.error = ""; sync.crash = "";
@@ -152,7 +161,7 @@ function renderSyncButton() {
   b.title = s.text;
   b.replaceChildren(ic("wb-sync-icon", s.icon, "refresh-cw"), h("span", { cls: "wb-label", text: s.short }));
 }
-function syncButton() {
+export function syncButton() {
   const b = h("button", { id: "sync-btn", type: "button", cls: "wb-btn wb-sync" });
   b.addEventListener("click", () => openSyncPanel());
   setTimeout(renderSyncButton, 0);
@@ -162,12 +171,12 @@ function syncButton() {
 /* ---------- panel: status, sync now, settings */
 function openSyncPanel() { if (!syncAvailable()) { notice(st("unavailable")); return; } syncSettingsModal(); }
 function renderSyncPanel() { sync.panel?.render(); }
-function syncSettingsModal() {
+export function syncSettingsModal() {
   if (!syncAvailable()) { notice(st("unavailable")); return; }
   settingsModal("sync");
 }
 /** The Git tab of the settings: status, sync now, remote and access. `item` and `toggle` are the settings' row builders. */
-function syncSettingsBody(item, toggle) {
+export function syncSettingsBody(item, toggle) {
   const text = (key, ph, type = "text", after) => { const i = h("input", { type, placeholder: ph || "", spellcheck: "false", autocomplete: "off" }); i.value = String(SS[key] ?? ""); i.addEventListener("change", () => { SS[key] = type === "number" ? Number(i.value) || GIT_DEFAULTS[key] : i.value.trim(); saveSyncSettings(); after?.(); }); return i; };
   const status = h("div", { cls: "sn-sync-status" });
   const result = h("p", { cls: "sn-sync-note" });

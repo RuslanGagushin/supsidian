@@ -1,8 +1,13 @@
 /* =========================================================
    Board model (port of src/views/board/model.ts)
    ========================================================= */
-function filterActive(f) { return !!f.query.trim() || f.colors.length > 0 || f.tags.length > 0; }
-function computeModel() {
+import { norm } from "./dom.js";
+import { groupByTopLevel } from "./graph.js";
+import { board, graph, S, vault } from "./state.js";
+import { cardColor, cardTags, makeComparator } from "./vault.js";
+
+export function filterActive(f) { return !!f.query.trim() || f.colors.length > 0 || f.tags.length > 0; }
+export function computeModel() {
   const cmp = makeComparator(board.sort);
   const f = board.filter;
   const active = filterActive(f);

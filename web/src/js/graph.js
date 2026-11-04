@@ -2,7 +2,7 @@
    Hierarchy graph (port of src/index/HierarchyGraph.ts)
    ========================================================= */
 const INFINITE_DEPTH_CAP = 64;
-class HierarchyGraph {
+export class HierarchyGraph {
   constructor() { this.parents = new Map(); this.children = new Map(); this.unresolved = new Map(); this.linksIn = new Map(); this.childOrder = new Map(); this.nodes = new Set(); }
   has(p) { return this.nodes.has(p); }
   setNode(path, parents, unresolved, links, childOrder) {
@@ -67,7 +67,7 @@ class HierarchyGraph {
     return false;
   }
 }
-function groupByTopLevel(cards) {
+export function groupByTopLevel(cards) {
   const loose = [], groups = [];
   let current = null;
   for (const c of cards) {
@@ -79,7 +79,7 @@ function groupByTopLevel(cards) {
   for (const g of groups) if (!g.members.length) loose.push(g.head);
   return { loose, groups: withKids };
 }
-function reorderBlock(siblings, moved, anchor, pos) {
+export function reorderBlock(siblings, moved, anchor, pos) {
   const set = new Set(moved);
   const list = siblings.filter((s) => !set.has(s));
   const i = anchor && !set.has(anchor) ? list.indexOf(anchor) : -1;

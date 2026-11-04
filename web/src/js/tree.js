@@ -1,8 +1,21 @@
 /* =========================================================
    Sidebar tree (port of src/views/OutlineView.ts)
    ========================================================= */
+import { LANG, t } from "./i18n.js";
+import { $, baseName, h, ic, iconBtn, isMod, setIcon } from "./dom.js";
+import { board, editor, graph, S, tree, vault } from "./state.js";
+import { cardColor, cardIcon, makeComparator, persistBoard, saveSettings } from "./vault.js";
+import { applyView, createCard } from "./actions.js";
+import { Menu, promptModal } from "./ui.js";
+import { cardMenu } from "./cards.js";
+import { setTarget } from "./board.js";
+import { dnd } from "./dnd.js";
+import { openEditor } from "./editor.js";
+import { setSide } from "./shell.js";
+import { tagsSection } from "./completion.js";
+
 const SEP = "\u0000";
-function renderTree() {
+export function renderTree() {
   const host = $("#tree");
   if (!host || !vault.fs) return;
   const scroll = host.querySelector(".sn-tree")?.scrollTop || 0;
@@ -70,7 +83,7 @@ function renderTree() {
 /** Background updates (sync, file changes) wait while the pointer is over the sidebar,
  *  so rows never move under the cursor; clicks in the sidebar still redraw at once. */
 let treePending = false;
-function renderTreeSoft() {
+export function renderTreeSoft() {
   const side = $(".sn-side");
   if (side && side.matches(":hover") && !$("#app").classList.contains("side-closed")) {
     if (!treePending) { treePending = true; side.addEventListener("mouseleave", () => { if (treePending) { treePending = false; renderTree(); } }, { once: true }); }
@@ -136,7 +149,7 @@ async function movePin(path, delta) {
   await saveSettings();
   renderTree();
 }
-function revealInTree(path) {
+export function revealInTree(path) {
   if (!path) return;
   const cmp = makeComparator("manual");
   const chain = [...graph.ancestry(path, cmp), path];

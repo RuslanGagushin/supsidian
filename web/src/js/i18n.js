@@ -167,9 +167,9 @@ const STR = {
     k_shiftClick: "Выбрать карточку", k_drag: "Перетаскивание — переместить · с Ctrl/Alt — добавить родителя",
   },
 };
-let LANG = "en";
-const setLang = (l) => { LANG = l === "ru" ? "ru" : "en"; };
-function pluralIndex(n) {
+export let LANG = "en";
+export const setLang = (l) => { LANG = l === "ru" ? "ru" : "en"; };
+export function pluralIndex(n) {
   if (LANG === "ru") {
     const m10 = n % 10, m100 = n % 100;
     if (m10 === 1 && m100 !== 11) return 0;
@@ -178,7 +178,7 @@ function pluralIndex(n) {
   }
   return n === 1 ? 0 : 1;
 }
-function t(key, vars = {}) {
+export function t(key, vars = {}) {
   let s = STR[LANG][key] ?? STR.en[key] ?? key;
   if (Array.isArray(s)) s = s[Math.min(pluralIndex(vars.n ?? 0), s.length - 1)];
   return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));

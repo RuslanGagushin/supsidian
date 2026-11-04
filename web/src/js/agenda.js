@@ -1,8 +1,24 @@
 /* ---------- agenda state */
-const AG = Object.assign({ view: "agenda", span: "week", log: false, todoKw: "ALL", match: "", search: "", boxes: false }, lsGet("sn-agenda", {}), { anchor: null, filter: {}, sel: null });
+import { LANG, t } from "./i18n.js";
+import { $, $$, baseName, debounce, h, ic, iconBtn, isMod, lsGet, lsSet, norm } from "./dom.js";
+import { fillTemplate } from "./frontmatter.js";
+import { board, vault } from "./state.js";
+import { cardColor, persistBoard, resolveLink } from "./vault.js";
+import { txn, writeRaw } from "./save.js";
+import { renderMarkdown, wireRendered } from "./markdown.js";
+import { echo, Menu, minibufRead, openLayer } from "./ui.js";
+import { masonries } from "./masonry.js";
+import { goBack, leaveTagView, navEntry, renderBoard, setTarget } from "./board.js";
+import { renderTree } from "./tree.js";
+import { setSide } from "./shell.js";
+import { dailyCfg, dailyConfig, formatMoment, loadDailyConfig } from "./completion.js";
+import { oFmt, ohm, oisoWeek, onow, opad, orgAll, orgCache, orgCycle, orgEdit, orgNowTs, orgOccursOn, orgPickPriority, orgPickState, orgPlanEntry, orgPri, orgReadDate, orgRefocus, orgSet, orgShift, orgSkip, orgTagsEntry, orgTsStr, ounitDays, oymd, tt } from "./org.js";
+import { openEditorAtLine, orgAskDate, orgCalendar, orgDateText } from "./org-editing.js";
+
+export const AG = Object.assign({ view: "agenda", span: "week", log: false, todoKw: "ALL", match: "", search: "", boxes: false }, lsGet("sn-agenda", {}), { anchor: null, filter: {}, sel: null });
 const saveAG = () => lsSet("sn-agenda", { view: AG.view, span: AG.span, log: AG.log, todoKw: AG.todoKw, match: AG.match, boxes: AG.boxes });
-let AGROWS = [];
-function openTasksView(push = true, view) {
+export let AGROWS = [];
+export function openTasksView(push = true, view) {
   if (view) { AG.view = view; saveAG(); }
   if (board.view === "tasks") { renderBoard(); setTimeout(() => $(".ag-body")?.focus({ preventScroll: true }), 0); return; }
   if (push) { board.history.push(navEntry()); if (board.history.length > 100) board.history.shift(); }
@@ -15,7 +31,7 @@ function openTasksView(push = true, view) {
   if (innerWidth <= 820) setSide(false);
   setTimeout(() => $(".ag-body")?.focus({ preventScroll: true }), 0);
 }
-function tasksButton() {
+export function tasksButton() {
   const b = h("button", { id: "tasks-btn", type: "button", cls: "wb-btn wb-tasks" });
   b.addEventListener("click", () => (board.view === "tasks" ? goBack() : openTasksView()));
   setTimeout(renderTasksButton, 0);
@@ -32,7 +48,7 @@ function orgStats(all) {
   }
   return { open, overdue, today };
 }
-function renderTasksButton() {
+export function renderTasksButton() {
   const b = $("#tasks-btn");
   if (!b) return;
   const st = orgStats(orgAll());
@@ -46,7 +62,7 @@ function renderTasksButton() {
 /* ---------- agenda rows */
 const orgPriRank = (e) => (e.pri ? 4 - Math.min(3, e.pri.charCodeAt(0) - 64) : 2);
 const orgWarnDays = (ts) => (ts.warn ? ounitDays(ts.warn.n, ts.warn.u) : 14);
-function orgDayEntries(dn, all, T) {
+export function orgDayEntries(dn, all, T) {
   const out = [];
   for (const e of all) {
     if (orgSkip(e)) continue;
@@ -91,7 +107,7 @@ function orgTagPass(e) {
   }
   return true;
 }
-function orgMatcher(q) {
+export function orgMatcher(q) {
   q = String(q || "").trim();
   let todoPart = null;
   const sl = q.indexOf("/");
@@ -124,7 +140,7 @@ function orgMatcher(q) {
 }
 
 /* ---------- the agenda view */
-function renderTasksView(root) {
+export function renderTasksView(root) {
   const body0 = root.querySelector(".ag-body");
   const oldScroll = body0?.scrollTop || 0;
   const hadFocus = document.activeElement === body0 || !!document.activeElement?.closest?.(".ag-row");
@@ -316,7 +332,7 @@ function renderInline(text, path) {
   wireRendered(el, path);
   return el;
 }
-function orgSelect(i, scroll = true) {
+export function orgSelect(i, scroll = true) {
   const x = AGROWS[i];
   if (!x) return;
   AG.sel = orgRowKey(x);
@@ -431,7 +447,7 @@ async function orgDailyPath() {
   }
   return path;
 }
-function orgCapture(pre = {}) {
+export function orgCapture(pre = {}) {
   const tpls = [["t", "capTodo", "list-todo"], ["n", "capNote", "sticky-note"], ["m", "capMeeting", "users"], ["j", "capJournal", "book-open"]];
   let tpl = pre.tpl || CAP.tpl;
   const panel = h("div", { cls: "modal ag-cap", role: "dialog", "aria-label": tt("capTitle") });

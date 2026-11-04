@@ -1,8 +1,21 @@
 /* =========================================================
    Card rendering (port of src/views/CardRenderer.ts)
    ========================================================= */
-function cardBodyText(path) { return (vault.notes.get(path)?.body || "").replace(/^\s+/, ""); }
-function formatDate(ms) {
+import { LANG, t } from "./i18n.js";
+import { $, baseName, h, ic, iconBtn, isMod, norm } from "./dom.js";
+import { board, editor, graph, S, vault } from "./state.js";
+import { cardColor, cardIcon, linkText } from "./vault.js";
+import { createCard, deleteCards, obsidianUri, promptAddParent, promptIcon, promptMove, promptRemoveParent, promptTemplate, removeParent, setChildTemplate, templateFor, togglePin } from "./actions.js";
+import { renderMarkdown, wireRendered } from "./markdown.js";
+import { echo, Menu, notice, promptModal } from "./ui.js";
+import { openTagView, setLastFocused, setTarget, toggleSelect } from "./board.js";
+import { dnd } from "./dnd.js";
+import { openEditor } from "./editor.js";
+import { cardTaskProgress, tt } from "./org.js";
+import { openExternal } from "./native.js";
+
+export function cardBodyText(path) { return (vault.notes.get(path)?.body || "").replace(/^\s+/, ""); }
+export function formatDate(ms) {
   const diff = Date.now() - ms;
   const rtf = new Intl.RelativeTimeFormat(LANG, { numeric: "auto" });
   if (diff < 60_000) return rtf.format(0, "second");
@@ -10,7 +23,7 @@ function formatDate(ms) {
   if (diff < 86_400_000) return rtf.format(-Math.round(diff / 3_600_000), "hour");
   return new Date(ms).toLocaleDateString(LANG, { day: "numeric", month: "short", year: "numeric" });
 }
-function parentChip(parentPath, onRemove) {
+export function parentChip(parentPath, onRemove) {
   const chip = h("a", { cls: "sn-chip", href: "#", title: parentPath });
   const c = cardColor(parentPath);
   if (c) chip.dataset.color = c;
@@ -23,7 +36,7 @@ function parentChip(parentPath, onRemove) {
   }
   return chip;
 }
-function renderBody(el, path, limit) {
+export function renderBody(el, path, limit) {
   let text = cardBodyText(path);
   if (!text.trim()) { el.classList.add("is-empty"); return; }
   let truncated = false;
@@ -54,7 +67,7 @@ function highlight(root, tokens) {
     node.replaceWith(frag);
   }
 }
-function renderCard(path, via, depth = 1) {
+export function renderCard(path, via, depth = 1) {
   const card = h("div", { cls: "sn-card", tabindex: "-1" });
   card.dataset.path = path;
   card.dataset.via = via ?? "";
@@ -146,7 +159,7 @@ function renderCard(path, via, depth = 1) {
   dnd.dropTarget(card, () => ({ path, parent: via }));
   return card;
 }
-function setupClamp(card) {
+export function setupClamp(card) {
   const body = $(".sn-card-body", card);
   const path = card.dataset.path;
   const max = S.cardMaxHeight;
@@ -176,7 +189,7 @@ function setupClamp(card) {
   update();
   body.addEventListener("load", update, true);
 }
-function attachLongPress(el, open) {
+export function attachLongPress(el, open) {
   let timer = null, start = null;
   const cancel = () => { clearTimeout(timer); timer = null; start = null; };
   el.addEventListener("touchstart", (e) => {
@@ -189,7 +202,7 @@ function attachLongPress(el, open) {
   el.addEventListener("touchend", cancel);
   el.addEventListener("touchcancel", cancel);
 }
-function cardMenu(path, via = null) {
+export function cardMenu(path, via = null) {
   const m = new Menu();
   m.add(t("menuOpenOnBoard"), "layout-dashboard", () => setTarget(path));
   m.add(t("menuEdit"), "pencil", () => openEditor(path));

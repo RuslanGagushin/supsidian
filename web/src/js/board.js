@@ -1,22 +1,39 @@
 /* =========================================================
    Board view
    ========================================================= */
-let lastFocused = null; // the card that had focus last (arrow keys go on from it)
-const setLastFocused = (path) => { lastFocused = path; };
+import { LANG, t } from "./i18n.js";
+import { $, $$, baseName, colorLabel, COLORS, debounce, h, ic, iconBtn, isMod, setIcon } from "./dom.js";
+import { board, editor, graph, S, vault } from "./state.js";
+import { cardColor, cardIcon, cardTags, makeComparator, persistBoard } from "./vault.js";
+import { createCard, deleteCards, dropCards, promptAddParent, promptIcon, promptMove, saveCurrentView, setColor } from "./actions.js";
+import { wireRendered } from "./markdown.js";
+import { Menu } from "./ui.js";
+import { computeModel, filterActive } from "./board-model.js";
+import { boardResize, masonries, Masonry } from "./masonry.js";
+import { cardBodyText, cardMenu, parentChip, renderBody, renderCard, setupClamp } from "./cards.js";
+import { dnd } from "./dnd.js";
+import { renderTree } from "./tree.js";
+import { openEditor } from "./editor.js";
+import { setSide } from "./shell.js";
+import { openTasksView, renderTasksView } from "./agenda.js";
+import { fvRenderList, openFilesView, renderFilesView } from "./files.js";
+
+export let lastFocused = null; // the card that had focus last (arrow keys go on from it)
+export const setLastFocused = (path) => { lastFocused = path; };
 let sentinelObs = null;
-function navEntry() {
+export function navEntry() {
   if (board.view === "tasks") return { tasks: true, target: board.target };
   if (board.view === "files") return { files: true, target: board.target };
   return board.tagView ? { tag: board.tagView } : board.target;
 }
-function leaveTagView() {
+export function leaveTagView() {
   if (!board.tagView) return;
   board.tagView = null;
   board.filter = { query: "", colors: [], tags: [], scope: "here" };
   board.searchOpen = false;
 }
 /** Open a tag as its own view: every card with the tag, from the whole vault. */
-function openTagView(tag, push = true) {
+export function openTagView(tag, push = true) {
   tag = String(tag).replace(/^#/, "").toLowerCase();
   if (board.tagView === tag) { $("#board")?.querySelector(".sn-scroll")?.scrollTo({ top: 0 }); return; }
   if (push) board.history.push(navEntry());
@@ -33,7 +50,7 @@ function openTagView(tag, push = true) {
   renderTree();
   if (innerWidth <= 820) setSide(false);
 }
-function setTarget(path, push = true) {
+export function setTarget(path, push = true) {
   if (path && !graph.has(path)) path = null;
   if (path === board.target && !board.tagView && !board.view) { $("#board")?.querySelector(".sn-scroll")?.scrollTo({ top: 0 }); return; }
   if (push) board.history.push(navEntry());
@@ -48,7 +65,7 @@ function setTarget(path, push = true) {
   renderTree();
   if (innerWidth <= 820) setSide(false);
 }
-function goBack() {
+export function goBack() {
   if (!board.history.length) return;
   const p = board.history.pop();
   if (p && typeof p === "object" && p.tasks) { board.target = p.target ?? null; openTasksView(false); }
@@ -56,7 +73,7 @@ function goBack() {
   else if (p && typeof p === "object") openTagView(p.tag, false);
   else { if (board.view && p === board.target) { board.view = null; persistBoard(); renderBoard(true); renderTree(); return; } setTarget(p, false); }
 }
-function toggleSelect(path) {
+export function toggleSelect(path) {
   if (board.selection.has(path)) board.selection.delete(path); else board.selection.add(path);
   $$(`.sn-card`, $("#board")).forEach((c) => c.classList.toggle("is-picked", board.selection.has(c.dataset.path)));
   renderSelbar();
@@ -70,7 +87,7 @@ function toggleTagFilter(tag) {
   renderBoard();
 }
 
-function renderBoard(resetScroll = false) {
+export function renderBoard(resetScroll = false) {
   const root = $("#board");
   if (!root || !vault.fs) return;
   $("#files-btn")?.classList.toggle("is-active", board.view === "files");
@@ -176,14 +193,14 @@ function boardSig(model) {
   return JSON.stringify([board.target, board.depth, board.layout, board.sort, board.grouped, board.searchOpen, board.selectMode, board.filter, board.lang = LANG,
     model.blocks.map((b) => [b.head, b.cards.map((c) => `${c.path}|${c.via ?? ""}|${c.depth}`)]), model.total, model.all.skippedRepeats, model.truncated, graph.ancestry(board.target || "", makeComparator("manual"))]);
 }
-function cardSig(path) {
+export function cardSig(path) {
   const n = vault.notes.get(path);
   return [n?.raw, n?.mtime, graph.childrenOf(path).length, graph.backlinksOf(path).length, graph.unresolvedParentsOf(path).join(","),
     graph.parentsOf(path).map((p) => `${p}:${cardIcon(p)}:${cardColor(p)}`).join(","), board.selection.has(path), editor.path === path, board.expanded.has(path)].join("\u0001");
 }
 function heroSig() { const p = board.target; return p ? [vault.notes.get(p)?.raw, graph.parentsOf(p).join(","), board.heroCollapsed].join("\u0001") : ""; }
 /** Update the board after a note change: replace only the cards that changed, keep scroll, focus and layout. */
-function patchBoard() {
+export function patchBoard() {
   if (board.view === "tasks") { renderBoard(); return; }
   if (board.view === "files") { if ($(".fv-list")) fvRenderList(); else renderBoard(); return; }
   const root = $("#board");
@@ -283,7 +300,7 @@ function renderToolbar() {
   bar.append(tools);
   return bar;
 }
-function toggleSearch(open) {
+export function toggleSearch(open) {
   board.searchOpen = open ?? !board.searchOpen;
   if (!board.searchOpen) board.filter = { query: "", colors: [], tags: [] };
   persistBoard();

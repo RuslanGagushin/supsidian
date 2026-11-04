@@ -1,7 +1,12 @@
 /* =========================================================
    Drag & drop (port of src/dnd.ts)
    ========================================================= */
-const dnd = {
+import { $, $$, baseName, h } from "./dom.js";
+import { board, graph } from "./state.js";
+import { linkText } from "./vault.js";
+import { dropCards } from "./actions.js";
+
+export const dnd = {
   drag: null,
   ghost: null,
   draggable(el, get) {

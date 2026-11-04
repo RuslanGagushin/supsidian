@@ -1,8 +1,17 @@
 /* =========================================================
    Welcome, opening vaults, demo
    ========================================================= */
-const hasFsApi = typeof window.showDirectoryPicker === "function";
-async function pickVault() {
+import { t } from "./i18n.js";
+import { $, h, ic, iconBtn } from "./dom.js";
+import { HandleFS, idb, MemoryFS } from "./fs.js";
+import { saveUI, UI, vault } from "./state.js";
+import { loadVault } from "./vault.js";
+import { Menu, notice } from "./ui.js";
+import { applyLanguage, applyTheme } from "./shell.js";
+import { IS_ANDROID, IS_NATIVE, lastNative, nativePick, nativeReopen, nt } from "./native.js";
+
+export const hasFsApi = typeof window.showDirectoryPicker === "function";
+export async function pickVault() {
   if (IS_NATIVE) return nativePick();
   if (!hasFsApi) { $("#folder-input").click(); return; }
   try {
@@ -18,7 +27,7 @@ async function reopenVault(handle) {
     if (perm === "granted") await loadVault(new HandleFS(handle));
   } catch (e) { notice(String(e.message || e)); }
 }
-async function loadCopy(fileList) {
+export async function loadCopy(fileList) {
   const files = [...fileList];
   if (!files.length) return;
   const rootName = (files[0].webkitRelativePath || files[0].name).split("/")[0];
@@ -32,7 +41,7 @@ async function loadCopy(fileList) {
   }
   await loadVault(fs);
 }
-function demoVault() {
+export function demoVault() {
   const fs = new MemoryFS("Demo vault", "demo");
   const now = Date.now();
   const d = (days) => now - days * 86400000;
@@ -59,7 +68,7 @@ function demoVault() {
   fs.add("Templates/Book.md", `---\nicon: book\ncolor: purple\ntags: [book]\n---\n**Author:** \n**Read:** {{date}}\n\n## Notes\n`, d(40));
   return fs;
 }
-async function showWelcome() {
+export async function showWelcome() {
   applyLanguage();
   $("#app").replaceChildren();
   $("#welcome")?.remove();

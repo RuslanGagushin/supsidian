@@ -3,6 +3,25 @@
    daily notes, link hover previews, outline, unlinked mentions, tags, focus mode.
    Conventions follow Obsidian so notes written here look the same there.
    ========================================================= */
+import { LANG, t } from "./i18n.js";
+import { $, $$, baseName, dirName, h, ic, norm } from "./dom.js";
+import { CODE_RE, extractLinkpath, fillTemplate, splitNote, stripCode } from "./frontmatter.js";
+import { board, editor, graph, S, saveUI, UI, vault } from "./state.js";
+import { addAttachment, cardColor, cardIcon, cardTags, linkText, resolveLink } from "./vault.js";
+import { txn, writeRaw } from "./save.js";
+import { createCard, sanitizeTitle } from "./actions.js";
+import { IMG_EXT, renderMarkdown, wireRendered } from "./markdown.js";
+import { fuzzyScore, Menu, notice, openMenuEl, suggestModal } from "./ui.js";
+import { masonries } from "./masonry.js";
+import { goBack, openTagView } from "./board.js";
+import { dnd } from "./dnd.js";
+import { renderTree } from "./tree.js";
+import { editorModeline, openEditor, renderEditor } from "./editor.js";
+import { liveActivate, liveTa, liveText } from "./live-preview.js";
+import { edInsert } from "./tables.js";
+import { refresh } from "./shell.js";
+import { syncHook } from "./sync.js";
+
 const WSTR = {
   en: {
     today: "Today", todayHint: "Open today's daily note",
@@ -49,10 +68,10 @@ const WSTR = {
     wfMono: "JetBrains Mono", wfSerif: "Newsreader (с засечками)", wfSans: "IBM Plex Sans", wfInter: "Inter",
   },
 };
-const wt = (k, v = {}) => (WSTR[LANG]?.[k] ?? WSTR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
+export const wt = (k, v = {}) => (WSTR[LANG]?.[k] ?? WSTR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
 
 /* ---------- moment-style date formatting (Obsidian's daily notes and templates use it) */
-function formatMoment(d, fmt) {
+export function formatMoment(d, fmt) {
   const pad = (n, l = 2) => String(n).padStart(l, "0");
   const loc = LANG === "ru" ? "ru-RU" : "en-US";
   const month = (style) => new Intl.DateTimeFormat(loc, { month: style }).format(d);
@@ -80,7 +99,7 @@ function formatMoment(d, fmt) {
 }
 
 /* ---------- caret position inside a textarea (mirror element) */
-function caretRect(ta, pos) {
+export function caretRect(ta, pos) {
   if (ta.cmView) {
     const c = ta.cmView.coordsAtPos(pos) || ta.cmView.coordsAtPos(pos, -1), r = ta.getBoundingClientRect();
     return c ? { left: c.left, top: c.top, height: c.bottom - c.top } : { left: r.left, top: r.top, height: parseFloat(getComputedStyle(ta).lineHeight) || 20 };
@@ -103,8 +122,8 @@ function caretRect(ta, pos) {
 }
 
 /* ---------- inline completion popup: [[links, #tags, /commands */
-const ac = { el: null, ta: null, type: null, start: 0, items: [], sel: 0, query: "" };
-function acClose() { ac.el?.remove(); ac.el = null; ac.type = null; ac.ta = null; }
+export const ac = { el: null, ta: null, type: null, start: 0, items: [], sel: 0, query: "" };
+export function acClose() { ac.el?.remove(); ac.el = null; ac.type = null; ac.ta = null; }
 function acDetect(ta) {
   if (ta.selectionStart !== ta.selectionEnd || editor.mode === "read") return null;
   const pos = ta.selectionStart;
@@ -162,7 +181,7 @@ function acItems(d) {
   if (q && !all.some((x) => norm(x.title) === norm(q))) list.push({ create: q, title: q, note: wt("newNote"), icon: "file-plus" });
   return list;
 }
-function acUpdate(ta) {
+export function acUpdate(ta) {
   const d = acDetect(ta);
   if (!d) return acClose();
   const items = acItems(d);
@@ -193,7 +212,7 @@ function acRender() {
   el.querySelector(".is-selected")?.scrollIntoView({ block: "nearest" });
 }
 /** Called first in the editor's keydown: true when the popup consumed the key. */
-function acKey(e) {
+export function acKey(e) {
   if (!ac.el) return false;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault();
@@ -282,7 +301,7 @@ async function attachmentFolderFor(notePath) {
   if (setting.startsWith("./")) return [here, setting.slice(2)].filter(Boolean).join("/").replace(/\/+$/, "");
   return setting.replace(/^\/+|\/+$/g, "");
 }
-async function saveAttachment(file, notePath, pasted) {
+export async function saveAttachment(file, notePath, pasted) {
   const folder = await attachmentFolderFor(notePath);
   const ext = (file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".") + 1) : (file.type.split("/")[1] || "png").replace("jpeg", "jpg")).toLowerCase();
   const stem = pasted || !file.name ? `Pasted image ${formatMoment(new Date(), "YYYYMMDDHHmmss")}` : file.name.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|#^[\]]/g, " ").trim() || "file";
@@ -297,7 +316,7 @@ async function saveAttachment(file, notePath, pasted) {
   syncHook("create", path);
   return path;
 }
-async function attachFiles(ta, files, pasted = false) {
+export async function attachFiles(ta, files, pasted = false) {
   if (!editor.path || !files.length) return;
   let pos = ta.selectionStart, end = ta.selectionEnd;
   const parts = [];
@@ -320,13 +339,13 @@ async function attachFiles(ta, files, pasted = false) {
   edInsert(ta, pos, end, pre + parts.join(block ? "\n" : " ") + post);
   refresh({ keepEditor: true });
 }
-function pickAndAttach(ta) {
+export function pickAndAttach(ta) {
   const input = h("input", { type: "file", multiple: true, style: "display:none" });
   input.addEventListener("change", () => { attachFiles(ta, [...input.files]); input.remove(); });
   document.body.append(input);
   input.click();
 }
-function wireEditorFiles(ta) {
+export function wireEditorFiles(ta) {
   ta.addEventListener("paste", (e) => {
     const files = [...(e.clipboardData?.files || [])];
     if (!files.length) return;
@@ -346,16 +365,16 @@ function wireEditorFiles(ta) {
 }
 
 /* ---------- daily notes (Obsidian core plugin settings in .obsidian/daily-notes.json) */
-let dailyCfg = null;
-const resetDailyConfig = () => { dailyCfg = null; };
-function dailyConfig() { return dailyCfg || { folder: "", format: "YYYY-MM-DD", template: "" }; }
-async function loadDailyConfig() {
+export let dailyCfg = null;
+export const resetDailyConfig = () => { dailyCfg = null; };
+export function dailyConfig() { return dailyCfg || { folder: "", format: "YYYY-MM-DD", template: "" }; }
+export async function loadDailyConfig() {
   dailyCfg = { folder: "", format: "YYYY-MM-DD", template: "" };
   try { Object.assign(dailyCfg, JSON.parse(await vault.fs.read(".obsidian/daily-notes.json"))); } catch { /* defaults */ }
   dailyCfg.folder = (dailyCfg.folder || "").replace(/^\/+|\/+$/g, "");
   dailyCfg.format = dailyCfg.format || "YYYY-MM-DD";
 }
-async function openToday() {
+export async function openToday() {
   if (!vault.fs) return;
   if (!dailyCfg) await loadDailyConfig();
   const cfg = dailyConfig();
@@ -435,7 +454,7 @@ function noteHeadings(text) {
   }
   return out;
 }
-function outlineMenu(anchor) {
+export function outlineMenu(anchor) {
   const n = vault.notes.get(editor.path);
   if (!n) return;
   let ta = $(".sn-editor-text");
@@ -466,7 +485,7 @@ function outlineMenu(anchor) {
 }
 
 /* ---------- unlinked mentions: notes that name this note without linking it */
-function unlinkedMentions(path) {
+export function unlinkedMentions(path) {
   const name = baseName(path);
   if (name.length < 3) return [];
   const back = new Set(graph.backlinksOf(path));
@@ -485,7 +504,7 @@ function unlinkedMentions(path) {
   }
   return out;
 }
-async function linkMention(source, target) {
+export async function linkMention(source, target) {
   const n = vault.notes.get(source);
   if (!n) return;
   const name = baseName(target);
@@ -502,7 +521,7 @@ async function linkMention(source, target) {
 }
 
 /* ---------- tags in the sidebar */
-function tagsSection(box) {
+export function tagsSection(box) {
   const counts = new Map();
   for (const p of graph.nodes) for (const tg of cardTags(p)) counts.set(tg, (counts.get(tg) || 0) + 1);
   if (!counts.size) return;
@@ -522,7 +541,7 @@ function tagsSection(box) {
 }
 
 /* ---------- focus mode: only the note (or the board), no chrome */
-function setFocusMode(on) {
+export function setFocusMode(on) {
   UI.focus = on;
   saveUI();
   $("#app")?.classList.toggle("focus-mode", on);

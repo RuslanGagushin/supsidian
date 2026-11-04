@@ -3,21 +3,31 @@
    The page stays the same; only file access goes through the app's
    "vault" plugin instead of the browser's File System Access API.
    ========================================================= */
-const TAURI = window.__TAURI__?.core || null;
-const IS_NATIVE = !!TAURI;
-const IS_ANDROID = IS_NATIVE && /Android/i.test(navigator.userAgent);
-const vinvoke = (cmd, args) => TAURI.invoke("plugin:vault|" + cmd, args);
+import { LANG } from "./i18n.js";
+import { $, lsGet, lsSet } from "./dom.js";
+import { board, editor, UI, vault } from "./state.js";
+import { loadVault } from "./vault.js";
+import { closeMenu, notice, openMenuEl } from "./ui.js";
+import { goBack } from "./board.js";
+import { closeEditor } from "./editor.js";
+import { setSide } from "./shell.js";
+import { setFocusMode } from "./completion.js";
+
+export const TAURI = window.__TAURI__?.core || null;
+export const IS_NATIVE = !!TAURI;
+export const IS_ANDROID = IS_NATIVE && /Android/i.test(navigator.userAgent);
+export const vinvoke = (cmd, args) => TAURI.invoke("plugin:vault|" + cmd, args);
 const NSTR = {
   en: { openFolder: "Open vault folder", appNote: "Pick the folder of an Obsidian vault. Notes are read and written in place, so Obsidian sees every change.", appNoteAndroid: "Pick your vault folder (for example Documents/Obsidian/MyVault). Android asks once for access to that folder." },
   ru: { openFolder: "Открыть папку хранилища", appNote: "Выберите папку хранилища Obsidian. Заметки читаются и сохраняются прямо в ней, Obsidian видит все изменения.", appNoteAndroid: "Выберите папку хранилища (например, Documents/Obsidian/MyVault). Android один раз спросит доступ к этой папке." },
 };
-const nt = (k) => NSTR[LANG]?.[k] ?? NSTR.en[k];
+export const nt = (k) => NSTR[LANG]?.[k] ?? NSTR.en[k];
 
 function b64ToBytes(b64) { const s = atob(b64); const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; }
 function bytesToB64(bytes) { let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
 
 /** Same interface as HandleFS, backed by the native plugin. `root` is a folder path (desktop) or a content:// tree URI (Android). */
-class NativeFS {
+export class NativeFS {
   constructor(root, name) { this.root = root; this.name = name; this.kind = "disk"; this.native = true; }
   async list() {
     const items = await vinvoke("list", { root: this.root });
@@ -48,8 +58,8 @@ class NativeFS {
   async removeDir(path) { await vinvoke("remove_dir", { root: this.root, path }); }
 }
 
-const lastNative = () => lsGet("sn-native-last", null);
-async function nativePick() {
+export const lastNative = () => lsGet("sn-native-last", null);
+export async function nativePick() {
   try {
     const r = await vinvoke("pick", {});
     if (!r) return;
@@ -57,14 +67,14 @@ async function nativePick() {
     await loadVault(new NativeFS(r.root, r.name));
   } catch (e) { notice(String(e?.message || e)); }
 }
-async function nativeReopen(r) {
+export async function nativeReopen(r) {
   try {
     if (!(await vinvoke("exists", { root: r.root, path: "" }))) throw new Error((LANG === "ru" ? "Нет доступа к папке: " : "Can't reach the folder: ") + r.name);
     await loadVault(new NativeFS(r.root, r.name));
   } catch (e) { notice(String(e?.message || e)); }
 }
 /** Open links outside the app (browser, obsidian://). */
-function openExternal(url) {
+export function openExternal(url) {
   if (IS_NATIVE) TAURI.invoke("plugin:opener|open_url", { url }).catch((e) => notice(String(e?.message || e)));
   else location.href = url;
 }

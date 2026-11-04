@@ -1,21 +1,23 @@
 /* =========================================================
    Frontmatter and note parsing (ports of src/note.ts, src/index/frontmatter.ts)
    ========================================================= */
+import { formatMoment } from "./completion.js";
+
 const FM_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
-function splitNote(data) {
+export function splitNote(data) {
   const m = FM_RE.exec(data);
   if (!m) return { fm: "", body: data };
   return { fm: m[0], body: data.slice(m[0].length) };
 }
-function fmInner(fmBlock) { return fmBlock.replace(/^---\r?\n/, "").replace(/\r?\n---(?:\r?\n)?$/, ""); }
-function parseYaml(text) {
+export function fmInner(fmBlock) { return fmBlock.replace(/^---\r?\n/, "").replace(/\r?\n---(?:\r?\n)?$/, ""); }
+export function parseYaml(text) {
   const v = jsyaml.load(text, { schema: jsyaml.CORE_SCHEMA });
   return v && typeof v === "object" && !Array.isArray(v) ? v : {};
 }
-function dumpYaml(obj) {
+export function dumpYaml(obj) {
   return jsyaml.dump(obj, { schema: jsyaml.CORE_SCHEMA, lineWidth: -1, quotingType: '"', noRefs: true });
 }
-function extractLinkpath(raw) {
+export function extractLinkpath(raw) {
   if (typeof raw !== "string") return null;
   let s = raw.trim();
   if (!s) return null;
@@ -28,7 +30,7 @@ function extractLinkpath(raw) {
   s = s.split("|")[0].split("#")[0].trim();
   return s || null;
 }
-function parentLinkpaths(value) {
+export function parentLinkpaths(value) {
   const out = [];
   const visit = (v) => {
     if (Array.isArray(v)) {
@@ -46,7 +48,7 @@ function parentLinkpaths(value) {
   visit(value);
   return [...new Set(out)];
 }
-function toStringList(value) {
+export function toStringList(value) {
   if (value == null) return [];
   if (Array.isArray(value)) {
     return value.flatMap((v) => {
@@ -56,10 +58,10 @@ function toStringList(value) {
   }
   return typeof value === "string" && value.trim() ? [value] : [];
 }
-const CODE_RE = /(^|\n)(```|~~~)[\s\S]*?(\n\2[^\n]*|$)|`[^`\n]+`/g;
-function stripCode(s) { return s.replace(CODE_RE, " "); }
-const TAG_RE = /(^|[\s,;])#([\p{L}\p{N}_/-]*[\p{L}_/-][\p{L}\p{N}_/-]*)/gu;
-function noteTags(fm, body) {
+export const CODE_RE = /(^|\n)(```|~~~)[\s\S]*?(\n\2[^\n]*|$)|`[^`\n]+`/g;
+export function stripCode(s) { return s.replace(CODE_RE, " "); }
+export const TAG_RE = /(^|[\s,;])#([\p{L}\p{N}_/-]*[\p{L}_/-][\p{L}\p{N}_/-]*)/gu;
+export function noteTags(fm, body) {
   const out = [];
   const add = (x) => { const s = String(x).trim().replace(/^#/, ""); if (s) out.push("#" + s); };
   const ft = fm.tags ?? fm.tag;
@@ -69,14 +71,14 @@ function noteTags(fm, body) {
   for (const m of text.matchAll(TAG_RE)) add(m[2]);
   return [...new Set(out)];
 }
-function noteLinks(body) {
+export function noteLinks(body) {
   const out = [];
   const text = stripCode(body);
   for (const m of text.matchAll(/!?\[\[([^\]]+)\]\]/g)) { const lp = extractLinkpath(`[[${m[1]}]]`); if (lp) out.push(lp); }
   for (const m of text.matchAll(/\[[^\]]*\]\(([^)\s]+\.md)\)/gi)) { const lp = extractLinkpath(`[x](${m[1]})`); if (lp && !/^[a-z]+:/i.test(lp)) out.push(lp); }
   return out;
 }
-function fillTemplate(text, title, now) {
+export function fillTemplate(text, title, now) {
   const fmt = (d, f) => formatMoment(d, f);
   return text.replace(/\{\{\s*(title|date|time)(?::([^}]+))?\s*\}\}/gi, (_m, key, f) => {
     const k = key.toLowerCase();
@@ -85,11 +87,11 @@ function fillTemplate(text, title, now) {
     return fmt(now, k === "date" ? "YYYY-MM-DD" : "HH:mm");
   });
 }
-function composeBody(templateBody, typed) {
+export function composeBody(templateBody, typed) {
   const tpl = templateBody.replace(/^\n+/, "").replace(/\n+$/, "");
   const extra = typed.trim();
   if (!tpl) return extra ? extra + "\n" : "";
   return extra ? `${tpl}\n\n${extra}\n` : `${tpl}\n`;
 }
-const TEMPLATE_SKIP_KEYS = new Set(["child_order", "child_template", "order", "position", "tags_template"]);
+export const TEMPLATE_SKIP_KEYS = new Set(["child_order", "child_template", "order", "position", "tags_template"]);
 

@@ -1,7 +1,28 @@
 /* =========================================================
    App shell
    ========================================================= */
-function applyTheme() {
+import { LANG, setLang, t } from "./i18n.js";
+import { $, h, ic, iconBtn } from "./dom.js";
+import { board, editor, graph, S, saveUI, setGraph, tree, UI, vault } from "./state.js";
+import { buildGraph, loadVault, persistBoard, saveSettings } from "./vault.js";
+import { undo } from "./save.js";
+import { createCard, quickOpen, saveCurrentView, togglePin } from "./actions.js";
+import { defaultEcho, echo, Menu, minibufPick, notice, openLayer, promptModal } from "./ui.js";
+import { masonries } from "./masonry.js";
+import { goBack, patchBoard, renderBoard, setTarget, toggleSearch } from "./board.js";
+import { renderTree, renderTreeSoft, revealInTree } from "./tree.js";
+import { closeEditor, openEditor, renderEditor, syncEditorFromDisk } from "./editor.js";
+import { renderEditorProps } from "./tables.js";
+import { pickVault, showWelcome } from "./welcome.js";
+import { runSync, st, stopSync, sync, syncAvailable, syncButton, syncSettingsBody, syncSettingsModal } from "./sync.js";
+import { openToday, outlineMenu, setFocusMode, wt } from "./completion.js";
+import { ORG_DEFAULT_KW, orgCache, tt } from "./org.js";
+import { ft, orgFoldNote } from "./org-editing.js";
+import { openTasksView, orgCapture, renderTasksButton, tasksButton } from "./agenda.js";
+import { filesButton, fvt, openFilesView } from "./files.js";
+import { aboutBody, upd, ut } from "./updates.js";
+
+export function applyTheme() {
   const dark = UI.theme === "dark" || (UI.theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.body.classList.toggle("theme-dark", dark);
   document.body.classList.toggle("theme-light", !dark);
@@ -10,23 +31,23 @@ function applyTheme() {
   document.body.classList.toggle("write-inter", UI.writeFont === "inter");
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
-function applyLanguage() {
+export function applyLanguage() {
   const pref = UI.lang !== "auto" ? UI.lang : S.language && S.language !== "auto" ? S.language : (navigator.language || "en").slice(0, 2);
   setLang(pref);
   document.documentElement.lang = LANG;
 }
-function setSide(open) {
+export function setSide(open) {
   UI.sideOpen = open;
   saveUI();
   $("#app").classList.toggle("side-closed", !open);
   for (const m of masonries) m.relayout(false);
 }
-function showLoading(on) {
+export function showLoading(on) {
   $(".sn-loading")?.remove();
   if (on) document.body.append(h("div", { cls: "sn-loading" }, ic("sn-spin", "loader-2"), h("span", { text: t("indexing") })));
 }
 let refreshQueued = false;
-function refresh(o = {}) {
+export function refresh(o = {}) {
   if (refreshQueued) return;
   refreshQueued = true;
   requestAnimationFrame(() => {
@@ -85,17 +106,17 @@ function commandList() {
   }
   return c;
 }
-async function commandPalette() {
+export async function commandPalette() {
   const pick = await minibufPick({ placeholder: t("cmdPalette"), items: commandList() });
   if (pick) pick.run();
 }
-function wbBtn(iconName, label, onClick, cls = "", kbd = null) {
+export function wbBtn(iconName, label, onClick, cls = "", kbd = null) {
   const b = h("button", { cls: "wb-btn " + cls, type: "button", title: label }, iconName ? ic("", iconName) : null, h("span", { cls: "wb-label", text: label }), kbd ? h("kbd", { text: kbd }) : null);
   if (onClick) b.addEventListener("click", onClick);
   return b;
 }
 /* The bar's width depends on the language, the vault name and the sync status, so it is measured, not guessed from the window width */
-const TOP_FIT_STEPS = [1, 2, 3];
+export const TOP_FIT_STEPS = [1, 2, 3];
 function fitTopBar(top) {
   for (const i of TOP_FIT_STEPS) top.classList.remove(`fit-${i}`);
   for (const i of TOP_FIT_STEPS) { if (top.scrollWidth <= top.clientWidth) break; top.classList.add(`fit-${i}`); }
@@ -110,7 +131,7 @@ function watchTopBar(top) {
   document.fonts?.ready.then(() => { if (top.isConnected) fit(); });
   topBarWatch = () => { resize.disconnect(); changes.disconnect(); };
 }
-function renderAll() {
+export function renderAll() {
   applyLanguage();
   const app = $("#app");
   app.replaceChildren();
@@ -174,7 +195,7 @@ function makeResizer(el, onMove, getStart) {
 }
 /** Settings, one tab per group. `tab` picks the tab (the last one used otherwise); with the dialog open it just switches to it. */
 let settingsOpen = null;
-function settingsModal(tab) {
+export function settingsModal(tab) {
   if (settingsOpen) { settingsOpen(tab); return; }
   const panel = h("div", { cls: "modal mod-settings" });
   const leaveTab = () => { sync.panel = null; upd.view = null; };
@@ -243,7 +264,7 @@ function settingsModal(tab) {
   settingsOpen = (id) => show(id || UI.settingsTab);
   show(tab || UI.settingsTab);
 }
-function hotkeysModal() {
+export function hotkeysModal() {
   const panel = h("div", { cls: "modal" });
   const close = openLayer(panel);
   const kb = (...keys) => h("span", {}, keys.map((k, i) => [i ? " " : "", h("kbd", { cls: "sn-k", text: k })]));

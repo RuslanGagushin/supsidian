@@ -14,6 +14,16 @@
    Repeaters +1w ++1m .+2d, warnings -3d, CLOSED: [..] on done, tags :a:b: or #a, inherited
    from parent headings and the note's tags. `category:` in frontmatter names the agenda column.
    ========================================================= */
+import { LANG } from "./i18n.js";
+import { $, baseName } from "./dom.js";
+import { stripCode, TAG_RE } from "./frontmatter.js";
+import { board, editor, UI, vault } from "./state.js";
+import { txn, writeRaw } from "./save.js";
+import { echo, minibufPick, minibufRead } from "./ui.js";
+import { saveEditor } from "./editor.js";
+import { formatMoment } from "./completion.js";
+import { orgAskDate } from "./org-editing.js";
+
 const TSTR = {
   en: {
     tasks: "Agenda", tasksHint: "Agenda & TODO list",
@@ -80,22 +90,22 @@ const TSTR = {
     sectionAgenda: "Агенда",
   },
 };
-const tt = (k, v = {}) => (TSTR[LANG]?.[k] ?? TSTR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
+export const tt = (k, v = {}) => (TSTR[LANG]?.[k] ?? TSTR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
 
 /* ---------- calendar arithmetic on day numbers (local calendar dates) */
 const ODAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const opad = (n) => String(n).padStart(2, "0");
-const ohm = (min) => opad(Math.floor(min / 60)) + ":" + opad(min % 60);
-function onow() { const d = new Date(); return { dn: Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5, min: d.getHours() * 60 + d.getMinutes() }; }
-const odn = (y, m, d) => Date.UTC(y, m - 1, d) / 864e5;
-function oymd(dn) { const d = new Date(dn * 864e5); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), w: d.getUTCDay() }; }
+export const opad = (n) => String(n).padStart(2, "0");
+export const ohm = (min) => opad(Math.floor(min / 60)) + ":" + opad(min % 60);
+export function onow() { const d = new Date(); return { dn: Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5, min: d.getHours() * 60 + d.getMinutes() }; }
+export const odn = (y, m, d) => Date.UTC(y, m - 1, d) / 864e5;
+export function oymd(dn) { const d = new Date(dn * 864e5); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), w: d.getUTCDay() }; }
 const oDate = (dn) => { const o = oymd(dn); return new Date(o.y, o.m - 1, o.d); };
 const odateStr = (dn) => { const o = oymd(dn); return `${o.y}-${opad(o.m)}-${opad(o.d)} ${ODAYS[o.w]}`; };
-function oisoWeek(dn) { const w = (oymd(dn).w + 6) % 7; const thu = dn - w + 3; const y = oymd(thu).y; const j4 = odn(y, 1, 4); const w1 = j4 - ((oymd(j4).w + 6) % 7); return 1 + Math.floor((thu - w1) / 7); }
-function oaddMonths(dn, n) { const o = oymd(dn); let mi = o.m - 1 + n; const y = o.y + Math.floor(mi / 12); mi = ((mi % 12) + 12) % 12; const last = new Date(Date.UTC(y, mi + 1, 0)).getUTCDate(); return odn(y, mi + 1, Math.min(o.d, last)); }
+export function oisoWeek(dn) { const w = (oymd(dn).w + 6) % 7; const thu = dn - w + 3; const y = oymd(thu).y; const j4 = odn(y, 1, 4); const w1 = j4 - ((oymd(j4).w + 6) % 7); return 1 + Math.floor((thu - w1) / 7); }
+export function oaddMonths(dn, n) { const o = oymd(dn); let mi = o.m - 1 + n; const y = o.y + Math.floor(mi / 12); mi = ((mi % 12) + 12) % 12; const last = new Date(Date.UTC(y, mi + 1, 0)).getUTCDate(); return odn(y, mi + 1, Math.min(o.d, last)); }
 function oaddUnit(dn, n, u) { switch (u) { case "w": return dn + 7 * n; case "m": return oaddMonths(dn, n); case "y": return oaddMonths(dn, 12 * n); case "h": return dn + Math.floor(n / 24); default: return dn + n; } }
-const ounitDays = (n, u) => (u === "w" ? 7 * n : u === "m" ? 30 * n : u === "y" ? 365 * n : u === "h" ? Math.ceil(n / 24) : n);
-const oFmt = (dn, f) => formatMoment(oDate(dn), f);
+export const ounitDays = (n, u) => (u === "w" ? 7 * n : u === "m" ? 30 * n : u === "y" ? 365 * n : u === "h" ? Math.ceil(n / 24) : n);
+export const oFmt = (dn, f) => formatMoment(oDate(dn), f);
 
 /* ---------- timestamps: <2026-10-28 Wed 10:00-11:00 +1w -2d>  (active)  [..] (inactive) */
 const OTS_RE = () => /([<\[])(\d{4})-(\d{2})-(\d{2})([^>\]\n]*)([>\]])(?:--([<\[])(\d{4})-(\d{2})-(\d{2})([^>\]\n]*)([>\]]))?/g;
@@ -110,16 +120,16 @@ function orgMkTs(open, y, m, d, rest) {
   }
   return ts;
 }
-function orgTsParse(s) { const m = OTS_RE().exec(s || ""); return m ? orgMkTs(m[1], m[2], m[3], m[4], m[5]) : null; }
-function orgTsStr(ts) {
+export function orgTsParse(s) { const m = OTS_RE().exec(s || ""); return m ? orgMkTs(m[1], m[2], m[3], m[4], m[5]) : null; }
+export function orgTsStr(ts) {
   let s = odateStr(ts.dn);
   if (ts.time != null) { s += " " + ohm(ts.time); if (ts.end != null) s += "-" + ohm(ts.end); }
   if (ts.rep) s += " " + ts.rep.type + ts.rep.n + ts.rep.u;
   if (ts.warn) s += " " + (ts.warn.first ? "--" : "-") + ts.warn.n + ts.warn.u;
   return ts.active ? "<" + s + ">" : "[" + s + "]";
 }
-const orgNowTs = (active) => { const n = onow(); return orgTsStr({ active: !!active, dn: n.dn, time: n.min, end: null, rep: null, warn: null }); };
-function orgOccursOn(ts, dn) {
+export const orgNowTs = (active) => { const n = onow(); return orgTsStr({ active: !!active, dn: n.dn, time: n.min, end: null, rep: null, warn: null }); };
+export function orgOccursOn(ts, dn) {
   if (dn === ts.dn) return true;
   if (!ts.rep || dn < ts.dn || ts.rep.n <= 0) return false;
   const { n, u } = ts.rep;
@@ -144,7 +154,7 @@ const OMON = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oc
 const ORU_MON = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 const OWD = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const ORU_WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
-function orgReadDate(str, base) {
+export function orgReadDate(str, base) {
   const T = onow().dn;
   if (base == null) base = T;
   let s = String(str).trim().toLowerCase().replace(/ё/g, "е");
@@ -180,9 +190,9 @@ function orgReadDate(str, base) {
 }
 
 /* ---------- keywords */
-const ORG_DEFAULT_KW = "TODO NEXT WAIT | DONE CANCELLED";
+export const ORG_DEFAULT_KW = "TODO NEXT WAIT | DONE CANCELLED";
 const orgKwCache = new Map();
-function orgParseKw(str) {
+export function orgParseKw(str) {
   if (orgKwCache.has(str)) return orgKwCache.get(str);
   const clean = (x) => x.trim().split(/[\s,]+/).filter(Boolean).map((w) => w.replace(/\(.*\)$/, ""));
   const parts = String(str).split("|");
@@ -193,12 +203,12 @@ function orgParseKw(str) {
   orgKwCache.set(str, set);
   return set;
 }
-function orgSet(note) {
+export function orgSet(note) {
   const v = note?.fm?.todo ?? note?.fm?.TODO;
   const s = Array.isArray(v) ? v.join(" ") : typeof v === "string" && v.trim() ? v : UI.todoKeywords || ORG_DEFAULT_KW;
   return orgParseKw(s);
 }
-function orgKwClass(kw, set) {
+export function orgKwClass(kw, set) {
   if (!kw) return "";
   if (set.done.includes(kw)) return /^(CANCEL|KILL|ОТМЕН)/i.test(kw) ? "cancel" : "done";
   if (/^(NEXT|STARTED|DOING|PROG|IN-PROGRESS|СЕЙЧАС|ДЕЛАЮ)/i.test(kw)) return "next";
@@ -209,9 +219,9 @@ function orgKwClass(kw, set) {
 /* ---------- line grammar */
 const OHEAD_RE = /^(#{1,6})([ \t]+)(.*)$/;
 const OITEM_RE = /^([ \t]*)([-*+]|\d+[.)])([ \t]+)(?:\[([ xX\/-])\](?:[ \t]+|$))?(.*)$/;
-const OPLAN_RE = /^[ \t]*(SCHEDULED|DEADLINE|CLOSED):/;
-const oIndentW = (s) => s.replace(/\t/g, "    ").length;
-function orgLine(line) {
+export const OPLAN_RE = /^[ \t]*(SCHEDULED|DEADLINE|CLOSED):/;
+export const oIndentW = (s) => s.replace(/\t/g, "    ").length;
+export function orgLine(line) {
   if (line == null) return null;
   line = line.replace(/\r$/, "");
   let m = OHEAD_RE.exec(line);
@@ -223,7 +233,7 @@ function orgLine(line) {
   }
   return null;
 }
-function orgHead(rest, set) {
+export function orgHead(rest, set) {
   const o = { kw: null, pri: null, title: "", tags: [] };
   rest = String(rest || "").replace(/\s+$/, "");
   let mm = rest.match(/^(\S+)(?:[ \t]+|$)([\s\S]*)$/);
@@ -235,7 +245,7 @@ function orgHead(rest, set) {
   o.title = rest.trim();
   return o;
 }
-function orgBuild(info, o) {
+export function orgBuild(info, o) {
   let s = info.prefix;
   const parts = [];
   if (o.kw) parts.push(o.kw);
@@ -244,13 +254,13 @@ function orgBuild(info, o) {
   if (o.tags?.length) parts.push(":" + o.tags.join(":") + ":");
   return s + parts.join(" ");
 }
-function orgPlanMap(line) {
+export function orgPlanMap(line) {
   const map = {}, re = /(SCHEDULED|DEADLINE|CLOSED):[ \t]*([<\[][^>\]\n]*[>\]])/g;
   let m;
   while ((m = re.exec(line || ""))) map[m[1]] = m[2];
   return map;
 }
-function orgSetPlanning(lines, li, key, val) {
+export function orgSetPlanning(lines, li, key, val) {
   const info = orgLine(lines[li]);
   const pl = li + 1;
   const has = pl < lines.length && OPLAN_RE.test(lines[pl]);
@@ -280,7 +290,7 @@ function orgRepeat(lines, li) {
   if (ns) orgSetPlanning(lines, li, "SCHEDULED", orgTsStr(ns));
   return tt("repeats", { when: ns ? "SCHEDULED: " + orgTsStr(ns) : "DEADLINE: " + orgTsStr(nd) });
 }
-function orgSetState(lines, li, kw, set) {
+export function orgSetState(lines, li, kw, set) {
   const info = orgLine(lines[li]);
   if (!info) return null;
   const o = orgHead(info.rest, set);
@@ -296,7 +306,7 @@ function orgSetState(lines, li, kw, set) {
   } else if (!isDone && wasDone) orgSetPlanning(lines, li, "CLOSED", null);
   return msg;
 }
-function orgSetBox(lines, li, checked) {
+export function orgSetBox(lines, li, checked) {
   const info = orgLine(lines[li]);
   if (!info || info.box == null) return null;
   const set = (ch) => { lines[li] = info.lead + info.marker + " " + `[${ch}]` + (info.rest ? " " + info.rest : " "); };
@@ -311,8 +321,8 @@ function orgSetBox(lines, li, checked) {
   if (li + 1 < lines.length && OPLAN_RE.test(lines[li + 1])) orgSetPlanning(lines, li, "CLOSED", null);
   return tt("stateTo", { kw: "[ ]" });
 }
-function orgNextKw(set, kw, dir) { const seq = [null, ...set.all]; let i = seq.indexOf(kw); if (i < 0) i = 0; return seq[(i + dir + seq.length) % seq.length]; }
-function orgSetPriority(lines, li, set, dir, explicit) {
+export function orgNextKw(set, kw, dir) { const seq = [null, ...set.all]; let i = seq.indexOf(kw); if (i < 0) i = 0; return seq[(i + dir + seq.length) % seq.length]; }
+export function orgSetPriority(lines, li, set, dir, explicit) {
   const info = orgLine(lines[li]);
   if (!info) return null;
   const o = orgHead(info.rest, set);
@@ -324,7 +334,7 @@ function orgSetPriority(lines, li, set, dir, explicit) {
   lines[li] = orgBuild(info, o);
   return p ? tt("priTo", { p }) : tt("priRemoved");
 }
-function orgSetTags(lines, li, set, tags) {
+export function orgSetTags(lines, li, set, tags) {
   const info = orgLine(lines[li]);
   if (!info) return null;
   const o = orgHead(info.rest, set);
@@ -333,7 +343,7 @@ function orgSetTags(lines, li, set, tags) {
   return tags.length ? tt("tagsSet") : tt("tagsRemoved");
 }
 /** Move a date by n days: SCHEDULED / DEADLINE on the planning line, else the first active timestamp on the line. */
-function orgShift(lines, li, kind, days) {
+export function orgShift(lines, li, kind, days) {
   const key = kind === "dead" ? "DEADLINE" : kind === "sched" ? "SCHEDULED" : null;
   if (key) {
     const map = li + 1 < lines.length && OPLAN_RE.test(lines[li + 1]) ? orgPlanMap(lines[li + 1]) : {};
@@ -352,8 +362,8 @@ function orgShift(lines, li, kind, days) {
 }
 
 /* ---------- parsing a note into entries (cached per text) */
-const orgCache = new Map();
-function orgParse(note) {
+export const orgCache = new Map();
+export function orgParse(note) {
   const set = orgSet(note);
   const c = orgCache.get(note.path);
   if (c && c.raw === note.raw && c.set === set) return c.list;
@@ -443,15 +453,15 @@ function orgParse(note) {
   orgCache.set(note.path, { raw: note.raw, set, list });
   return list;
 }
-function orgAll() {
+export function orgAll() {
   const out = [];
   for (const n of vault.notes.values()) { if (n.raw.length > 400000) continue; out.push(...orgParse(n)); }
   for (const p of orgCache.keys()) if (!vault.notes.has(p)) orgCache.delete(p);
   return out;
 }
-const orgSkip = (e) => e.alltags.some((x) => x.toUpperCase() === "ARCHIVE");
+export const orgSkip = (e) => e.alltags.some((x) => x.toUpperCase() === "ARCHIVE");
 /** Card footer: TODO entries and checkboxes in this note. */
-function cardTaskProgress(path) {
+export function cardTaskProgress(path) {
   const n = vault.notes.get(path);
   if (!n) return null;
   const es = orgParse(n).filter((x) => x.isTodo && x.cls !== "cancel");
@@ -459,7 +469,7 @@ function cardTaskProgress(path) {
 }
 
 /* ---------- editing entries in notes (undoable, synced) */
-async function orgEdit(e, fn) {
+export async function orgEdit(e, fn) {
   if (editor.path === e.path && editor.dirty) await saveEditor();
   const n = vault.notes.get(e.path);
   if (!n) return false;
@@ -471,21 +481,21 @@ async function orgEdit(e, fn) {
   await txn(String(msg).slice(0, 90), () => writeRaw(e.path, lines.join("\n")));
   return true;
 }
-const orgCycle = (e, dir = 1) => (e.kind === "box" ? orgEdit(e, (L, li) => orgSetBox(L, li, !e.done)) : e.kind === "event" ? false : orgEdit(e, (L, li, set) => orgSetState(L, li, orgNextKw(set, e.kw, dir), set)));
-const orgPri = (e, dir, explicit) => (e.kind === "event" ? false : orgEdit(e, (L, li, set) => orgSetPriority(L, li, set, dir, explicit)));
-const orgRefocus = () => { if (board.view === "tasks" && !document.activeElement?.closest?.(".sn-editor, input, textarea")) setTimeout(() => $(".ag-body")?.focus({ preventScroll: true }), 0); };
-async function orgPickState(e) {
+export const orgCycle = (e, dir = 1) => (e.kind === "box" ? orgEdit(e, (L, li) => orgSetBox(L, li, !e.done)) : e.kind === "event" ? false : orgEdit(e, (L, li, set) => orgSetState(L, li, orgNextKw(set, e.kw, dir), set)));
+export const orgPri = (e, dir, explicit) => (e.kind === "event" ? false : orgEdit(e, (L, li, set) => orgSetPriority(L, li, set, dir, explicit)));
+export const orgRefocus = () => { if (board.view === "tasks" && !document.activeElement?.closest?.(".sn-editor, input, textarea")) setTimeout(() => $(".ag-body")?.focus({ preventScroll: true }), 0); };
+export async function orgPickState(e) {
   if (e.kind === "event") return;
   if (e.kind === "box") return orgCycle(e);
   const it = await minibufPick({ placeholder: tt("pickState"), items: [...e.set.all.map((k) => ({ title: k, kw: k, icon: e.set.done.includes(k) ? "check" : "circle" })), { title: "—", kw: null, icon: "x" }] });
   if (it) await orgEdit(e, (L, li, set) => orgSetState(L, li, it.kw, set));
   orgRefocus();
 }
-async function orgPickPriority(cur) {
+export async function orgPickPriority(cur) {
   const it = await minibufPick({ placeholder: tt("priority"), items: [["A", "chevrons-up"], ["B", "chevron-up"], ["C", "chevron-down"], ["—", "minus"]].map(([p, icon]) => ({ title: p, icon, p: p === "—" ? null : p, note: cur === p ? "●" : "" })) });
   return it ? it.p : undefined;
 }
-async function orgPlanEntry(e, key) {
+export async function orgPlanEntry(e, key) {
   const cur = key === "SCHEDULED" ? e.sched : e.dead;
   const r = await orgAskDate(key === "SCHEDULED" ? tt("schedule") : tt("deadline"), cur);
   orgRefocus();
@@ -497,7 +507,7 @@ async function orgPlanEntry(e, key) {
     return tt("planSet", { key, ts });
   });
 }
-async function orgTagsEntry(e) {
+export async function orgTagsEntry(e) {
   if (e.kind === "event") return;
   const v = await minibufRead(tt("tags"), e.tags.length ? ":" + e.tags.join(":") + ":" : "");
   orgRefocus();

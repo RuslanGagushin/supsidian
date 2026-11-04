@@ -1,7 +1,10 @@
 /* =========================================================
    Masonry (port of src/views/Masonry.ts)
    ========================================================= */
-class Masonry {
+import { h } from "./dom.js";
+import { board } from "./state.js";
+
+export class Masonry {
   constructor(parent) { this.el = h("div", { cls: "sn-masonry" }); parent.append(this.el); this.items = []; this.colCount = 0; }
   columnCount() {
     if (board.layout === "list") return 1;
@@ -26,6 +29,6 @@ class Masonry {
     best.append(item);
   }
 }
-const masonries = []; // the board's live layouts; views empty it (length = 0) before they render
-const boardResize = new ResizeObserver(() => { for (const m of masonries) m.relayout(false); });
+export const masonries = []; // the board's live layouts; views empty it (length = 0) before they render
+export const boardResize = new ResizeObserver(() => { for (const m of masonries) m.relayout(false); });
 

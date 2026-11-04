@@ -1,9 +1,11 @@
 /* =========================================================
    DOM helpers and icons
    ========================================================= */
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-function h(tag, props, ...children) {
+import { t } from "./i18n.js";
+
+export const $ = (sel, root = document) => root.querySelector(sel);
+export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+export function h(tag, props, ...children) {
   const e = document.createElement(tag);
   if (props) {
     for (const [k, v] of Object.entries(props)) {
@@ -38,16 +40,16 @@ function iconSvg(name) {
   return out;
 }
 function hasIcon(name) { return !!iconSvg(name); }
-function setIcon(el, name, fallback = "file-text") { el.innerHTML = iconSvg(name) || iconSvg(fallback) || ""; return el; }
-function ic(cls, name, fallback) { return setIcon(h("span", { cls }), name, fallback); }
-function iconBtn(iconName, label, onClick, cls = "") {
+export function setIcon(el, name, fallback = "file-text") { el.innerHTML = iconSvg(name) || iconSvg(fallback) || ""; return el; }
+export function ic(cls, name, fallback) { return setIcon(h("span", { cls }), name, fallback); }
+export function iconBtn(iconName, label, onClick, cls = "") {
   const b = h("button", { cls: "clickable-icon " + cls, "aria-label": label, title: label, type: "button" });
   setIcon(b, iconName);
   if (onClick) b.addEventListener("click", onClick);
   return b;
 }
 let ICON_NAMES = null;
-function allIconNames() {
+export function allIconNames() {
   if (ICON_NAMES) return ICON_NAMES;
   const seen = new Set();
   const out = [];
@@ -61,14 +63,14 @@ function allIconNames() {
   ICON_NAMES = out.sort();
   return out;
 }
-const debounce = (fn, ms) => { let tm; const d = (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; d.cancel = () => clearTimeout(tm); return d; };
-const isMod = (e) => e.ctrlKey || e.metaKey;
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
-const baseName = (p) => (p.split("/").pop() || p).replace(/\.md$/i, "");
-const dirName = (p) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
-const norm = (s) => String(s).toLowerCase().replace(/ё/g, "е");
-const COLORS = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink", "grey"];
-const colorLabel = (c) => (c ? t("color" + c[0].toUpperCase() + c.slice(1)) : t("colorNone"));
+export const debounce = (fn, ms) => { let tm; const d = (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; d.cancel = () => clearTimeout(tm); return d; };
+export const isMod = (e) => e.ctrlKey || e.metaKey;
+export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+export const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+export const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
+export const baseName = (p) => (p.split("/").pop() || p).replace(/\.md$/i, "");
+export const dirName = (p) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
+export const norm = (s) => String(s).toLowerCase().replace(/ё/g, "е");
+export const COLORS = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink", "grey"];
+export const colorLabel = (c) => (c ? t("color" + c[0].toUpperCase() + c.slice(1)) : t("colorNone"));
 

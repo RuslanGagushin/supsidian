@@ -1,6 +1,20 @@
 /* =========================================================
    Keyboard on the board (port of src/views/board/keyboard.ts)
    ========================================================= */
+import { $, $$, isMod } from "./dom.js";
+import { board, editor, graph, UI, vault } from "./state.js";
+import { manualCmp } from "./vault.js";
+import { undo } from "./save.js";
+import { deleteCards, quickOpen } from "./actions.js";
+import { closeMenu, modalStack, openMenuEl } from "./ui.js";
+import { goBack, lastFocused, renderBoard, setTarget, toggleSearch, toggleSelect } from "./board.js";
+import { closeEditor, openEditor } from "./editor.js";
+import { toggleReading } from "./tables.js";
+import { commandPalette, hotkeysModal, setSide } from "./shell.js";
+import { openToday, setFocusMode } from "./completion.js";
+import { openTasksView } from "./agenda.js";
+import { openFilesView } from "./files.js";
+
 function spatialNext(from, dir) {
   const cards = $$(".sn-board .sn-masonry .sn-card");
   if (!from) return cards[0];

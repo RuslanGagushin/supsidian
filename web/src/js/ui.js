@@ -1,9 +1,14 @@
 /* =========================================================
    UI: menus, modals, notices
    ========================================================= */
-let openMenuEl = null;
-function closeMenu() { openMenuEl?.remove(); openMenuEl = null; }
-class Menu {
+import { t } from "./i18n.js";
+import { $, $$, allIconNames, colorLabel, COLORS, h, ic, norm } from "./dom.js";
+import { vault } from "./state.js";
+import { undo } from "./save.js";
+
+export let openMenuEl = null;
+export function closeMenu() { openMenuEl?.remove(); openMenuEl = null; }
+export class Menu {
   constructor() { this.items = []; }
   add(title, iconName, onClick, o = {}) { this.items.push({ title, icon: iconName, onClick, ...o }); return this; }
   sep() { if (this.items.length && this.items[this.items.length - 1] !== "sep") this.items.push("sep"); return this; }
@@ -51,12 +56,12 @@ window.addEventListener("blur", closeMenu);
 window.addEventListener("resize", closeMenu);
 
 let echoTimer = null, mbBusy = false, pendingEcho = null;
-function defaultEcho() {
+export function defaultEcho() {
   if (vault.fs?.kind === "demo") return t("demoBanner");
   if (vault.fs?.kind === "copy") return t("volatileBanner");
   return ""; // the line stays hidden until there is a message
 }
-function echo(text, o = {}) {
+export function echo(text, o = {}) {
   const mb = $("#minibuf");
   if (!mb) return false;
   if (mbBusy) { pendingEcho = [text, o]; return true; }
@@ -71,14 +76,14 @@ function echo(text, o = {}) {
   else if (!o.keep && !isHint) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), o.undo ? 9000 : 6000);
   return true;
 }
-function mbBegin() { clearTimeout(echoTimer); mbBusy = true; modalStack++; $("#minibuf")?.classList.remove("is-blank"); }
-function mbEnd() {
+export function mbBegin() { clearTimeout(echoTimer); mbBusy = true; modalStack++; $("#minibuf")?.classList.remove("is-blank"); }
+export function mbEnd() {
   mbBusy = false; modalStack--;
   const pe = pendingEcho; pendingEcho = null;
   if (pe) echo(...pe); else echo(defaultEcho(), { keep: true });
 }
 /** Emacs-style completing read in the minibuffer. */
-function minibufPick({ placeholder, items, allowCreate = false, limit = 200 }) {
+export function minibufPick({ placeholder, items, allowCreate = false, limit = 200 }) {
   return new Promise((resolve) => {
     const mb = $("#minibuf");
     mbBegin();
@@ -121,7 +126,7 @@ function minibufPick({ placeholder, items, allowCreate = false, limit = 200 }) {
     setTimeout(() => input.focus(), 0);
   });
 }
-function minibufRead(label, value = "") {
+export function minibufRead(label, value = "") {
   return new Promise((resolve) => {
     const mb = $("#minibuf");
     mbBegin();
@@ -140,7 +145,7 @@ function minibufRead(label, value = "") {
     setTimeout(() => { if (document.activeElement !== input) input.focus(); }, 0);
   });
 }
-function notice(text, o = {}) {
+export function notice(text, o = {}) {
   if (echo(String(text).replace(/\n/g, " · "), o)) return;
   let box = $(".notice-container");
   if (!box) document.body.append((box = h("div", { cls: "notice-container" })));
@@ -152,8 +157,8 @@ function notice(text, o = {}) {
   setTimeout(() => n.remove(), o.action ? 12000 : o.undo ? 6000 : 3500);
 }
 
-let modalStack = 0;
-function openLayer(panel, onClose) {
+export let modalStack = 0;
+export function openLayer(panel, onClose) {
   const bg = h("div", { cls: "modal-bg" });
   const close = (v) => { bg.remove(); panel.remove(); modalStack--; document.removeEventListener("keydown", onKey, true); onClose?.(v); };
   const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(undefined); } };
@@ -163,7 +168,7 @@ function openLayer(panel, onClose) {
   modalStack++;
   return close;
 }
-function fuzzyScore(q, text) {
+export function fuzzyScore(q, text) {
   if (!q) return 1;
   const s = norm(text);
   const words = norm(q).split(/\s+/).filter(Boolean);
@@ -180,7 +185,7 @@ function fuzzyScore(q, text) {
   return score;
 }
 /** Obsidian-style suggest modal. items: [{value,title,icon,color,note}] */
-function suggestModal({ placeholder, items, allowCreate = false, grid = false, render, limit = 200, hint = false, current }) {
+export function suggestModal({ placeholder, items, allowCreate = false, grid = false, render, limit = 200, hint = false, current }) {
   if (!grid && $("#minibuf")) return minibufPick({ placeholder, items, allowCreate, limit });
   return new Promise((resolve) => {
     const input = h("input", { cls: "prompt-input", type: "text", placeholder, spellcheck: "false" });
@@ -226,7 +231,7 @@ function suggestModal({ placeholder, items, allowCreate = false, grid = false, r
     setTimeout(() => input.focus(), 0);
   });
 }
-async function iconModal(current) {
+export async function iconModal(current) {
   const names = allIconNames();
   const items = [{ value: null, title: t("noIcon"), icon: "circle-slash" }, ...names.map((n) => ({ value: n, title: n, icon: n }))];
   const pick = await suggestModal({
@@ -235,7 +240,7 @@ async function iconModal(current) {
   });
   return pick ? pick.value : undefined;
 }
-function promptModal(title, value = "") {
+export function promptModal(title, value = "") {
   if ($("#minibuf")) return minibufRead(title, value);
   return new Promise((resolve) => {
     const input = h("input", { type: "text", value, style: "width:100%" });
@@ -248,7 +253,7 @@ function promptModal(title, value = "") {
     setTimeout(() => { input.focus(); input.select(); }, 0);
   });
 }
-function confirmModal(title, text, okText) {
+export function confirmModal(title, text, okText) {
   return new Promise((resolve) => {
     const ok = h("button", { cls: "mod-warning", text: okText });
     const panel = h("div", { cls: "modal" }, h("div", { cls: "modal-title", text: title }), h("p", { cls: "modal-text", text }),

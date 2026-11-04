@@ -1,8 +1,26 @@
 /* =========================================================
    Editor pane (the note, like an Obsidian tab beside the board)
    ========================================================= */
-const scheduleSave = debounce(() => saveEditor(), 600);
-function openEditor(path, o = {}) {
+import { t } from "./i18n.js";
+import { $, $$, baseName, debounce, dirName, h, ic, iconBtn } from "./dom.js";
+import { splitNote } from "./frontmatter.js";
+import { board, editor, UI, vault } from "./state.js";
+import { cardColor, cardIcon } from "./vault.js";
+import { writeRaw } from "./save.js";
+import { promptIcon, renameCard } from "./actions.js";
+import { renderMarkdown, wireRendered } from "./markdown.js";
+import { masonries } from "./masonry.js";
+import { cardMenu } from "./cards.js";
+import { cardSig, setTarget } from "./board.js";
+import { livePreviewExtensions, liveTa, liveText, renderLive, wireLive } from "./live-preview.js";
+import { editorKeys, editorTable, editorTableOp, renderEditorProps, renderEdToolbar, tableMenu, updateEdToolbar } from "./tables.js";
+import { downloadNote, updateFmtBar } from "./format-bar.js";
+import { refresh } from "./shell.js";
+import { syncHook } from "./sync.js";
+import { ac, acClose, acUpdate, caretRect, outlineMenu, setFocusMode, wireEditorFiles, wt } from "./completion.js";
+
+export const scheduleSave = debounce(() => saveEditor(), 600);
+export function openEditor(path, o = {}) {
   if (!vault.notes.has(path)) return;
   if (editor.path && editor.path !== path && editor.dirty) saveEditor();
   if (editor.path !== path) editor.propsCollapsed = true;
@@ -21,7 +39,7 @@ function openEditor(path, o = {}) {
     if (ta && editor.mode !== "read") { ta.focus(); if (!o.keepCaret) ta.setSelectionRange(ta.value.length, ta.value.length); }
   }, 0);
 }
-function closeEditor(force = false) {
+export function closeEditor(force = false) {
   if (!force && editor.dirty) saveEditor();
   const was = editor.path;
   if (was && !force) setTimeout(() => $(`#board .sn-card[data-path="${CSS.escape(was)}"]`)?.focus({ preventScroll: false }), 0);
@@ -33,7 +51,7 @@ function closeEditor(force = false) {
   const host = $("#editor");
   if (host) host.replaceChildren();
 }
-async function saveEditor() {
+export async function saveEditor() {
   scheduleSave.cancel();
   if (!editor.path || !editor.dirty) return;
   const path = editor.path;
@@ -50,7 +68,7 @@ async function saveEditor() {
   setSaveState();
   refresh({ keepEditor: true });
 }
-function editorModeline() {
+export function editorModeline() {
   const ml = $("#editor > .modeline");
   if (!ml || !editor.path) return;
   const ta = $(".sn-editor-text");
@@ -64,14 +82,14 @@ function editorModeline() {
   const sp = (cls, txt) => h("span", { cls, text: txt });
   ml.replaceChildren(sp(editor.dirty ? "hi" : "dim", editor.dirty ? "-:**-" : "-:---"), sp("hi", editor.path.split("/").pop()), sp("", mode), sp("dim", state), sp("grow", ""), sp("dim", `${words}w · ${wt("readTime", { n: Math.max(1, Math.round(words / 220)) })}`), sp("", `L${line}`));
 }
-function setSaveState() {
+export function setSaveState() {
   editorModeline();
   const el = $(".sn-save-state");
   if (!el) return;
   el.textContent = editor.saving ? t("saving") : editor.dirty ? t("unsaved") : vault.fs.kind === "disk" ? t("saved") : "";
   el.classList.toggle("is-dirty", editor.dirty);
 }
-function syncEditorFromDisk() {
+export function syncEditorFromDisk() {
   const ta = $(".sn-editor-text");
   const n = vault.notes.get(editor.path);
   if (!n) { renderEditor(); return; }
@@ -111,7 +129,7 @@ function editorTableWrap(ta) {
   if (!want) (ta.cmView?.scrollDOM || ta).scrollLeft = 0;
 }
 function autosize(ta) { if (ta.cmView) return; const sc = $(".sn-editor-scroll")?.scrollTop; ta.style.height = "auto"; ta.style.height = ta.scrollHeight + ta.offsetHeight - ta.clientHeight + "px"; /* + a sideways scrollbar */ if (sc != null) $(".sn-editor-scroll").scrollTop = sc; }
-function renderEditor() {
+export function renderEditor() {
   const host = $("#editor");
   if (!host) return;
   const path = editor.path;
@@ -253,9 +271,9 @@ function cmEditor(value, o = {}) {
   return ta;
 }
 /** Where an editor element goes in the page: a CodeMirror view's outer element, or the element itself. */
-const edDom = (ta) => ta.cmView?.dom || ta;
+export const edDom = (ta) => ta.cmView?.dom || ta;
 /** The editor: the whole note in source mode, the block being edited in live preview. */
-function editorTextarea(value, live = false) {
+export function editorTextarea(value, live = false) {
   const ta = cmEditor(value, { extensions: live ? livePreviewExtensions() : [], cls: (editor.mode === "source" ? "is-source" : "") + (live ? " is-live" : ""), placeholder: editor.mode === "source" ? t("emptyBody") : t("emptyBody") + " " + wt("slashHint") });
   ta.addEventListener("input", (e) => {
     undoSmartDashes(ta);

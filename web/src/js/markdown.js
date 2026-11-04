@@ -1,9 +1,22 @@
 /* =========================================================
    Markdown rendering (Obsidian flavour: wikilinks, embeds, tags, ==marks==, callouts, tasks)
    ========================================================= */
-const IMG_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
-const blobUrls = new Map();
-async function attachmentUrl(path) {
+import { t } from "./i18n.js";
+import { $$, esc, h, ic, isMod } from "./dom.js";
+import { CODE_RE, extractLinkpath, splitNote } from "./frontmatter.js";
+import { editor, graph, vault } from "./state.js";
+import { openAttachment, resolveAttachment, resolveFileLink, resolveLink } from "./vault.js";
+import { writeRaw } from "./save.js";
+import { createCard } from "./actions.js";
+import { openTagView, setTarget } from "./board.js";
+import { openEditor, saveEditor } from "./editor.js";
+import { refresh } from "./shell.js";
+import { orgDecorate } from "./org-editing.js";
+import { IS_NATIVE } from "./native.js";
+
+export const IMG_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
+export const blobUrls = new Map();
+export async function attachmentUrl(path) {
   if (blobUrls.has(path)) return blobUrls.get(path);
   const p = (async () => { const f = await vault.fs.readFile(path); return URL.createObjectURL(f); })();
   blobUrls.set(path, p);
@@ -11,8 +24,8 @@ async function attachmentUrl(path) {
 }
 /* PDF embeds (![[doc.pdf#page=3&height=400]]): the platform's own viewer where the webview has one,
    pdf.js pages otherwise (Android's WebView, mobile browsers and the desktop app's webview show nothing for a PDF in a frame). */
-const PDF_EXT = /\.pdf$/i;
-const PDFJS_VERSION = "4.10.38";
+export const PDF_EXT = /\.pdf$/i;
+export const PDFJS_VERSION = "4.10.38";
 let pdfjsLoad = null;
 function loadPdfjs() {
   pdfjsLoad ||= (async () => {
@@ -31,7 +44,7 @@ function loadPdfjs() {
   return pdfjsLoad;
 }
 // The macOS app's WKWebView shows a blank frame for a blob: PDF, so the native app always uses the pdf.js it ships.
-const hasPdfViewer = () => !IS_NATIVE && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) && navigator.pdfViewerEnabled !== false;
+export const hasPdfViewer = () => !IS_NATIVE && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) && navigator.pdfViewerEnabled !== false;
 const openPdfs = new Set();
 function pdfEmbed(target, sourcePath, full) {
   const [file, frag = ""] = target.split("#");
@@ -49,8 +62,8 @@ function pdfEmbed(target, sourcePath, full) {
   else renderPdfPages(view, meta, path, page);
   return h("div", { cls: "sn-pdf" }, head, view);
 }
-function pdfMessage(view, e) { view.replaceChildren(h("div", { cls: "sn-pdf-msg", text: t("pdfFailed", { msg: String(e?.message || e) }) })); }
-async function renderPdfPages(view, meta, path, start) {
+export function pdfMessage(view, e) { view.replaceChildren(h("div", { cls: "sn-pdf-msg", text: t("pdfFailed", { msg: String(e?.message || e) }) })); }
+export async function renderPdfPages(view, meta, path, start) {
   for (const d of openPdfs) if (!d.view.isConnected) { openPdfs.delete(d); d.doc.destroy(); }
   view.classList.add("is-canvas");
   view.append(h("div", { cls: "sn-pdf-msg", text: t("pdfLoading") }));
@@ -179,7 +192,7 @@ const tableWide = new ResizeObserver((entries) => {
     wrap.classList.toggle("is-wide", wrap.scrollWidth > wrap.clientWidth + 1);
   }
 });
-function renderMarkdown(md, sourcePath, opts = {}) {
+export function renderMarkdown(md, sourcePath, opts = {}) {
   const codes = [];
   let s = md.replace(/(^|\n)(```|~~~)[\s\S]*?(\n\2[^\n]*|$)|`[^`\n]+`/g, (m) => { codes.push(m); return `${codes.length - 1}`; });
   s = s.replace(/%%[\s\S]*?%%/g, "");
@@ -269,7 +282,7 @@ function renderMarkdown(md, sourcePath, opts = {}) {
   decorateCodeBlocks(el);
   return el;
 }
-function wireRendered(el, sourcePath) {
+export function wireRendered(el, sourcePath) {
   el.addEventListener("click", (e) => {
     const a = e.target.closest("a.internal-link");
     if (a) {
@@ -292,7 +305,7 @@ function wireRendered(el, sourcePath) {
     if (cb) toggleTask(sourcePath, +cb.dataset.task, cb.checked);
   });
 }
-async function toggleTask(path, index, checked) {
+export async function toggleTask(path, index, checked) {
   const n = vault.notes.get(path);
   if (!n) return;
   if (editor.path === path && editor.dirty) await saveEditor();

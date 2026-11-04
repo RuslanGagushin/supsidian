@@ -1,5 +1,14 @@
 /* ---------- Floating format bar: shown over a selection in the editor text */
-function updateFmtBar(ta) {
+import { t } from "./i18n.js";
+import { $, baseName, dirName, h, setIcon } from "./dom.js";
+import { editor, vault } from "./state.js";
+import { cardColor, cardIcon, linkText } from "./vault.js";
+import { sanitizeTitle } from "./actions.js";
+import { minibufPick } from "./ui.js";
+import { edHeading, edInsert, edLines, edLineState, edLinkStart, edPrefix, edWrap, updateEdToolbar } from "./tables.js";
+import { ac, caretRect, wt } from "./completion.js";
+
+export function updateFmtBar(ta) {
   const has = ta && document.activeElement === ta && ta.selectionEnd > ta.selectionStart && editor.mode !== "read" && !ac.el;
   let bar = $(".sn-fmtbar");
   if (!has) { bar?.remove(); return; }
@@ -36,7 +45,7 @@ function updateFmtBar(ta) {
   const top = a.top - hgt - 8 >= 8 ? a.top - hgt - 8 : z.top + z.height + 8;
   Object.assign(bar.style, { left: left + "px", top: top + "px" });
 }
-function edSetHeading(ta, n) {
+export function edSetHeading(ta, n) {
   edLines(ta, (lines) => lines.map((l) => { const body = l.replace(/^#{1,6} /, ""); return n ? "#".repeat(n) + " " + body : body; }));
   updateEdToolbar();
 }
@@ -55,7 +64,7 @@ async function linkPicker(ta, typedOpen) {
     edInsert(ta, caret, hasClose ? caret + 2 : caret, `${target}${label}]]`);
   } else edInsert(ta, caret, end, `[[${target}${label}]]`);
 }
-function downloadNote(path) {
+export function downloadNote(path) {
   const n = vault.notes.get(path);
   if (!n) return;
   const a = h("a", { href: URL.createObjectURL(new Blob([n.raw], { type: "text/markdown" })), download: path.split("/").pop() });

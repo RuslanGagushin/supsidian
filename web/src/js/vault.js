@@ -1,34 +1,47 @@
 /* =========================================================
    Vault loading and indexing
    ========================================================= */
-function isMd(p) { return /\.md$/i.test(p); }
-function isCard(path) {
+import { $, baseName, COLORS, dirName, h, lsGet, lsSet } from "./dom.js";
+import { fmInner, noteLinks, noteTags, parentLinkpaths, parseYaml, splitNote } from "./frontmatter.js";
+import { HierarchyGraph } from "./graph.js";
+import { board, DEFAULTS, editor, graph, resetSettings, S, setGraph, tree, undoStack, vault } from "./state.js";
+import { attachmentUrl } from "./markdown.js";
+import { notice } from "./ui.js";
+import { closeEditor, syncEditorFromDisk } from "./editor.js";
+import { applyLanguage, refresh, renderAll, showLoading } from "./shell.js";
+import { stopSync, syncBoot, syncHook } from "./sync.js";
+import { loadDailyConfig, resetDailyConfig } from "./completion.js";
+import { dropAttachment } from "./files.js";
+import { IS_ANDROID, IS_NATIVE, TAURI } from "./native.js";
+
+export function isMd(p) { return /\.md$/i.test(p); }
+export function isCard(path) {
   if (!isMd(path)) return false;
   if (S.templatesFolder && (path === S.templatesFolder || path.startsWith(S.templatesFolder + "/"))) return false;
   if (S.onlyCardsFolder && S.cardsFolder && !path.startsWith(S.cardsFolder + "/")) return false;
   return true;
 }
-function parseNote(path, raw, mtime) {
+export function parseNote(path, raw, mtime) {
   const { fm: fmRaw, body } = splitNote(raw);
   let fm = {}, fmError = null;
   if (fmRaw) { try { fm = parseYaml(fmInner(fmRaw)); } catch (e) { fmError = String(e.message || e).split("\n")[0]; } }
   const created = Date.parse(fm.created ?? fm.date ?? "") || null;
   return { path, name: baseName(path), raw, fmRaw, body, fm, fmError, mtime, ctime: created || mtime, tags: noteTags(fm, body), links: noteLinks(body) };
 }
-function indexNames() {
+export function indexNames() {
   vault.byName.clear();
   for (const p of vault.notes.keys()) {
     const k = baseName(p).toLowerCase();
     (vault.byName.get(k) || vault.byName.set(k, []).get(k)).push(p);
   }
 }
-function addAttachment(path) {
+export function addAttachment(path) {
   const k = (path.split("/").pop() || "").toLowerCase();
   const arr = vault.files.get(k) || vault.files.set(k, []).get(k);
   if (!arr.includes(path)) arr.push(path);
 }
 /** Obsidian-like link resolution: exact path, then by name (same folder first, then the shortest path). */
-function resolveLink(linkpath, source = "") {
+export function resolveLink(linkpath, source = "") {
   if (!linkpath) return null;
   let lp = linkpath.trim().replace(/\\/g, "/");
   if (!lp) return null;
@@ -45,7 +58,7 @@ function resolveLink(linkpath, source = "") {
   const sameDir = cands.find((p) => dirName(p) === dirName(source));
   return sameDir || [...cands].sort((a, b) => a.length - b.length)[0];
 }
-function resolveAttachment(name, source) {
+export function resolveAttachment(name, source) {
   let n = name.trim().replace(/\\/g, "/");
   try { n = decodeURIComponent(n); } catch { /* keep */ }
   const lower = n.toLowerCase();
@@ -56,11 +69,11 @@ function resolveAttachment(name, source) {
   return cands.find((p) => p.toLowerCase().endsWith(lower)) || cands[0] || null;
 }
 /** A wikilink to a non-note file ([[doc.pdf]]): the vault file it points at, if any. */
-function resolveFileLink(lp, source) {
+export function resolveFileLink(lp, source) {
   if (!lp || !/\.[a-z0-9]{1,8}$/i.test(lp) || /\.md$/i.test(lp)) return null;
   return resolveAttachment(lp, source);
 }
-async function openAttachment(path) {
+export async function openAttachment(path) {
   try {
     if (IS_NATIVE && vault.fs.root && !IS_ANDROID) { await TAURI.invoke("plugin:opener|open_path", { path: vault.fs.root.replace(/\/$/, "") + "/" + path }); return; }
     const url = await attachmentUrl(path);
@@ -69,11 +82,11 @@ async function openAttachment(path) {
     document.body.append(a); a.click(); a.remove();
   } catch (e) { notice(String(e?.message || e)); }
 }
-function linkText(path) {
+export function linkText(path) {
   const name = baseName(path);
   return (vault.byName.get(name.toLowerCase()) || []).length > 1 ? path.replace(/\.md$/i, "") : name;
 }
-function buildGraph() {
+export function buildGraph() {
   const g = new HierarchyGraph();
   const field = S.parentsField || "parents";
   for (const n of vault.notes.values()) {
@@ -89,20 +102,20 @@ function buildGraph() {
   }
   return g;
 }
-function cardColor(path) {
+export function cardColor(path) {
   const v = vault.notes.get(path)?.fm?.color;
   if (typeof v !== "string") return null;
   const c = v.toLowerCase().trim().replace("gray", "grey");
   return COLORS.includes(c) ? c : null;
 }
-function cardIcon(path) { const v = vault.notes.get(path)?.fm?.icon; return typeof v === "string" && v.trim() ? v.trim() : null; }
-function cardTags(path) { return (vault.notes.get(path)?.tags || []).map((x) => x.replace(/^#/, "").toLowerCase()); }
+export function cardIcon(path) { const v = vault.notes.get(path)?.fm?.icon; return typeof v === "string" && v.trim() ? v.trim() : null; }
+export function cardTags(path) { return (vault.notes.get(path)?.tags || []).map((x) => x.replace(/^#/, "").toLowerCase()); }
 function sortInfo(path) {
   const n = vault.notes.get(path);
   const o = Number(n?.fm?.order);
   return { order: Number.isFinite(o) ? o : Number.MAX_SAFE_INTEGER, name: baseName(path), mtime: n?.mtime ?? 0, ctime: n?.ctime ?? 0 };
 }
-function makeComparator(mode) {
+export function makeComparator(mode) {
   const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
   return (pa, pb, parent) => {
     if (mode === "manual" && parent) {
@@ -122,9 +135,9 @@ function makeComparator(mode) {
     }
   };
 }
-const manualCmp = (a, b, p) => makeComparator("manual")(a, b, p);
+export const manualCmp = (a, b, p) => makeComparator("manual")(a, b, p);
 
-async function loadVault(fs) {
+export async function loadVault(fs) {
   if (typeof stopSync === "function") await stopSync();
   vault.fs = fs;
   vault.notes.clear(); vault.files.clear(); vault.allPaths.clear(); vault.sizes.clear(); vault.mtimes.clear();
@@ -179,13 +192,13 @@ async function loadVault(fs) {
   } finally { showLoading(false); }
 }
 const boardKey = () => "sn-board:" + (vault.fs?.kind || "") + ":" + (vault.fs?.name || "");
-function persistBoard() {
+export function persistBoard() {
   lsSet(boardKey(), {
     target: board.target, depth: board.depth, layout: board.layout, sort: board.sort, grouped: board.grouped,
     heroCollapsed: board.heroCollapsed, filter: board.filter, tagView: board.tagView || null, view: board.view || null, treeExpanded: [...tree.expanded],
   });
 }
-const DATA_PATH = ".obsidian/plugins/supsidian/data.json";
+export const DATA_PATH = ".obsidian/plugins/supsidian/data.json";
 async function loadPluginData() {
   resetSettings(lsGet("sn-settings:" + vault.fs.name, {}));
   vault.pluginData = null;
@@ -201,7 +214,7 @@ async function loadPluginData() {
   if (!Array.isArray(S.pinned)) S.pinned = [];
   if (!Array.isArray(S.savedViews)) S.savedViews = [];
 }
-async function saveSettings() {
+export async function saveSettings() {
   lsSet("sn-settings:" + vault.fs.name, S);
   if (vault.fs.kind !== "disk" || (!vault.pluginData && !vault.hasObsidian)) return;
   try {
@@ -216,7 +229,7 @@ async function saveSettings() {
 
 /* Watch for changes made elsewhere (Obsidian, sync) */
 let polling = false;
-async function pollChanges(force = false) {
+export async function pollChanges(force = false) {
   if (polling || !vault.fs || vault.fs.kind !== "disk") return;
   if (!force && document.visibilityState !== "visible") return;
   polling = true;

@@ -2,6 +2,24 @@
    Files: every attachment in the vault,
    with a preview, the notes that use it, rename (links follow) and delete.
    ========================================================= */
+import { LANG, pluralIndex, t } from "./i18n.js";
+import { $, $$, baseName, debounce, dirName, h, ic, iconBtn, isMod, lsGet, lsSet, norm } from "./dom.js";
+import { stripCode } from "./frontmatter.js";
+import { board, editor, vault } from "./state.js";
+import { addAttachment, cardIcon, isMd, openAttachment, persistBoard, resolveAttachment } from "./vault.js";
+import { writeRaw } from "./save.js";
+import { attachmentUrl, blobUrls, hasPdfViewer, IMG_EXT, PDF_EXT, pdfMessage, renderPdfPages } from "./markdown.js";
+import { confirmModal, Menu, notice, promptModal } from "./ui.js";
+import { masonries } from "./masonry.js";
+import { attachLongPress, formatDate } from "./cards.js";
+import { goBack, leaveTagView, navEntry, renderBoard, setTarget } from "./board.js";
+import { renderTree } from "./tree.js";
+import { openEditor, saveEditor } from "./editor.js";
+import { refresh, setSide, wbBtn } from "./shell.js";
+import { syncHook } from "./sync.js";
+import { saveAttachment, wt } from "./completion.js";
+import { IS_ANDROID, IS_NATIVE, TAURI } from "./native.js";
+
 const FVSTR = {
   en: {
     files: "Files", filesHint: "All files in the vault", total: "Total size: {size}", search: "Search files…",
@@ -32,12 +50,12 @@ const FVSTR = {
     root: "корень хранилища", modified: "Изменён {date}", failed: "Не удалось ({what}): {msg}",
   },
 };
-const fvt = (k, v = {}) => {
+export const fvt = (k, v = {}) => {
   let s = FVSTR[LANG]?.[k] ?? FVSTR.en[k] ?? k;
   if (Array.isArray(s)) s = s[Math.min(pluralIndex(v.n ?? 0), s.length - 1)];
   return s.replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
 };
-const FV = Object.assign({ kind: "all", sort: "name", unused: false }, lsGet("sn-files", {}), { query: "", sel: null, refs: null });
+export const FV = Object.assign({ kind: "all", sort: "name", unused: false }, lsGet("sn-files", {}), { query: "", sel: null, refs: null });
 const saveFV = () => lsSet("sn-files", { kind: FV.kind, sort: FV.sort, unused: FV.unused });
 const fileExt = (p) => (/\.([^./]+)$/.exec(p)?.[1] || "").toLowerCase();
 const fileName = (p) => p.split("/").pop();
@@ -62,8 +80,8 @@ function fmtSize(b) {
   do { b /= 1024; i++; } while (b >= 1024 && i < u.length - 1);
   return (b < 10 ? b.toFixed(1) : Math.round(b)) + " " + u[i];
 }
-function allAttachments() { return [...vault.allPaths].filter((p) => !isMd(p)); }
-function dropAttachment(path) {
+export function allAttachments() { return [...vault.allPaths].filter((p) => !isMd(p)); }
+export function dropAttachment(path) {
   const k = fileName(path).toLowerCase();
   const arr = vault.files.get(k);
   if (arr) { const i = arr.indexOf(path); if (i >= 0) arr.splice(i, 1); if (!arr.length) vault.files.delete(k); }
@@ -80,7 +98,7 @@ function fileTarget(lp, source, md) {
   return resolveAttachment(s, source);
 }
 /** path of every attachment -> notes that link to it */
-function attachmentRefs() {
+export function attachmentRefs() {
   const out = new Map();
   const add = (f, p) => { const arr = out.get(f) || out.set(f, []).get(f); if (!arr.includes(p)) arr.push(p); };
   for (const n of vault.notes.values()) {
@@ -99,7 +117,7 @@ async function moveVaultFile(from, to) {
   return file.size;
 }
 /** Rename an attachment in its folder and rewrite the links to it in every note. */
-async function renameAttachment(path, newName) {
+export async function renameAttachment(path, newName) {
   let clean = String(newName).replace(/[\\/:*?"<>|#^[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
   if (!clean) return path;
   const ext = fileExt(path);
@@ -135,7 +153,7 @@ async function renameAttachment(path, newName) {
   notice(rewrites.length ? fvt("renamedLinks", { name: clean, n: rewrites.length }) : fvt("renamed", { name: clean }));
   return newPath;
 }
-async function deleteAttachment(path) {
+export async function deleteAttachment(path) {
   const refs = attachmentRefs().get(path) || [];
   const name = fileName(path);
   const ok = await confirmModal(fvt("confirmTitle"), refs.length ? fvt("confirmUsed", { name, n: refs.length }) : fvt("confirm", { name }), fvt("delete"));
@@ -214,7 +232,7 @@ function attachmentMenu(path, anchor) {
   return m;
 }
 
-function openFilesView(push = true) {
+export function openFilesView(push = true) {
   if (board.view === "files") { renderBoard(); return; }
   if (push) { board.history.push(navEntry()); if (board.history.length > 100) board.history.shift(); }
   if (board.tagView) leaveTagView();
@@ -226,7 +244,7 @@ function openFilesView(push = true) {
   if (innerWidth <= 820) setSide(false);
   setTimeout(() => $(".fv-list")?.focus({ preventScroll: true }), 0);
 }
-function filesButton() {
+export function filesButton() {
   const b = wbBtn("paperclip", fvt("files"), () => (board.view === "files" ? goBack() : openFilesView()), "wb-files");
   b.id = "files-btn";
   b.title = fvt("filesHint") + " · Ctrl+Shift+E";
@@ -252,7 +270,7 @@ function fvRows() {
   }[FV.sort] || byName;
   return rows.sort(cmp);
 }
-function renderFilesView(root) {
+export function renderFilesView(root) {
   const oldList = root.querySelector(".fv-list");
   const scroll = oldList?.scrollTop || 0;
   const focus = document.activeElement === oldList || !!document.activeElement?.closest?.(".fv-row") ? "list" : document.activeElement?.classList?.contains("fv-search") ? "search" : null;
@@ -311,7 +329,7 @@ function renderFilesView(root) {
   else if (focus === "search") { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
 }
 /** Rebuild the list and counts only — the preview (and a PDF in it) stays as it is. */
-function fvRenderList() {
+export function fvRenderList() {
   const list = $(".fv-list");
   if (!list) return;
   FV.refs = attachmentRefs();
@@ -342,7 +360,7 @@ function fvRenderList() {
   list.append(frag);
   list.scrollTop = sc;
 }
-function fvSelect(p, scroll = false) {
+export function fvSelect(p, scroll = false) {
   if (!p) return;
   const changed = FV.sel !== p;
   FV.sel = p;

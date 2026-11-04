@@ -1,8 +1,18 @@
 /* =========================================================
    Writing notes + undo
    ========================================================= */
+import { t } from "./i18n.js";
+import { baseName } from "./dom.js";
+import { dumpYaml, splitNote } from "./frontmatter.js";
+import { editor, undoStack, vault } from "./state.js";
+import { indexNames, parseNote } from "./vault.js";
+import { notice } from "./ui.js";
+import { saveEditor, syncEditorFromDisk } from "./editor.js";
+import { refresh } from "./shell.js";
+import { syncHook } from "./sync.js";
+
 let currentTxn = null; // the open txn(): notes it changes keep their text from before, for undo
-async function writeRaw(path, raw, { silentEditor = false, fromSync = false } = {}) {
+export async function writeRaw(path, raw, { silentEditor = false, fromSync = false } = {}) {
   if (!fromSync && currentTxn && !currentTxn.before.has(path)) currentTxn.before.set(path, vault.notes.get(path)?.raw ?? null);
   let mtime;
   try { mtime = await vault.fs.write(path, raw); }
@@ -15,7 +25,7 @@ async function writeRaw(path, raw, { silentEditor = false, fromSync = false } = 
   if (!fromSync) syncHook(isNew ? "create" : "modify", path);
   if (!silentEditor && editor.path === path && !editor.dirty) syncEditorFromDisk();
 }
-async function updateFM(path, fn) {
+export async function updateFM(path, fn) {
   if (editor.path === path && editor.dirty) await saveEditor();
   const n = vault.notes.get(path);
   if (!n) return;
@@ -27,7 +37,7 @@ async function updateFM(path, fn) {
   const raw = (keys.length ? "---\n" + dumpYaml(fm) + "---\n" : "") + body;
   if (raw !== n.raw) await writeRaw(path, raw);
 }
-async function removeNote(path, { fromSync = false } = {}) {
+export async function removeNote(path, { fromSync = false } = {}) {
   if (!fromSync && currentTxn && !currentTxn.before.has(path)) currentTxn.before.set(path, vault.notes.get(path)?.raw ?? null);
   await vault.fs.remove(path);
   vault.notes.delete(path);
@@ -36,7 +46,7 @@ async function removeNote(path, { fromSync = false } = {}) {
   indexNames();
   if (!fromSync) syncHook("delete", path);
 }
-async function txn(label, fn) {
+export async function txn(label, fn) {
   const tx = { label: "", before: new Map() };
   currentTxn = tx;
   try { const l = await fn(tx); tx.label = l ?? label; }
@@ -48,7 +58,7 @@ async function txn(label, fn) {
     if (tx.label) notice(tx.label, { undo: true });
   } else if (tx.label) notice(tx.label);
 }
-async function undo() {
+export async function undo() {
   const tx = undoStack.pop();
   if (!tx) { notice(t("nothingToUndo")); return; }
   for (const [path, raw] of tx.before) {

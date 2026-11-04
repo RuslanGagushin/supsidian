@@ -1,7 +1,9 @@
 /* =========================================================
    File systems: real folder (File System Access API) or in-memory copy
    ========================================================= */
-class HandleFS {
+import { dirName } from "./dom.js";
+
+export class HandleFS {
   constructor(root) { this.root = root; this.name = root.name; this.kind = "disk"; }
   async list() {
     const out = [];
@@ -39,7 +41,7 @@ class HandleFS {
   async listDir(path) { const d = await this.dir(path, false); const out = []; for await (const [name, hd] of d.entries()) if (hd.kind === "file") out.push(name); return out; }
   async removeDir(path) { const d = await this.dir(dirName(path), false); await d.removeEntry(path.split("/").pop(), { recursive: true }); }
 }
-class MemoryFS {
+export class MemoryFS {
   constructor(name, kind) { this.name = name; this.kind = kind; this.files = new Map(); }
   add(path, data, mtime = Date.now()) { this.files.set(path, { data, mtime }); }
   async list() { return [...this.files.keys()].filter((p) => !p.split("/").some((s) => s.startsWith("."))).map((path) => ({ path })); }
@@ -56,7 +58,7 @@ class MemoryFS {
 }
 
 /* IndexedDB: remember the last opened folder handle */
-const idb = {
+export const idb = {
   open() {
     return new Promise((res, rej) => {
       const r = indexedDB.open("supsidian-standalone", 1);

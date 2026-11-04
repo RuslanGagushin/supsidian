@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFil
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { bundle } from "../scripts/page.mjs";
 
 const app = fileURLToPath(new URL("..", import.meta.url));
 const at = (p) => new URL("../" + p, import.meta.url);
@@ -17,11 +18,15 @@ test("dist/index.html is the page, pdf.js is next to it", () => {
   for (const f of ["pdf.min.mjs", "pdf.worker.min.mjs"]) assert.ok(existsSync(at("dist/pdfjs/" + f)), f);
 });
 
-test("web/src/page.html includes every source file once, and the page has no directives left", () => {
-  const files = readdirSync(at("web/src"), { recursive: true }).filter((f) => /\.(css|js)$/.test(f)).map((f) => f.split(sep).join("/")).sort();
-  const included = [...readFileSync(at("web/src/page.html"), "utf8").matchAll(/<!-- include: (\S+) -->/g)].map((m) => m[1]);
-  assert.deepEqual([...included].sort(), files);
-  assert.doesNotMatch(readFileSync(at("web/supstack.html"), "utf8"), /<!-- include:|__APP_VERSION__/);
+test("web/src/page.html includes every stylesheet and library once, the bundle takes in every module, no directives are left", () => {
+  const files = readdirSync(at("web/src"), { recursive: true }).map((f) => f.split(sep).join("/"));
+  const html = readFileSync(at("web/src/page.html"), "utf8");
+  const included = [...html.matchAll(/<!-- include: (\S+) -->/g)].map((m) => m[1]);
+  assert.deepEqual([...included].sort(), files.filter((f) => /\.(css|js)$/.test(f) && !f.startsWith("js/")).sort());
+  assert.deepEqual([...html.matchAll(/<!-- bundle: (\S+) -->/g)].map((m) => m[1]), ["js/main.js"]);
+  const bundled = bundle("js/main.js").files.map((f) => f.replace(/^web\/src\//, "")).sort();
+  assert.deepEqual(bundled, files.filter((f) => f.startsWith("js/") && f.endsWith(".js")).sort(), "every module under web/src/js is reachable from main.js");
+  assert.doesNotMatch(readFileSync(at("web/supstack.html"), "utf8"), /<!-- (include|bundle):|__APP_VERSION__/);
 });
 
 test("the page loads pdf.js from ./pdfjs/ before the CDN, at the installed version", () => {
@@ -33,7 +38,7 @@ test("the page loads pdf.js from ./pdfjs/ before the CDN, at the installed versi
 
 test("the page's APP_VERSION (filled in from package.json) and the app's version match package.json", () => {
   const version = JSON.parse(readFileSync(at("package.json"), "utf8")).version;
-  assert.match(readFileSync(at("web/supstack.html"), "utf8"), new RegExp(`const APP_VERSION = "${version.replace(/\./g, "\\.")}"`));
+  assert.match(readFileSync(at("web/supstack.html"), "utf8"), new RegExp(`(?:const|var) APP_VERSION = "${version.replace(/\./g, "\\.")}"`));
   assert.equal(JSON.parse(readFileSync(at("src-tauri/tauri.conf.json"), "utf8")).version, version);
 });
 

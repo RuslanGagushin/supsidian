@@ -3,10 +3,22 @@
    links, tags, highlights, tasks, bullets and Org keywords show as they read. Callouts, code blocks and embeds render as blocks that turn
    back into Markdown when the caret goes in; tables stay rendered and are edited a cell at a time. editor.live = { path, body } holds the
    body the editor opened with; liveText() is what it holds now. */
-function liveTa() { return $(".sn-editor-text.is-live"); }
-function liveText() { const ta = liveTa(); return ta ? ta.value : editor.live?.body ?? ""; }
+import { $, $$, h, isMod } from "./dom.js";
+import { CODE_RE, extractLinkpath } from "./frontmatter.js";
+import { editor, graph, vault } from "./state.js";
+import { openAttachment, resolveFileLink, resolveLink } from "./vault.js";
+import { createCard } from "./actions.js";
+import { renderMarkdown, wireRendered } from "./markdown.js";
+import { openTagView, setTarget } from "./board.js";
+import { edDom, editorModeline, editorTextarea, openEditor } from "./editor.js";
+import { findTables, liveCellOpen, liveTableAt, liveTableButtons, liveTableOp, tableMenu, tableSpans, updateEdToolbar } from "./tables.js";
+import { orgKwClass, orgSet } from "./org.js";
+import { ORG_DECOR_RE } from "./org-editing.js";
+
+export function liveTa() { return $(".sn-editor-text.is-live"); }
+export function liveText() { const ta = liveTa(); return ta ? ta.value : editor.live?.body ?? ""; }
 /** (Re)build the live editor, or give it the body after a change from outside. */
-function renderLive() {
+export function renderLive() {
   const L = editor.live, box = $("#editor .sn-live");
   if (!box || !L) return;
   editor.cell = null;
@@ -15,7 +27,7 @@ function renderLive() {
   box.replaceChildren(edDom(editorTextarea(L.body, true)));
 }
 /** Put the caret at a body offset, scrolled into view. */
-function liveActivate(off) {
+export function liveActivate(off) {
   const ta = liveTa();
   if (!ta) return null;
   off = Math.max(0, Math.min(off, ta.value.length));
@@ -24,7 +36,7 @@ function liveActivate(off) {
   editorModeline(); updateEdToolbar();
   return ta;
 }
-function liveActivateEnd() { return liveActivate(liveText().length); }
+export function liveActivateEnd() { return liveActivate(liveText().length); }
 function liveTaskCount(text) {
   return (text.replace(CODE_RE, (m) => m.replace(/\[/g, "\u0001")).match(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[ xX]\]/gm) || []).length;
 }
@@ -47,7 +59,7 @@ function liveClickOffset(el, e, src) {
   if (/\s$/.test(txt)) while (j < src.length && /[ \t]/.test(src[j])) j++;
   return j;
 }
-function wireLive(box, path) {
+export function wireLive(box, path) {
   wireRendered(box, path);
   // a task ticked inside a rendered block (a callout) is numbered against the whole note before toggleTask runs
   box.addEventListener("change", (e) => {
@@ -135,7 +147,7 @@ class LpTable extends CM.WidgetType {
   updateDOM(el) { if (!el.contains(editor.cell?.el)) lpTableFill(el, this.text); return true; }
   ignoreEvent() { return true; }
 }
-function lpTableFill(el, text) { el.replaceChildren(); renderMarkdown(text, editor.path, { into: el }); liveTableButtons(el); }
+export function lpTableFill(el, text) { el.replaceChildren(); renderMarkdown(text, editor.path, { into: el }); liveTableButtons(el); }
 
 /** Inline decorations for the visible lines. */
 function lpInline(view) {
@@ -299,7 +311,7 @@ function lpTableArrow(e, view) {
   e.preventDefault();
   return !!liveCellOpen(tb.from, down ? 0 : rows - 1, 0);
 }
-function livePreviewExtensions() {
+export function livePreviewExtensions() {
   return [
     lpFocused,
     CM.EditorView.focusChangeEffect.of((state, focusing) => lpFocus.of(focusing)),

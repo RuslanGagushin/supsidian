@@ -1,9 +1,26 @@
 /* ---------- Tables, edited like Obsidian's: Tab and Enter move between cells, the source stays aligned in columns,
    and a menu (right click, the toolbar's table button, the + buttons on a rendered table) adds, moves, sorts, aligns and deletes rows and columns.
    A parsed table is { rows: [[cell text]], align: ["" | "left" | "center" | "right"] }; rows[0] is the header. */
+import { LANG, t } from "./i18n.js";
+import { $, $$, baseName, colorLabel, COLORS, h, ic, isMod, setIcon } from "./dom.js";
+import { dumpYaml } from "./frontmatter.js";
+import { board, editor, graph, S, UI, vault } from "./state.js";
+import { cardColor, cardIcon, makeComparator } from "./vault.js";
+import { txn, updateFM } from "./save.js";
+import { promptAddParent, promptIcon, removeParent, setColor, templateFor } from "./actions.js";
+import { Menu } from "./ui.js";
+import { parentChip } from "./cards.js";
+import { setTarget } from "./board.js";
+import { closeEditor, editorModeline, openEditor, renderEditor, saveEditor, scheduleSave, setSaveState } from "./editor.js";
+import { liveActivate, liveActivateEnd, liveTa, lpTableFill } from "./live-preview.js";
+import { edSetHeading } from "./format-bar.js";
+import { syncHook } from "./sync.js";
+import { acKey, acUpdate, linkMention, pickAndAttach, setFocusMode, unlinkedMentions, wt } from "./completion.js";
+import { orgEditorKey, orgLineIsEntry, orgToolbar } from "./org-editing.js";
+
 const TABLE_SEP_RE = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
 /** [start, end) of each cell's trimmed text in a row; pipes escaped as \| stay in their cell. */
-function tableSpans(line) {
+export function tableSpans(line) {
   const spans = [];
   let start = 0;
   for (let i = 0; i <= line.length; i++) {
@@ -14,9 +31,9 @@ function tableSpans(line) {
   if (spans.length > 1 && !line.slice(spans.at(-1)[0]).trim()) spans.pop();
   return spans.map(([a, b]) => { while (a < b && /\s/.test(line[a])) a++; while (b > a && /\s/.test(line[b - 1])) b--; return [a, b]; });
 }
-const tableCells = (line) => tableSpans(line).map(([a, b]) => line.slice(a, b));
+export const tableCells = (line) => tableSpans(line).map(([a, b]) => line.slice(a, b));
 /** Tables in Markdown text, outside code blocks and quotes: [{ from, to, lines }], `to` at the end of the last row. */
-function findTables(text) {
+export function findTables(text) {
   const out = [], lines = text.split("\n");
   let pos = 0, fence = null;
   const starts = lines.map((l) => { const p = pos; pos += l.length + 1; return p; });
@@ -32,7 +49,7 @@ function findTables(text) {
   }
   return out;
 }
-function parseTable(lines) {
+export function parseTable(lines) {
   const sep = tableCells(lines[1]);
   const rows = [lines[0], ...lines.slice(2)].map(tableCells);
   const n = Math.max(sep.length, ...rows.map((r) => r.length));
@@ -42,7 +59,7 @@ function parseTable(lines) {
 /** Columns line up as on screen: wide (CJK) characters and emoji take two. */
 const strWidth = (s) => [...s].reduce((w, ch) => w + (/[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦\u{1F300}-\u{1FAFF}]/u.test(ch) ? 2 : 1), 0);
 /** The table as aligned Markdown; cell(r, c) is the [start, end) of a cell's text in it. */
-function formatTable(t) {
+export function formatTable(t) {
   const w = t.align.map((a, i) => Math.max(3, ...t.rows.map((r) => strWidth(r[i]))));
   const pos = [];
   let text = "";
@@ -89,13 +106,13 @@ const TABLE_OPS = {
   format: (t, r, c) => [r, c],
 };
 /** TABLE_OPS[op] on table `tb` of `text`: replace [from, to) with `insert`; `sel` is the caret cell's text in the new text. */
-function tableEdit(text, tb, op, row, col) {
+export function tableEdit(text, tb, op, row, col) {
   const t = parseTable(tb.lines), res = TABLE_OPS[op](t, row, col);
   if (res === "delete") return { from: tb.from, to: text[tb.to] === "\n" ? tb.to + 1 : tb.to, insert: "", sel: [tb.from, tb.from] };
   const f = formatTable(t), [s, e] = f.cell(...res);
   return { from: tb.from, to: tb.to, insert: f.text, sel: [tb.from + s, tb.from + e] };
 }
-function tableMenu(run, row) {
+export function tableMenu(run, row) {
   const m = new Menu();
   m.label(wt("tblRow"));
   if (row > 0) m.add(wt("tblRowAbove"), "arrow-up-to-line", () => run("rowAbove"));
@@ -118,11 +135,11 @@ function tableMenu(run, row) {
   return m;
 }
 /** The table under the caret of a textarea, with the caret's cell. */
-function editorTable(ta) {
+export function editorTable(ta) {
   const s = ta.selectionStart, tb = findTables(ta.value).find((x) => s >= x.from && s <= x.to);
   return tb ? { tb, ...tableCellAt(tb, s - tb.from) } : null;
 }
-function editorTableOp(ta, op, at = editorTable(ta)) {
+export function editorTableOp(ta, op, at = editorTable(ta)) {
   if (!at) return;
   const out = tableEdit(ta.value, at.tb, op, at.row, at.col);
   edInsert(ta, out.from, out.to, out.insert, ...out.sel);
@@ -152,7 +169,7 @@ function editorTableKey(e, ta) {
   return at.row < last ? go(at.row + 1, at.col) : go(at.row, at.col, "rowBelow");
 }
 /** The rendered table `x` is in (a cell, a + button): its table in the document and the cell. */
-function liveTableAt(x) {
+export function liveTableAt(x) {
   const el = x.closest(".lp-table"), view = liveTa()?.cmView, tbl = el?.querySelector("table");
   if (!el || !view || !tbl) return null;
   const from = view.posAtDOM(el), tb = findTables(view.state.doc.toString()).find((t) => t.from === from);
@@ -160,7 +177,7 @@ function liveTableAt(x) {
   return tb ? { s: 0, tb, tbl, row: cell ? cell.parentElement.rowIndex : 0, col: cell ? cell.cellIndex : 0 } : null;
 }
 /** Run a table op on a rendered table (`x` is in it, or x.from is where it starts); o.edit then edits the caret's cell. */
-function liveTableOp(x, op, o = {}) {
+export function liveTableOp(x, op, o = {}) {
   const view = liveTa()?.cmView, at = x.from != null ? x : liveTableAt(x);
   if (!at || !view) return;
   liveCellClose({ save: false });
@@ -175,7 +192,7 @@ function liveTableOp(x, op, o = {}) {
 /* ---------- A table in live preview stays rendered while it is edited, as in Obsidian: one cell at a time holds an editor
    with the cell's Markdown, and the table's text is rewritten (lined up) as you type.
    editor.cell = { el, from, to, row, col, t }: the cell's editor, the table's [from, to) in the document and the parsed table. */
-const cellCaret = (el) => {
+export const cellCaret = (el) => {
   const sel = getSelection();
   if (!sel.rangeCount || !el.contains(sel.anchorNode)) return [el.textContent.length, el.textContent.length];
   const r = sel.getRangeAt(0), pre = document.createRange();
@@ -183,7 +200,7 @@ const cellCaret = (el) => {
   const s = pre.toString().length;
   return [s, s + r.toString().length];
 };
-function cellSetCaret(el, s, e = s) {
+export function cellSetCaret(el, s, e = s) {
   const node = el.firstChild || el.appendChild(document.createTextNode("")), n = node.length;
   const r = document.createRange();
   r.setStart(node, Math.min(s, n)); r.setEnd(node, Math.min(e, n));
@@ -193,7 +210,7 @@ function cellSetCaret(el, s, e = s) {
 function liveTableEl(from) { const view = liveTa()?.cmView; return view ? $$("#editor .lp-table").find((el) => view.posAtDOM(el) === from) || null : null; }
 const liveCellAt = (from, row, col) => liveTableEl(from)?.querySelector("table")?.rows[row]?.cells[col] || null;
 /** Edit one cell of a rendered table: o.caret puts the caret at that offset in the cell's text, o.select selects it all, o.atStart / the default the end. */
-function liveCellOpen(from, row, col, o = {}) {
+export function liveCellOpen(from, row, col, o = {}) {
   const view = liveTa()?.cmView;
   if (!view) return null;
   liveCellClose({ save: false });
@@ -312,7 +329,7 @@ function liveCellKeys(e) {
   else if (e.key === "ArrowDown") { take(); if (c.row < last) liveCellGo(c.row + 1, c.col); else liveCellLeave(true); }
 }
 /** In live preview a rendered table gets + buttons for a new row (below) and a new column (on the right). */
-function liveTableButtons(el) {
+export function liveTableButtons(el) {
   for (const wrap of $$(".sn-table-wrap", el)) {
     if (wrap.closest("blockquote, .callout")) continue;
     const host = h("div", { cls: "sn-table-host" });
@@ -323,7 +340,7 @@ function liveTableButtons(el) {
       add("sn-table-add-col", wt("tblColRight"), (b) => liveTableOp(b, "colRight", { row: 0, col: host.querySelector("table").rows[0].cells.length - 1, edit: true })));
   }
 }
-function renderEditorProps() {
+export function renderEditorProps() {
   const path = editor.path;
   const n = vault.notes.get(path);
   const host = $("#editor-props");
@@ -404,7 +421,7 @@ function renderEditorProps() {
     foot.append(box);
   }
 }
-function editorKeys(e) {
+export function editorKeys(e) {
   const ta = e.target;
   if (acKey(e)) return;
   if (orgEditorKey(e, ta)) return;
@@ -456,7 +473,7 @@ function editorKeys(e) {
     replace(s, s, "\n" + m[1] + marker + m[3] + (m[4] ? "[ ] " : ""));
   }
 }
-async function toggleReading() {
+export async function toggleReading() {
   if (editor.dirty) await saveEditor();
   editor.mode = editor.mode === "read" ? "edit" : "read";
   renderEditor();
@@ -464,7 +481,7 @@ async function toggleReading() {
   else $("#editor .sn-reading")?.setAttribute("tabindex", "-1"), $("#editor .sn-reading")?.focus();
 }
 /** Insert into the editor through the browser so Ctrl+Z keeps working. */
-function edInsert(ta, from, to, text, selFrom, selTo) {
+export function edInsert(ta, from, to, text, selFrom, selTo) {
   ta.focus();
   if (ta.cmView) ta.cmView.dispatch({ changes: { from, to, insert: text }, selection: selFrom != null ? { anchor: selFrom, head: selTo ?? selFrom } : { anchor: from + text.length } });
   else {
@@ -474,19 +491,19 @@ function edInsert(ta, from, to, text, selFrom, selTo) {
   }
   ta.dispatchEvent(new Event("input"));
 }
-function edLinkStart(ta) {
+export function edLinkStart(ta) {
   const { selectionStart: s, selectionEnd: e, value } = ta;
   if (e > s) return edInsert(ta, s, e, `[[${value.slice(s, e)}]]`);
   edInsert(ta, s, s, "[[]]", s + 2);
   acUpdate(ta);
 }
-function edWrap(ta, mark, close = mark) {
+export function edWrap(ta, mark, close = mark) {
   const { selectionStart: s, selectionEnd: e, value } = ta;
   const sel = value.slice(s, e);
   if (sel.startsWith(mark) && sel.endsWith(close) && sel.length >= mark.length + close.length) return edInsert(ta, s, e, sel.slice(mark.length, sel.length - close.length), s, e - mark.length - close.length);
   edInsert(ta, s, e, mark + sel + close, s + mark.length, e + mark.length);
 }
-function edLines(ta, fn) {
+export function edLines(ta, fn) {
   const { selectionStart: s, selectionEnd: e, value } = ta;
   const a = value.lastIndexOf("\n", s - 1) + 1;
   let b = value.indexOf("\n", e > s && value[e - 1] === "\n" ? e - 1 : e); if (b < 0) b = value.length;
@@ -495,7 +512,7 @@ function edLines(ta, fn) {
   edInsert(ta, a, b, out, a + out.length, a + out.length);
 }
 const LIST_RE = /^(\s*)([-*+] \[[ xX]\] |[-*+] |\d+[.)] )/;
-function edPrefix(ta, prefix) {
+export function edPrefix(ta, prefix) {
   edLines(ta, (lines) => {
     const all = lines.every((l) => !l.trim() || l.replace(/^\s*/, "").startsWith(prefix.replace(/\d+/, "")) || (prefix === "1. " && /^\s*\d+[.)] /.test(l)));
     return lines.map((l, i) => {
@@ -508,7 +525,7 @@ function edPrefix(ta, prefix) {
     });
   });
 }
-function edHeading(ta) {
+export function edHeading(ta) {
   edLines(ta, (lines) => lines.map((l) => {
     const m = /^(#{1,6}) /.exec(l);
     const lvl = m ? m[1].length : 0;
@@ -516,7 +533,7 @@ function edHeading(ta) {
     return lvl >= 3 ? body : "#".repeat(lvl + 1) + " " + body;
   }));
 }
-function renderEdToolbar() {
+export function renderEdToolbar() {
   const bar = h("div", { cls: "sn-ed-toolbar", role: "toolbar", "aria-label": "Formatting" });
   const ta = () => $(".sn-editor-text");
   const group = () => { const g = h("div", { cls: "sn-tb-group" }); bar.append(g); return g; };
@@ -577,7 +594,7 @@ function renderEdToolbar() {
   return bar;
 }
 /** Formatting at the caret, for the toolbar's active states. */
-function edLineState(ta) {
+export function edLineState(ta) {
   const v = ta.value, s = ta.selectionStart;
   const ls = v.lastIndexOf("\n", s - 1) + 1;
   let le = v.indexOf("\n", s); if (le < 0) le = v.length;
@@ -592,7 +609,7 @@ function edLineState(ta) {
     strikethrough: odd(/~~/g), highlighter: odd(/==/g), code: ((before.replace(/```/g, "").match(/`/g) || []).length % 2) === 1,
   };
 }
-function updateEdToolbar() {
+export function updateEdToolbar() {
   const ta = $(".sn-editor-text"), bar = $("#editor .sn-ed-toolbar");
   if (!ta || !bar) return;
   const st = edLineState(ta);

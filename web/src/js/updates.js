@@ -5,7 +5,20 @@
    so it compares with the latest release and opens the APK download. The web page has nothing to
    install; it only shows its version.
    ========================================================= */
-const APP_VERSION = "__APP_VERSION__"; // the page's own version (the apps ask Tauri for theirs); scripts/page.mjs puts package.json's here
+import { LANG } from "./i18n.js";
+import { debounce, h } from "./dom.js";
+import { HandleFS, idb, MemoryFS } from "./fs.js";
+import { board, editor, graph, saveUI, UI, vault } from "./state.js";
+import { loadVault, pollChanges } from "./vault.js";
+import { notice } from "./ui.js";
+import { masonries } from "./masonry.js";
+import { saveEditor } from "./editor.js";
+import { applyLanguage, applyTheme, settingsModal } from "./shell.js";
+import { demoVault, hasFsApi, loadCopy, showWelcome } from "./welcome.js";
+import { st } from "./sync.js";
+import { IS_ANDROID, IS_NATIVE, lastNative, NativeFS, openExternal, vinvoke } from "./native.js";
+
+export const APP_VERSION = "__APP_VERSION__"; // the page's own version (the apps ask Tauri for theirs); scripts/page.mjs puts package.json's here
 const REPO = "RuslanGagushin/supsidian";
 const RELEASES = `https://github.com/${REPO}/releases`;
 const USTR = {
@@ -30,16 +43,16 @@ const USTR = {
     webNote: "Эта страница остаётся той версией, с которой была загружена. Приложения для Windows, macOS и Android обновляются сами.",
   },
 };
-const ut = (k, v = {}) => (USTR[LANG]?.[k] ?? USTR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
+export const ut = (k, v = {}) => (USTR[LANG]?.[k] ?? USTR.en[k] ?? k).replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? String(v[x]) : m));
 /** state: idle | checking | current | available | installing | restarting | error. `update` is the Tauri updater's handle (desktop only). */
-const upd = { state: "idle", version: "", url: "", error: "", got: 0, total: 0, update: null, view: null };
+export const upd = { state: "idle", version: "", url: "", error: "", got: 0, total: 0, update: null, view: null };
 const canSelfUpdate = () => IS_NATIVE && !IS_ANDROID && !!window.__TAURI__?.updater;
 async function appVersion() {
   try { if (IS_NATIVE) return await window.__TAURI__.app.getVersion(); } catch { /* older shell: the page's version */ }
   return APP_VERSION;
 }
 /** Is version a newer than b? Compares major.minor.patch, ignoring a leading v. */
-function isNewer(a, b) {
+export function isNewer(a, b) {
   const p = (v) => String(v).replace(/^v/, "").split(/[.+-]/).slice(0, 3).map((x) => parseInt(x, 10) || 0);
   const x = p(a), y = p(b);
   for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
@@ -86,7 +99,7 @@ async function installUpdate() {
   } catch (e) { setUpd({ state: "error", error: String(e?.message || e) }); }
 }
 /** The About tab of the settings: version, updates, release notes. */
-function aboutBody(item, toggle) {
+export function aboutBody(item, toggle) {
   const ver = h("span", { text: APP_VERSION });
   appVersion().then((v) => (ver.textContent = v));
   const ua = navigator.userAgent;
