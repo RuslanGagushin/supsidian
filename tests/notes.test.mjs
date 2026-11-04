@@ -111,7 +111,7 @@ describe("helpers", () => {
 
   test("pluralIndex and t() pick English and Russian plural forms", async () => {
     assert.deepEqual(await ev(() => [1, 2, 5].map((n) => t("cardsCount", { n }))), ["1 card", "2 cards", "5 cards"]);
-    assert.deepEqual(await ev(() => { const was = LANG; LANG = "ru"; const r = [1, 3, 5, 11, 21, 22].map(pluralIndex); LANG = was; return r; }), [0, 1, 2, 2, 0, 1]);
+    assert.deepEqual(await ev(() => { const was = LANG; setLang("ru"); const r = [1, 3, 5, 11, 21, 22].map(pluralIndex); setLang(was); return r; }), [0, 1, 2, 2, 0, 1]);
   });
 });
 
@@ -155,7 +155,7 @@ describe("hierarchy", () => {
   test("the vault graph resolves parents and keeps unresolved ones", async () => {
     const r = await ev(async () => {
       await writeRaw("Kid.md", '---\nparents:\n  - "[[Projects/Shop]]"\n  - "[[Nowhere]]"\n---\n');
-      graph = buildGraph();
+      setGraph(buildGraph());
       return { ps: graph.parentsOf("Kid.md"), un: graph.unresolvedParentsOf("Kid.md"), back: graph.backlinksOf("Projects/Shop.md") };
     });
     assert.deepEqual(r, { ps: ["Projects/Shop.md"], un: ["Nowhere"], back: ["Projects/Home.md"] });
@@ -169,7 +169,7 @@ describe("hierarchy", () => {
     const r = await ev(async () => {
       await writeRaw("P.md", '---\nchild_order:\n  - "[[c3]]"\n  - "[[c1]]"\n---\n');
       for (const [n, o] of [["c1", ""], ["c2", "order: 1\n"], ["c3", ""], ["c4", "order: 2\n"], ["c10", ""]]) await writeRaw(n + ".md", `---\nparents: ["[[P]]"]\n${o}---\n`);
-      graph = buildGraph();
+      setGraph(buildGraph());
       const kids = (mode) => graph.sortedChildren("P.md", makeComparator(mode)).map(baseName);
       return { manual: kids("manual"), name: kids("name") };
     });

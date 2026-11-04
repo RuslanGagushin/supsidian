@@ -347,6 +347,7 @@ function wireEditorFiles(ta) {
 
 /* ---------- daily notes (Obsidian core plugin settings in .obsidian/daily-notes.json) */
 let dailyCfg = null;
+const resetDailyConfig = () => { dailyCfg = null; };
 function dailyConfig() { return dailyCfg || { folder: "", format: "YYYY-MM-DD", template: "" }; }
 async function loadDailyConfig() {
   dailyCfg = { folder: "", format: "YYYY-MM-DD", template: "" };

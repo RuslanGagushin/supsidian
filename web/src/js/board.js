@@ -1,7 +1,8 @@
 /* =========================================================
    Board view
    ========================================================= */
-let lastFocused = null;
+let lastFocused = null; // the card that had focus last (arrow keys go on from it)
+const setLastFocused = (path) => { lastFocused = path; };
 let sentinelObs = null;
 function navEntry() {
   if (board.view === "tasks") return { tasks: true, target: board.target };
@@ -87,7 +88,7 @@ function renderBoard(resetScroll = false) {
   const model = computeModel();
   root.className = "sn-board" + (board.layout === "list" ? " is-list" : "") + (board.selectMode ? " is-select-mode" : "");
   root.replaceChildren();
-  masonries = [];
+  masonries.length = 0;
   sentinelObs?.disconnect();
 
   root.append(renderToolbar());

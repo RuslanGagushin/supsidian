@@ -12,7 +12,7 @@ function applyTheme() {
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 function applyLanguage() {
   const pref = UI.lang !== "auto" ? UI.lang : S.language && S.language !== "auto" ? S.language : (navigator.language || "en").slice(0, 2);
-  LANG = pref === "ru" ? "ru" : "en";
+  setLang(pref);
   document.documentElement.lang = LANG;
 }
 function setSide(open) {
@@ -31,7 +31,7 @@ function refresh(o = {}) {
   refreshQueued = true;
   requestAnimationFrame(() => {
     refreshQueued = false;
-    graph = buildGraph();
+    setGraph(buildGraph());
     patchBoard();
     renderTreeSoft();
     renderTasksButton();
@@ -183,7 +183,7 @@ function settingsModal(tab) {
   const select = (value, options, onChange) => { const s = h("select", {}, options.map(([v, l]) => h("option", { value: v, text: l, selected: String(v) === String(value) }))); s.addEventListener("change", () => onChange(s.value)); return s; };
   const text = (value, ph, onChange, type = "text") => { const i = h("input", { type, value: String(value ?? ""), placeholder: ph || "" }); i.addEventListener("change", () => onChange(i.value)); return i; };
   const toggle = (value, onChange) => { const c = h("div", { cls: "checkbox-container" + (value ? " is-enabled" : "") }); c.addEventListener("click", () => { c.classList.toggle("is-enabled"); onChange(c.classList.contains("is-enabled")); }); return c; };
-  const save = () => { saveSettings(); graph = buildGraph(); };
+  const save = () => { saveSettings(); setGraph(buildGraph()); };
   const storedIn = () => h("p", { cls: "modal-text sn-set-note", text: vault.fs.kind === "disk" && (vault.pluginData || vault.hasObsidian) ? t("settingsShared") : t("settingsLocal") });
   const tabs = [
     ["appearance", t("sectionAppearance"), "palette", () => [

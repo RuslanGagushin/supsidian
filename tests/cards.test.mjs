@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { openVault, ev, raw, fsText, settle } from "./harness.mjs";
 
 const fmOf = (p) => ev((p) => vault.notes.get(p)?.fm ?? null, p);
-const parentsOf = (p) => ev((p) => { graph = buildGraph(); return graph.parentsOf(p).sort(); }, p);
+const parentsOf = (p) => ev((p) => { setGraph(buildGraph()); return graph.parentsOf(p).sort(); }, p);
 const NOTES = {
   "Cards/Home.md": "---\nicon: house\n---\nThe home card. See [[Garden]] and [[Cards/Garden|my garden]] and ![[Garden#Beds]].\n",
   "Cards/Garden.md": '---\nparents:\n  - "[[Home]]"\n---\nBeds and trees.\n- [ ] water\n- [x] plant\n```\n- [ ] not a task\n```\n- [ ] weed\n',
@@ -89,7 +89,7 @@ describe("parents and moves", () => {
   test("drop before a sibling writes child_order", async () => {
     await ev(() => dropCards([{ child: "Cards/Shed.md", from: "Cards/Home.md" }], "Cards/Home.md", true, { path: "Cards/Garden.md", pos: "before" }));
     assert.deepEqual((await fmOf("Cards/Home.md")).child_order, ["[[Shed]]", "[[Garden]]"]);
-    assert.deepEqual(await ev(() => { graph = buildGraph(); return graph.sortedChildren("Cards/Home.md", manualCmp); }), ["Cards/Shed.md", "Cards/Garden.md"]);
+    assert.deepEqual(await ev(() => { setGraph(buildGraph()); return graph.sortedChildren("Cards/Home.md", manualCmp); }), ["Cards/Shed.md", "Cards/Garden.md"]);
   });
 
   test("drop at the root numbers the order field", async () => {
@@ -200,7 +200,7 @@ describe("tasks, daily notes and settings", () => {
   test("today's note follows .obsidian/daily-notes.json and its template", async () => {
     await ev(async () => {
       await vault.fs.write(".obsidian/daily-notes.json", JSON.stringify({ folder: "/Journal/", format: "YYYY/MM-DD", template: "Templates/Plant" }));
-      dailyCfg = null;
+      resetDailyConfig();
       await openToday();
     });
     const name = await ev(() => formatMoment(new Date(), "YYYY/MM-DD"));

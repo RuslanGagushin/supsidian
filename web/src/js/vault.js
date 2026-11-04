@@ -170,12 +170,12 @@ async function loadVault(fs) {
     } else tree.expanded = new Set();
     closeEditor(true);
     undoStack.length = 0;
-    graph = buildGraph();
+    setGraph(buildGraph());
     $("#welcome")?.remove();
     renderAll();
     $("#board")?.focus();
     if (typeof syncBoot === "function") syncBoot();
-    dailyCfg = null; loadDailyConfig();
+    resetDailyConfig(); loadDailyConfig();
   } finally { showLoading(false); }
 }
 const boardKey = () => "sn-board:" + (vault.fs?.kind || "") + ":" + (vault.fs?.name || "");
@@ -187,7 +187,7 @@ function persistBoard() {
 }
 const DATA_PATH = ".obsidian/plugins/supsidian/data.json";
 async function loadPluginData() {
-  S = { ...DEFAULTS, ...lsGet("sn-settings:" + vault.fs.name, {}) };
+  resetSettings(lsGet("sn-settings:" + vault.fs.name, {}));
   vault.pluginData = null;
   vault.hasObsidian = false;
   if (vault.fs.kind === "demo") { S.templatesFolder = S.templatesFolder || "Templates"; return; }

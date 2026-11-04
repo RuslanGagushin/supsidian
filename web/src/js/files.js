@@ -258,7 +258,7 @@ function renderFilesView(root) {
   const focus = document.activeElement === oldList || !!document.activeElement?.closest?.(".fv-row") ? "list" : document.activeElement?.classList?.contains("fv-search") ? "search" : null;
   root.className = "sn-board is-files";
   root.replaceChildren();
-  masonries = [];
+  masonries.length = 0;
   $("#files-btn")?.classList.toggle("is-active", true);
 
   const bar = h("div", { cls: "sn-topbar" });

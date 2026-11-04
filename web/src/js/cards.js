@@ -140,7 +140,7 @@ function renderCard(path, via, depth = 1) {
     e.preventDefault();
     openEditor(path, { focus: true });
   });
-  card.addEventListener("focus", () => { lastFocused = path; echo(t("cardHint", { name: baseName(path) }), { hint: true }); });
+  card.addEventListener("focus", () => { setLastFocused(path); echo(t("cardHint", { name: baseName(path) }), { hint: true }); });
   attachLongPress(card, (ev) => cardMenu(path, via).showAtEvent(ev));
   dnd.draggable(card, () => ({ child: path, from: via }));
   dnd.dropTarget(card, () => ({ path, parent: via }));

@@ -26,6 +26,6 @@ class Masonry {
     best.append(item);
   }
 }
-let masonries = [];
+const masonries = []; // the board's live layouts; views empty it (length = 0) before they render
 const boardResize = new ResizeObserver(() => { for (const m of masonries) m.relayout(false); });
 

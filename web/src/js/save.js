@@ -1,6 +1,7 @@
 /* =========================================================
    Writing notes + undo
    ========================================================= */
+let currentTxn = null; // the open txn(): notes it changes keep their text from before, for undo
 async function writeRaw(path, raw, { silentEditor = false, fromSync = false } = {}) {
   if (!fromSync && currentTxn && !currentTxn.before.has(path)) currentTxn.before.set(path, vault.notes.get(path)?.raw ?? null);
   let mtime;

@@ -168,6 +168,7 @@ const STR = {
   },
 };
 let LANG = "en";
+const setLang = (l) => { LANG = l === "ru" ? "ru" : "en"; };
 function pluralIndex(n) {
   if (LANG === "ru") {
     const m10 = n % 10, m100 = n % 100;

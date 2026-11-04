@@ -21,8 +21,11 @@ const vault = {
   pluginData: null, // parsed data.json (null — no plugin folder)
   hasObsidian: false,
 };
-let S = { ...DEFAULTS }; // card settings (shared with the plugin when possible)
+const S = { ...DEFAULTS }; // card settings (shared with the plugin when possible)
+/** Settings of a newly opened vault: the defaults, then `saved`. */
+function resetSettings(saved) { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, DEFAULTS, saved); }
 let graph = new HierarchyGraph();
+const setGraph = (g) => { graph = g; };
 const board = {
   target: null, depth: 1, layout: "columns", sort: "manual", grouped: false,
   filter: { query: "", colors: [], tags: [] }, searchOpen: false, heroCollapsed: false,
@@ -31,5 +34,4 @@ const board = {
 const tree = { expanded: new Set() };
 const editor = { path: null, mode: "edit", dirty: false, saving: false, wide: false, propsCollapsed: true };
 const undoStack = [];
-let currentTxn = null;
 

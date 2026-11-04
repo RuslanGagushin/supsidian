@@ -131,7 +131,7 @@ function renderTasksView(root) {
   const focusId = document.activeElement?.dataset?.agInput;
   root.className = "sn-board is-tasks is-agenda";
   root.replaceChildren();
-  masonries = [];
+  masonries.length = 0;
   const T = onow().dn;
   const all = orgAll();
   if (AG.anchor == null) AG.anchor = T;
