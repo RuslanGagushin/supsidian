@@ -1,5 +1,5 @@
 /* =========================================================
-   Drag & drop (port of src/dnd.ts)
+   Drag & drop: cards onto cards, between them and onto the tree
    ========================================================= */
 import { baseName } from "../core/util.js";
 import { board, graph } from "../services/state.js";

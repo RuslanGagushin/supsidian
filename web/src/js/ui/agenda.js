@@ -10,7 +10,7 @@ import { lsGet, lsSet } from "../services/storage.js";
 import { board, vault } from "../services/state.js";
 import { cardColor, persistBoard, resolveLink } from "../services/vault.js";
 import { txn, writeRaw } from "../services/save.js";
-import { dailyCfg, dailyConfig, loadDailyConfig } from "../services/daily-notes.js";
+import { dailyConfig } from "../services/daily-notes.js";
 import { orgAll, todoSet } from "../services/tasks.js";
 import { $, $$, h, ic, iconBtn, isMod } from "./dom.js";
 import { echo, Menu, minibufRead, openLayer } from "./ui.js";
@@ -393,7 +393,6 @@ let orgAgPrefix = false;
 /* ---------- capture */
 const CAP = Object.assign({ tpl: "t", to: "daily" }, lsGet("sn-capture", {}));
 async function orgDailyPath() {
-  if (!dailyCfg) await loadDailyConfig();
   const cfg = dailyConfig();
   const name = formatMoment(new Date(), cfg.format);
   const path = (cfg.folder ? cfg.folder + "/" : "") + name + ".md";

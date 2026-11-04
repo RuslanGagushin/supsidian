@@ -157,7 +157,7 @@ describe("agenda", () => {
   test("match queries: tags, properties, TODO states", async () => {
     const m = (q) => ev((q) => orgAll().filter(orgMatcher(q)).map((e) => e.title), q);
     assert.deepEqual(await m("+work -shop/!"), ["Write report", "draft", "review", "Call Bob"], "open checkboxes count as open TODOs");
-    assert.deepEqual(await m("+work-shop"), [], "a hyphen is part of the tag name here (Obsidian tags), unlike Org's +work-boss");
+    assert.deepEqual(await m("+work-shop"), [], "a hyphen is part of the tag name here (Markdown #tags), unlike Org's +work-boss");
     assert.deepEqual(await m("PRIORITY=A"), ["Write report"]);
     assert.deepEqual(await m("/WAIT|NEXT"), ["Call Bob", "Parts"]);
     assert.deepEqual(await m("errand|shop"), ["Parts", "list item task #errand", "loose checkbox"]);

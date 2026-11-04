@@ -20,7 +20,7 @@ use tauri::{AppHandle, Runtime};
 
 use crate::{Error, Result};
 
-const DEFAULT_IGNORE: &str = ".obsidian/workspace.json\n.obsidian/workspaces.json\n.obsidian/cache\n.trash/\n.DS_Store\n*.supsidian-tmp\n";
+const DEFAULT_IGNORE: &str = ".trash/\n.DS_Store\n*.supsidian-tmp\n";
 const STAGE_MASK: u16 = 0x3000;
 
 #[derive(Debug, Clone, Deserialize)]

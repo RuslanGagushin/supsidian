@@ -1,5 +1,5 @@
 /* =========================================================
-   Editor pane (the note, like an Obsidian tab beside the board)
+   Editor pane (the note, beside the board)
    ========================================================= */
 import { t, wt } from "../core/i18n.js";
 import { baseName, debounce, dirName } from "../core/util.js";

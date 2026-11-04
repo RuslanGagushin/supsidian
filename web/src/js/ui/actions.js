@@ -1,5 +1,5 @@
 /* =========================================================
-   Card actions (port of src/actions.ts)
+   Card actions: create, link to parents, move, color, icon, template, delete, rename, pins and views
    ========================================================= */
 import { t } from "../core/i18n.js";
 import { baseName, dirName } from "../core/util.js";
@@ -168,7 +168,7 @@ export async function deleteCards(paths) {
     return paths.length === 1 ? t("deletedUndo", { name: baseName(paths[0]) }) : t("deletedMany", { n: paths.length });
   });
 }
-/** Rename a card and update links to it everywhere (like Obsidian with “Automatically update internal links”). */
+/** Rename a card and update links to it everywhere. */
 export async function renameCard(path, newTitle) {
   const clean = sanitizeTitle(newTitle);
   if (!clean || clean === baseName(path)) return path;
@@ -245,7 +245,6 @@ export function applyView(v) {
   persistBoard();
   renderBoard(); renderTree();
 }
-export function obsidianUri(path) { return `obsidian://open?vault=${encodeURIComponent(vault.fs.name)}&file=${encodeURIComponent(path.replace(/\.md$/i, ""))}`; }
 
 /* Prompts for actions */
 function cardItems(exclude = new Set()) {

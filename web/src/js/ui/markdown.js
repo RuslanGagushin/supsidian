@@ -1,5 +1,5 @@
 /* =========================================================
-   Markdown rendering (Obsidian flavour: wikilinks, embeds, tags, ==marks==, callouts, tasks)
+   Markdown rendering (with wikilinks, embeds, tags, ==marks==, callouts, tasks)
    ========================================================= */
 import { t } from "../core/i18n.js";
 import { esc } from "../core/util.js";

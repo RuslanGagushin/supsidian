@@ -89,7 +89,7 @@ export function liveTableOp(x, op, o = {}) {
   const at2 = tableCellAt({ ...tb, lines: out.insert.split("\n") }, out.sel[0] - out.from);
   liveCellOpen(out.from, at2.row, at2.col, { select: true });
 }
-/* ---------- A table in live preview stays rendered while it is edited, as in Obsidian: one cell at a time holds an editor
+/* ---------- A table in live preview stays rendered while it is edited: one cell at a time holds an editor
    with the cell's Markdown, and the table's text is rewritten (lined up) as you type.
    editor.cell = { el, from, to, row, col, t }: the cell's editor, the table's [from, to) in the document and the parsed table. */
 export const cellCaret = (el) => {

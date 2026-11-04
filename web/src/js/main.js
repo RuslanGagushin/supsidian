@@ -1,6 +1,6 @@
-/* Supstack Standalone — Supernotes-style cards for an Obsidian vault, in one HTML file.
-   Port of the Supsidian plugin: the same frontmatter model (parents / child_order / order /
-   color / icon / child_template), the same board, tree, drag & drop, multi-select and undo.
+/* Supstack Standalone — Supernotes-style cards for a folder of Markdown notes, in one HTML file.
+   The hierarchy lives in each note's frontmatter (parents / child_order / order / color / icon /
+   child_template); the page shows it as a board and a tree, with drag & drop, multi-select and undo.
 
    Entry point: scripts/page.mjs bundles it (esbuild) into the page. The modules come in three layers,
    each using only the ones before it (tests/architecture.test.mjs checks this):

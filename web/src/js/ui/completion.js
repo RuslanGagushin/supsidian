@@ -1,7 +1,7 @@
 /* =========================================================
    Writing: inline completion ([[ links, #tags, /commands), pasted and dropped files,
    daily notes, link hover previews, outline, unlinked mentions, tags, focus mode.
-   Conventions follow Obsidian so notes written here look the same there.
+   Links, embeds and attachment names follow the usual Markdown-vault conventions.
    ========================================================= */
 import { t, wt } from "../core/i18n.js";
 import { baseName, dirName, norm } from "../core/util.js";
@@ -11,7 +11,7 @@ import { board, editor, graph, S, saveUI, UI, vault } from "../services/state.js
 import { cardColor, cardIcon, cardTags, linkText, resolveLink } from "../services/vault.js";
 import { IMG_EXT, saveAttachment } from "../services/attachments.js";
 import { txn, writeRaw } from "../services/save.js";
-import { dailyCfg, dailyConfig, loadDailyConfig } from "../services/daily-notes.js";
+import { dailyConfig } from "../services/daily-notes.js";
 import { $, $$, h, ic } from "./dom.js";
 import { fuzzyScore, Menu, notice, openMenuEl, suggestModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
@@ -25,7 +25,7 @@ import { liveActivate, liveTa, liveText } from "./live-preview.js";
 import { edInsert } from "./editor-toolbar.js";
 import { refresh } from "./shell.js";
 
-/* ---------- moment-style date formatting (Obsidian's daily notes and templates use it) */
+/* ---------- moment-style date formatting (daily notes and templates use it) */
 
 /* ---------- caret position inside a textarea (mirror element) */
 export function caretRect(ta, pos) {
@@ -219,7 +219,7 @@ async function insertTemplate(ta) {
   edInsert(ta, caret, caret, body);
 }
 
-/* ---------- pasted and dropped files are saved as attachments (Obsidian's "Files and links" settings) */
+/* ---------- pasted and dropped files are saved as attachments (the attachments folder setting) */
 export async function attachFiles(ta, files, pasted = false) {
   if (!editor.path || !files.length) return;
   let pos = ta.selectionStart, end = ta.selectionEnd;
@@ -268,10 +268,9 @@ export function wireEditorFiles(ta) {
   });
 }
 
-/* ---------- daily notes (Obsidian core plugin settings in .obsidian/daily-notes.json) */
+/* ---------- daily notes (the Notes tab of the settings) */
 export async function openToday() {
   if (!vault.fs) return;
-  if (!dailyCfg) await loadDailyConfig();
   const cfg = dailyConfig();
   const now = new Date();
   const name = formatMoment(now, cfg.format);
@@ -287,7 +286,7 @@ export async function openToday() {
   openEditor(path, { focus: true });
 }
 
-/* ---------- link hover preview (like Obsidian's page preview) */
+/* ---------- link hover preview */
 const hp = { timer: null, el: null, for: null, hideTimer: null };
 function hpHide() { clearTimeout(hp.timer); hp.el?.remove(); hp.el = null; hp.for = null; }
 function hpTargetPath(a) {

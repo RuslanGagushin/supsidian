@@ -1,5 +1,5 @@
 /* =========================================================
-   Board model (port of src/views/board/model.ts)
+   Board model: which cards the board shows, filtered, limited and grouped
    ========================================================= */
 import { norm } from "./util.js";
 import { groupByTopLevel } from "./graph.js";

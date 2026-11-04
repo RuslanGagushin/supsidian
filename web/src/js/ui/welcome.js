@@ -5,6 +5,7 @@ import { nt, t } from "../core/i18n.js";
 import { HandleFS, idb, MemoryFS } from "../services/fs.js";
 import { IS_ANDROID, IS_NATIVE, lastNative } from "../services/native.js";
 import { saveUI, UI, vault } from "../services/state.js";
+import { OLD_SETTINGS_PATH, SETTINGS_PATH } from "../services/vault.js";
 import { $, h, ic, iconBtn } from "./dom.js";
 import { Menu, notice } from "./ui.js";
 import { applyLanguage, applyTheme, loadVault } from "./shell.js";
@@ -36,7 +37,7 @@ export async function loadCopy(fileList) {
     const rel = (f.webkitRelativePath || f.name).split("/").slice(1).join("/");
     if (!rel) continue;
     if (/\.md$/i.test(rel)) fs.add(rel, await f.text(), f.lastModified);
-    else if (rel.startsWith(".obsidian/plugins/supsidian/data.json")) fs.add(rel, await f.text(), f.lastModified);
+    else if (rel === SETTINGS_PATH || rel === OLD_SETTINGS_PATH) fs.add(rel, await f.text(), f.lastModified); // the settings, also where they were kept before
     else fs.add(rel, f, f.lastModified);
   }
   await loadVault(fs);

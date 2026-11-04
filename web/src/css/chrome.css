@@ -25,7 +25,7 @@
 .sn-resizer:hover::after, .sn-resizer.is-dragging::after { content: ""; position: absolute; inset: 0 2px; background: var(--interactive-accent); }
 #app:not(.side-closed) .sn-board .sn-side-toggle { display: none; }
 
-/* ---------- Editor pane (the note, as in an Obsidian tab) */
+/* ---------- Editor pane (the note beside the board) */
 .sn-editor {
   flex: 0 0 var(--editor-w, 540px); width: var(--editor-w, 540px); min-width: 0;
   display: flex; flex-direction: column;
@@ -53,7 +53,7 @@
   line-height: var(--inline-title-line-height); letter-spacing: -0.015em; color: var(--inline-title-color);
   resize: none; overflow: hidden;
 }
-/* Properties: like Obsidian's metadata container */
+/* Properties: the note's frontmatter */
 .sn-props { margin: var(--size-4-3) 0 var(--size-4-5); padding-bottom: var(--size-4-3); border-bottom: var(--border-width) solid var(--background-modifier-border); font-size: var(--font-ui-small); }
 .sn-props-head { display: flex; align-items: center; gap: var(--size-2-3); margin-bottom: var(--size-2-3); font-weight: var(--font-semibold); color: var(--text-normal); font-size: var(--font-ui-medium); cursor: var(--cursor, default); width: max-content; }
 .sn-props-head svg { width: 12px; height: 12px; color: var(--text-faint); transition: transform 100ms; }
@@ -100,7 +100,7 @@
 .sn-editor-empty { margin: 30vh auto; text-align: center; color: var(--text-faint); font-size: var(--font-ui-small); }
 .sn-fm-error { margin: 0 0 var(--size-4-3); padding: var(--size-4-2) var(--size-4-3); border-radius: var(--radius-s); background: rgba(var(--color-red-rgb), .1); color: var(--text-error); font-size: var(--font-ui-smaller); }
 
-/* ---------- Menu (Obsidian context menu) */
+/* ---------- Menu (context menu) */
 .menu {
   position: fixed; z-index: 60; min-width: 210px; max-width: 320px; max-height: calc(100vh - 16px); overflow-y: auto;
   padding: var(--size-2-3);
@@ -122,7 +122,7 @@
 .menu-label { padding: var(--size-2-3) var(--size-4-2) var(--size-2-1); font-size: var(--font-ui-smaller); color: var(--text-faint); font-weight: var(--font-semibold); }
 .menu-colors { display: flex; flex-wrap: wrap; gap: var(--size-2-3); padding: var(--size-2-3) var(--size-4-2); }
 
-/* ---------- Modals / prompts (Obsidian suggest modal) */
+/* ---------- Modals / prompts (suggest modal) */
 .modal-bg { position: fixed; inset: 0; z-index: 70; background: var(--background-modifier-cover); }
 .prompt {
   position: fixed; z-index: 71; top: 80px; left: 50%; transform: translateX(-50%);
@@ -178,7 +178,7 @@
 .sn-kbd-table td:first-child { width: 42%; color: var(--text-normal); white-space: nowrap; padding-inline-end: var(--size-4-3); }
 kbd.sn-k { display: inline-block; padding: 1px 6px; border-radius: var(--radius-s); border: 1px solid var(--background-modifier-border); background: var(--background-secondary); font-family: inherit; font-size: var(--font-ui-smaller); }
 
-/* ---------- Notices (top right, as in Obsidian) */
+/* ---------- Notices (top right) */
 .notice-container { position: fixed; top: var(--size-4-4); right: var(--size-4-4); z-index: 80; display: flex; flex-direction: column; align-items: flex-end; gap: var(--size-4-2); pointer-events: none; }
 .notice {
   pointer-events: auto; display: flex; align-items: center; max-width: 380px;

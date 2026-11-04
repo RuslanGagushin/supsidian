@@ -1,5 +1,5 @@
 /* =========================================================
-   Sidebar tree (port of src/views/OutlineView.ts)
+   Sidebar tree: pins, saved views and the cards' hierarchy
    ========================================================= */
 import { LANG, t } from "../core/i18n.js";
 import { baseName } from "../core/util.js";

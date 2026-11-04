@@ -197,10 +197,9 @@ describe("tasks, daily notes and settings", () => {
     assert.equal(await ev(() => cardTaskProgress("Cards/Shed.md")), null);
   });
 
-  test("today's note follows .obsidian/daily-notes.json and its template", async () => {
+  test("today's note follows the daily notes settings and its template", async () => {
     await ev(async () => {
-      await vault.fs.write(".obsidian/daily-notes.json", JSON.stringify({ folder: "/Journal/", format: "YYYY/MM-DD", template: "Templates/Plant" }));
-      resetDailyConfig();
+      Object.assign(S, { dailyFolder: "Journal", dailyFormat: "YYYY/MM-DD", dailyTemplate: "Templates/Plant" });
       await openToday();
     });
     const name = await ev(() => formatMoment(new Date(), "YYYY/MM-DD"));
@@ -211,19 +210,32 @@ describe("tasks, daily notes and settings", () => {
     assert.equal(await ev((p) => [...vault.notes.keys()].filter((x) => x === p).length, p), 1, "opening it again doesn't make a second note");
   });
 
-  test("settings go to the plugin's data.json on a vault with .obsidian, keeping other keys", async () => {
+  test("a vault on disk keeps its settings in .supstack/settings.json", async () => {
     await ev(async () => {
       vault.fs.kind = "disk";
-      await vault.fs.write(DATA_PATH, JSON.stringify({ somethingElse: 1, pinned: [] }));
-      vault.pluginData = {};
       S.pinned = ["Cards/Home.md"];
       await saveSettings();
       vault.fs.kind = "demo";
     });
-    const data = JSON.parse(await fsText(".obsidian/plugins/supsidian/data.json"));
-    assert.equal(data.somethingElse, 1);
+    const data = JSON.parse(await fsText(".supstack/settings.json"));
     assert.deepEqual(data.pinned, ["Cards/Home.md"]);
     assert.equal(data.parentsField, "parents");
+    assert.equal(data.attachmentFolder, "./");
+  });
+
+  test("settings from where versions up to 0.15 kept them move to .supstack/settings.json", async () => {
+    await openVault({ demo: false, notes: { "A.md": "a" } });
+    const r = await ev(async () => {
+      const fs = vault.fs;
+      fs.kind = "disk";
+      fs.add(".obsidian/plugins/supsidian/data.json", JSON.stringify({ pinned: ["A.md"], cardsFolder: "Cards", unknown: 1 }));
+      await loadVault(fs);
+      fs.kind = "demo";
+      return { pinned: S.pinned, folder: S.cardsFolder };
+    });
+    assert.deepEqual(r, { pinned: ["A.md"], folder: "Cards" });
+    const data = JSON.parse(await fsText(".supstack/settings.json"));
+    assert.deepEqual([data.pinned, data.cardsFolder, data.unknown], [["A.md"], "Cards", undefined]);
   });
 
   test("a custom parents field is used for the hierarchy", async () => {

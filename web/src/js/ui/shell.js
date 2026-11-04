@@ -7,7 +7,6 @@ import { on } from "../services/events.js";
 import { board, editor, graph, S, saveUI, setGraph, tree, UI, vault } from "../services/state.js";
 import { buildGraph, persistBoard, readVault, saveSettings } from "../services/vault.js";
 import { undo } from "../services/save.js";
-import { loadDailyConfig, resetDailyConfig } from "../services/daily-notes.js";
 import { runSync, stopSync, sync, syncAvailable, syncBoot } from "../services/sync.js";
 import { upd } from "../services/updates.js";
 import { $, h, ic, iconBtn } from "./dom.js";
@@ -209,7 +208,7 @@ export function settingsModal(tab) {
   const text = (value, ph, onChange, type = "text") => { const i = h("input", { type, value: String(value ?? ""), placeholder: ph || "" }); i.addEventListener("change", () => onChange(i.value)); return i; };
   const toggle = (value, onChange) => { const c = h("div", { cls: "checkbox-container" + (value ? " is-enabled" : "") }); c.addEventListener("click", () => { c.classList.toggle("is-enabled"); onChange(c.classList.contains("is-enabled")); }); return c; };
   const save = () => { saveSettings(); setGraph(buildGraph()); };
-  const storedIn = () => h("p", { cls: "modal-text sn-set-note", text: vault.fs.kind === "disk" && (vault.pluginData || vault.hasObsidian) ? t("settingsShared") : t("settingsLocal") });
+  const storedIn = () => h("p", { cls: "modal-text sn-set-note", text: vault.fs.kind === "disk" ? t("settingsShared") : t("settingsLocal") });
   const tabs = [
     ["appearance", t("sectionAppearance"), "palette", () => [
       item(t("setLanguage"), null, select(UI.lang, [["auto", "Auto"], ["en", "English"], ["ru", "Русский"]], (v) => { UI.lang = v; saveUI(); applyLanguage(); close(); settingsModal("appearance"); })),
@@ -230,6 +229,13 @@ export function settingsModal(tab) {
       item(t("setPreview"), t("setPreviewDesc"), text(S.previewLength, "600", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.previewLength = Math.floor(n); save(); } }, "number")),
       item(t("setCardHeight"), t("setCardHeightDesc"), text(S.cardMaxHeight, "360", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.cardMaxHeight = Math.floor(n); save(); } }, "number")),
       item(t("setMaxCards"), null, text(S.maxCards, "1000", (v) => { const n = Number(v); if (Number.isFinite(n) && n > 0) { S.maxCards = Math.floor(n); save(); } }, "number")),
+      storedIn(),
+    ]],
+    ["notes", wt("sectionNotes"), "notebook-pen", () => [
+      item(wt("setDailyFolder"), wt("setDailyFolderDesc"), text(S.dailyFolder, "Journal", (v) => { S.dailyFolder = v.trim().replace(/^\/+|\/+$/g, ""); save(); })),
+      item(wt("setDailyFormat"), wt("setDailyFormatDesc"), text(S.dailyFormat, "YYYY-MM-DD", (v) => { S.dailyFormat = v.trim() || "YYYY-MM-DD"; save(); })),
+      item(wt("setDailyTemplate"), wt("setDailyTemplateDesc"), text(S.dailyTemplate, "Templates/Daily", (v) => { S.dailyTemplate = v.trim(); save(); })),
+      item(wt("setAttachments"), wt("setAttachmentsDesc"), text(S.attachmentFolder, "./", (v) => { S.attachmentFolder = v.trim() || "./"; save(); })),
       storedIn(),
     ]],
     ["agenda", tt("sectionAgenda"), "calendar-check", () => [
@@ -295,7 +301,6 @@ export async function loadVault(fs) {
     renderAll();
     $("#board")?.focus();
     syncBoot();
-    resetDailyConfig(); loadDailyConfig();
   } finally { showLoading(false); }
 }
 on("changed", () => refresh());

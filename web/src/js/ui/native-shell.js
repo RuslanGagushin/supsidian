@@ -36,7 +36,7 @@ if (IS_NATIVE) {
     const a = e.target.closest?.("a[href]");
     if (!a || a.hasAttribute("download")) return;
     const href = a.getAttribute("href") || "";
-    if (/^(https?|mailto|tel|obsidian):/i.test(href)) { e.preventDefault(); openExternal(href); }
+    if (/^(https?|mailto|tel):/i.test(href)) { e.preventDefault(); openExternal(href); }
   }, true);
   // Android back button: close what's open, then go back, then leave the app
   if (IS_ANDROID) {

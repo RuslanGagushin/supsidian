@@ -9,7 +9,7 @@ button.wb-btn.wb-tasks.is-active { border-color: var(--accent); background: var(
 .sn-task-prog svg { width: 12px; height: 12px; }
 .sn-task-prog.is-complete { color: var(--done); }
 
-/* agenda (port of the reference's *Org Agenda* buffer) */
+/* agenda (after Emacs's *Org Agenda* buffer) */
 body { --wait:#7457ad; --cancel:#8a948e; --pri-a:#c42f27; --pri-b:#b25f06; --pri-c:#5b6761; --now:#c42f27; }
 body.theme-dark { --wait:#b9a0ef; --cancel:#6f7a73; --pri-a:#ff7c70; --pri-b:#f0a650; --pri-c:#94a098; --now:#ff7c70; }
 /* TODO keywords, priorities, tags and timestamps are pills, like the tags on cards */
