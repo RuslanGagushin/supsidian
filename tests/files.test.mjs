@@ -135,6 +135,7 @@ describe("list", () => {
     await page.focus(".fv-list");
     await page.keyboard.press("ArrowDown");
     assert.equal(await ev(() => FV.sel), "a.png");
+    assert.deepEqual(await ev(() => { const l = document.querySelector(".fv-list"), s = getComputedStyle(l); return [l.matches(":focus-visible"), s.outlineStyle, s.boxShadow]; }), [true, "none", "none"], "the list has keyboard focus but no frame; the selected row shows where you are");
     assert.equal(await page.isDisabled(".fv-goto"), false);
     await page.click(".fv-goto");
     assert.equal(await ev(() => editor.path), "cards/Holiday.md");

@@ -139,6 +139,8 @@ button.sn-tag-pill.is-on { background: var(--accent-soft); border-color: var(--a
 /* Keyboard focus is always visible; motion respects the system setting */
 :is(button, a, [tabindex], .tree-item-self):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .sn-card:focus-visible { outline: none; }
+/* panes that take the keys themselves: the selected row or card shows where you are, the pane gets no frame */
+:is(.sn-board, .fv-list, .ag-body, .sn-reading):focus-visible { outline: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
 }
