@@ -1,7 +1,7 @@
 import { t, wt } from "../core/i18n.js";
 import { baseName, dirName } from "../core/util.js";
 import { editor, vault } from "../services/state.js";
-import { cardColor, cardIcon, linkText } from "../services/vault.js";
+import { cardIcon, linkText } from "../services/vault.js";
 import { $, h, setIcon } from "./dom.js";
 import { minibufPick } from "./ui.js";
 import { sanitizeTitle } from "./actions.js";
@@ -54,7 +54,7 @@ export function edSetHeading(ta, n) {
 async function linkPicker(ta, typedOpen) {
   const caret = ta.selectionStart, end = ta.selectionEnd;
   const sel = ta.value.slice(caret, end);
-  const items = [...vault.notes.keys()].sort((a, b) => (vault.notes.get(b).mtime - vault.notes.get(a).mtime)).map((p) => ({ value: p, title: baseName(p), icon: cardIcon(p) || "file-text", color: cardColor(p), note: dirName(p) }));
+  const items = [...vault.notes.keys()].sort((a, b) => (vault.notes.get(b).mtime - vault.notes.get(a).mtime)).map((p) => ({ value: p, title: baseName(p), icon: cardIcon(p) || "file-text", note: dirName(p) }));
   const pick = await minibufPick({ placeholder: t("insertLink"), items, allowCreate: true });
   ta.focus();
   if (!pick) { ta.setSelectionRange(caret, end); return; }

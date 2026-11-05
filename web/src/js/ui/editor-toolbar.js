@@ -3,15 +3,15 @@
    (insert, wrap, prefix lines, headings).
    ========================================================= */
 import { LANG, t, wt } from "../core/i18n.js";
-import { baseName, colorLabel, COLORS } from "../core/util.js";
+import { baseName } from "../core/util.js";
 import { dumpYaml } from "../core/frontmatter.js";
 import { formatTable } from "../core/tables.js";
 import { board, editor, graph, PARENTS_FIELD, UI, vault } from "../services/state.js";
-import { cardColor, cardIcon, makeComparator } from "../services/vault.js";
+import { cardIcon, makeComparator } from "../services/vault.js";
 import { txn, updateFM } from "../services/save.js";
 import { $, h, ic, isMod, setIcon } from "./dom.js";
 import { Menu } from "./ui.js";
-import { promptAddParent, promptIcon, removeParent, setColor, templateFor } from "./actions.js";
+import { promptAddParent, promptIcon, removeParent, templateFor } from "./actions.js";
 import { parentChip } from "./cards.js";
 import { setTarget } from "./board.js";
 import { closeEditor, openEditor, renderEditor, saveEditor } from "./editor.js";
@@ -41,14 +41,9 @@ export function renderEditorProps() {
     for (const u of graph.unresolvedParentsOf(path)) { const c = h("span", { cls: "sn-chip is-missing", title: t("parentMissing") }, ic("sn-chip-icon", "alert-triangle"), h("span", { text: u })); const x = ic("sn-chip-x", "x"); x.addEventListener("click", () => removeParent(path, u)); c.append(x); pv.push(c); }
     const addP = ic("sn-prop-add", "plus"); addP.title = t("menuAddParent"); addP.addEventListener("click", () => promptAddParent([path]));
     props.append(row("git-fork", field, ...pv, addP));
-    // color
-    const cur = cardColor(path);
-    const dots = [null, ...COLORS].map((c) => { const d = h("button", { cls: "sn-color-dot" + (c ? "" : " is-none") + (c === cur ? " is-active" : ""), type: "button", title: colorLabel(c) }); if (c) d.dataset.color = c; d.addEventListener("click", () => setColor([path], c)); return d; });
-    props.append(row("palette", "color", ...dots));
     // icon
     const icn = cardIcon(path);
     const ip = h("span", { cls: "sn-icon-pick" + (icn ? "" : " is-empty") }, ic("", icn || "circle-dashed", "circle-dashed"), h("span", { text: icn || t("noIcon") }));
-    if (cur) ip.dataset.color = cur;
     ip.addEventListener("click", () => promptIcon([path]));
     props.append(row("smile", "icon", ip));
     // tags (frontmatter)
@@ -73,7 +68,7 @@ export function renderEditorProps() {
     const tpl = templateFor(path);
     if (tpl) props.append(row("layout-template", "child_template", h("a", { cls: "sn-chip", href: "#", onClick: (e) => { e.preventDefault(); openEditor(tpl); } }, ic("sn-chip-icon", "layout-template"), h("span", { text: baseName(tpl) }))));
     // others
-    const known = new Set([field, "color", "icon", "tags", "child_template"]);
+    const known = new Set([field, "icon", "tags", "child_template"]);
     const others = Object.entries(n.fm).filter(([k]) => !known.has(k));
     for (const [k, v] of others) {
       const txt = typeof v === "object" && v !== null ? dumpYaml(v).trim() : String(v);

@@ -4,7 +4,7 @@
 import { LANG, t, tt } from "../core/i18n.js";
 import { baseName, norm } from "../core/util.js";
 import { board, editor, graph, S, vault } from "../services/state.js";
-import { cardColor, cardIcon, linkText } from "../services/vault.js";
+import { cardIcon, linkText } from "../services/vault.js";
 import { cardTaskProgress } from "../services/tasks.js";
 import { $, h, ic, iconBtn, isMod } from "./dom.js";
 import { echo, Menu, notice, promptModal } from "./ui.js";
@@ -25,8 +25,6 @@ export function formatDate(ms) {
 }
 export function parentChip(parentPath, onRemove) {
   const chip = h("a", { cls: "sn-chip", href: "#", title: parentPath });
-  const c = cardColor(parentPath);
-  if (c) chip.dataset.color = c;
   chip.append(ic("sn-chip-icon", cardIcon(parentPath) || "layers", "layers"), h("span", { text: baseName(parentPath) }));
   chip.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (isMod(e)) openEditor(parentPath); else setTarget(parentPath); });
   if (onRemove) {
@@ -73,8 +71,6 @@ export function renderCard(path, via, depth = 1) {
   card.dataset.via = via ?? "";
   card.dataset.lv = String(((depth || 1) - 1) % 8 + 1);
   card.dataset.depth = String(depth || 1);
-  const color = cardColor(path);
-  if (color) card.dataset.color = color;
   if (board.selection.has(path)) card.classList.add("is-picked");
   if (editor.path === path) card.classList.add("is-editing");
 

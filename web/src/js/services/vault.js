@@ -2,7 +2,7 @@
    The vault: notes and their index, link resolution, the hierarchy graph, card sorting, the settings,
    reading a vault and picking up changes made outside the page.
    ========================================================= */
-import { baseName, COLORS, dirName } from "../core/util.js";
+import { baseName, dirName } from "../core/util.js";
 import { fmInner, noteLinks, noteTags, parentLinkpaths, parseYaml, splitNote } from "../core/frontmatter.js";
 import { HierarchyGraph } from "../core/graph.js";
 import { computeModel } from "../core/board-model.js";
@@ -91,12 +91,6 @@ export function buildGraph() {
   }
   return g;
 }
-export function cardColor(path) {
-  const v = vault.notes.get(path)?.fm?.color;
-  if (typeof v !== "string") return null;
-  const c = v.toLowerCase().trim().replace("gray", "grey");
-  return COLORS.includes(c) ? c : null;
-}
 export function cardIcon(path) { const v = vault.notes.get(path)?.fm?.icon; return typeof v === "string" && v.trim() ? v.trim() : null; }
 export function cardTags(path) { return (vault.notes.get(path)?.tags || []).map((x) => x.replace(/^#/, "").toLowerCase()); }
 function sortInfo(path) {
@@ -162,12 +156,12 @@ export async function readVault(fs) {
   const saved = lsGet(boardKey(), null);
   Object.assign(board, {
     target: null, depth: S.defaultDepth, layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
-    filter: { query: "", colors: [], tags: [] }, searchOpen: false, history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
+    filter: { query: "", tags: [] }, searchOpen: false, history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
   });
   if (saved) {
     for (const k of ["target", "depth", "layout", "sort", "grouped", "heroCollapsed", "tagView", "view"]) if (saved[k] !== undefined) board[k] = saved[k];
-    if (saved.filter) board.filter = { query: saved.filter.query || "", colors: saved.filter.colors || [], tags: saved.filter.tags || [], scope: saved.filter.scope === "all" ? "all" : "here" };
-    board.searchOpen = !!(board.filter.query || board.filter.colors.length || board.filter.tags.length);
+    if (saved.filter) board.filter = { query: saved.filter.query || "", tags: saved.filter.tags || [], scope: saved.filter.scope === "all" ? "all" : "here" };
+    board.searchOpen = !!(board.filter.query || board.filter.tags.length);
     tree.expanded = new Set(saved.treeExpanded || []);
   } else tree.expanded = new Set();
   if (moved.size) followMoves(moved);
@@ -284,7 +278,7 @@ export async function pollChanges() {
 /** The board's cards right now: core/board-model.js on this vault, the board's state and settings. */
 export function boardModel() {
   return computeModel(graph, board, {
-    cmp: makeComparator(board.sort), colorOf: cardColor, tagsOf: cardTags, maxCards: S.maxCards,
+    cmp: makeComparator(board.sort), tagsOf: cardTags, maxCards: S.maxCards,
     textOf: (p) => { const n = vault.notes.get(p); return n.name + "\n" + n.raw; },
   });
 }

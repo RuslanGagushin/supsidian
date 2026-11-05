@@ -6,7 +6,7 @@ import { baseName, debounce, norm } from "../core/util.js";
 import { oFmt, ohm, oisoWeek, onow, opad, orgCache, orgDayEntries, orgNowTs, orgPriRank, orgReadDate, orgShift, orgSkip, orgStats, orgTsStr, orgWithGrid, oymd } from "../core/org.js";
 import { lsGet, lsSet } from "../services/storage.js";
 import { board, vault } from "../services/state.js";
-import { cardColor, persistBoard } from "../services/vault.js";
+import { persistBoard } from "../services/vault.js";
 import { txn, writeRaw } from "../services/save.js";
 import { dailyNotePath } from "../services/daily-notes.js";
 import { orgAll, todoSet } from "../services/tasks.js";
@@ -252,8 +252,6 @@ function orgRow(x) {
   const time = x.time != null ? ohm(x.time) + (x.end != null ? "–" + ohm(x.end) : "") : "";
   const row = h("div", { cls: `ag-row k-${kindCls}` + (x.overdue ? " overdue" : "") + (e.done ? " is-done" : ""), role: "option", dataset: { i: String(i), path: e.path, line: String(e.line) } });
   const cat = h("span", { cls: "ag-cat", title: e.path, text: e.category + ":" });
-  const color = cardColor(e.path);
-  if (color) cat.dataset.color = color;
   const main = h("span", { cls: "ag-main" });
   if (e.kind === "box") main.append(h("button", { cls: `kw ${e.cls} is-box`, type: "button", dataset: { act: "todo" }, title: tt("cycle") + " (t)", text: `[${e.box === "-" ? "-" : e.done ? "x" : " "}]` }));
   else if (e.kw) main.append(h("button", { cls: `kw ${e.cls}`, type: "button", dataset: { act: "todo" }, title: tt("cycle") + " (t)", text: e.kw }));

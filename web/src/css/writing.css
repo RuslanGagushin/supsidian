@@ -75,7 +75,7 @@ button.sn-table-add-row:hover, button.sn-table-add-col:hover { background: color
 .ac-head { padding: 3px 8px 5px; font-size: 11px; color: var(--accent); border-bottom: 1px solid var(--line); margin-bottom: 3px; }
 .ac-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 5px; cursor: pointer; }
 .ac-item.is-selected { background: var(--sel); }
-.ac-icon { display: inline-flex; color: var(--sn-ink, var(--muted)); flex: 0 0 auto; }
+.ac-icon { display: inline-flex; color: var(--muted); flex: 0 0 auto; }
 .ac-icon svg { width: 14px; height: 14px; }
 .ac-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
 .ac-note { flex: 0 1 auto; max-width: 45%; color: var(--faint); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -84,17 +84,13 @@ button.sn-table-add-row:hover, button.sn-table-add-col:hover { background: color
 /* Link hover preview */
 .hp-pop {
   position: fixed; z-index: 74; width: min(420px, calc(100vw - 16px)); max-height: 360px; overflow: hidden; display: flex; flex-direction: column;
-  background: var(--sn-tint, var(--win)); border: 1px solid color-mix(in srgb, var(--sn-ink, var(--line)) 35%, var(--line)); border-radius: 8px;
+  background: var(--win); border: 1px solid color-mix(in srgb, var(--line) 35%, var(--line)); border-radius: 8px;
   box-shadow: 0 14px 40px color-mix(in srgb, var(--fg) 18%, transparent); cursor: pointer; animation: hp-in 120ms ease-out;
 }
-.hp-pop { --sn-surface: var(--win); --sn-tint-amount: 7%; }
-.hp-pop[data-color="red"] { --sn-tint: color-mix(in srgb, var(--color-red) 7%, var(--win)); } .hp-pop[data-color="orange"] { --sn-tint: color-mix(in srgb, var(--color-orange) 7%, var(--win)); }
-.hp-pop[data-color="yellow"] { --sn-tint: color-mix(in srgb, var(--color-yellow) 7%, var(--win)); } .hp-pop[data-color="green"] { --sn-tint: color-mix(in srgb, var(--color-green) 7%, var(--win)); }
-.hp-pop[data-color="cyan"] { --sn-tint: color-mix(in srgb, var(--color-cyan) 7%, var(--win)); } .hp-pop[data-color="blue"] { --sn-tint: color-mix(in srgb, var(--color-blue) 7%, var(--win)); }
-.hp-pop[data-color="purple"] { --sn-tint: color-mix(in srgb, var(--color-purple) 7%, var(--win)); } .hp-pop[data-color="pink"] { --sn-tint: color-mix(in srgb, var(--color-pink) 7%, var(--win)); }
+.hp-pop { --sn-surface: var(--win); }
 @keyframes hp-in { from { opacity: 0; transform: translateY(-3px); } }
 .hp-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 6px; border-bottom: 1px solid var(--line); }
-.hp-icon { display: inline-flex; align-self: center; color: var(--sn-ink, var(--l1)); }
+.hp-icon { display: inline-flex; align-self: center; color: var(--l1); }
 .hp-icon svg { width: 15px; height: 15px; }
 .hp-title { font-family: var(--font-display); font-size: 18px; font-weight: 500; color: var(--fg); }
 .hp-path { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--faint); }

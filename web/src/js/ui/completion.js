@@ -9,7 +9,7 @@ import { formatMoment } from "../core/dates.js";
 import { CODE_RE, extractLinkpath, fillTemplate, splitNote, stripCode } from "../core/frontmatter.js";
 import { board, editor, graph, saveUI, UI, vault } from "../services/state.js";
 import { DAILY_FORMAT } from "../services/folders.js";
-import { cardColor, cardIcon, cardTags, linkText, resolveLink } from "../services/vault.js";
+import { cardIcon, cardTags, linkText, resolveLink } from "../services/vault.js";
 import { IMG_EXT, saveAttachment } from "../services/attachments.js";
 import { txn, writeRaw } from "../services/save.js";
 import { dailyNotePath } from "../services/daily-notes.js";
@@ -104,7 +104,7 @@ function acItems(d) {
     return list;
   }
   // links: cards and other notes, recent first when no query; headings with "Note#"
-  const all = [...vault.notes.values()].map((n) => ({ value: n.path, title: n.name, note: dirName(n.path), icon: cardIcon(n.path) || "file-text", color: cardColor(n.path), mtime: n.mtime }));
+  const all = [...vault.notes.values()].map((n) => ({ value: n.path, title: n.name, note: dirName(n.path), icon: cardIcon(n.path) || "file-text", mtime: n.mtime }));
   let list;
   if (!q) list = all.filter((x) => x.value !== editor.path).sort((a, b) => b.mtime - a.mtime).slice(0, 10);
   else list = all.map((x) => ({ ...x, s: fuzzyScore(q, x.title + " " + x.note) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s || b.mtime - a.mtime).slice(0, 10);
@@ -129,7 +129,6 @@ function acRender() {
   ac.items.forEach((it, i) => {
     const row = h("div", { cls: "ac-item" + (i === ac.sel ? " is-selected" : ""), role: "option" },
       ic("ac-icon", it.icon || "file-text", "file-text"), h("span", { cls: "ac-title", text: it.title }), it.note ? h("span", { cls: "ac-note", text: it.note }) : null);
-    if (it.color) row.dataset.color = it.color;
     row.addEventListener("mousedown", (e) => { e.preventDefault(); ac.sel = i; acPick(); });
     row.addEventListener("mousemove", () => { if (ac.sel !== i) { ac.sel = i; el.querySelectorAll(".ac-item").forEach((r, j) => r.classList.toggle("is-selected", j === i)); } });
     el.append(row);
@@ -298,11 +297,9 @@ function hpShow(a, path) {
   const cut = text.length > 1400 ? text.slice(0, text.lastIndexOf("\n", 1400) > 600 ? text.lastIndexOf("\n", 1400) : 1400) + "\n\n…" : text;
   renderMarkdown(cut || "", path, { into: body });
   wireRendered(body, path);
-  const color = cardColor(path);
   const pop = h("div", { cls: "hp-pop" },
     h("div", { cls: "hp-head" }, ic("hp-icon", cardIcon(path) || "file-text", "file-text"), h("span", { cls: "hp-title", text: n.name }), h("span", { cls: "hp-path", text: dirName(path) })),
     text ? body : h("div", { cls: "hp-empty", text: t("emptyBody") }));
-  if (color) pop.dataset.color = color;
   pop.addEventListener("mouseenter", () => clearTimeout(hp.hideTimer));
   pop.addEventListener("mouseleave", () => { hp.hideTimer = setTimeout(hpHide, 250); });
   pop.addEventListener("click", (e) => { if (!e.target.closest("a")) { hpHide(); openEditor(path, { focus: true }); } });

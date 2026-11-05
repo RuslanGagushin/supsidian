@@ -1,4 +1,4 @@
-// Card actions: create, parents, drag and drop, color and icon, rename, delete, undo, tasks, daily notes, settings.
+// Card actions: create, parents, drag and drop, icon, rename, delete, undo, tasks, daily notes, settings.
 import { beforeEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { openVault, ev, raw, fsText, settle } from "./harness.mjs";
@@ -101,19 +101,18 @@ describe("parents and moves", () => {
     assert.equal((await fmOf("cards/Home.md")).order, 2);
   });
 
-  test("color and icon on several cards", async () => {
-    await ev(() => setColor(["cards/Home.md", "cards/Shed.md"], "green"));
-    assert.equal((await fmOf("cards/Shed.md")).color, "green");
-    assert.equal(await ev(() => cardColor("cards/Home.md")), "green");
-    await ev(() => setColor(["cards/Home.md"], null));
-    assert.equal((await fmOf("cards/Home.md")).color, undefined);
+  test("icon on several cards", async () => {
+    await ev(() => setIconFor(["cards/Home.md", "cards/Shed.md"], "hammer"));
+    assert.equal(await ev(() => cardIcon("cards/Home.md")), "hammer");
+    await ev(() => setIconFor(["cards/Home.md"], null));
+    assert.equal((await fmOf("cards/Home.md")).icon, undefined);
     await ev(() => setIconFor(["cards/Shed.md"], "hammer"));
     assert.equal(await ev(() => cardIcon("cards/Shed.md")), "hammer");
   });
 
   test("a broken frontmatter is never overwritten", async () => {
     await ev(() => writeRaw("cards/Bad.md", "---\na: [\n---\nkeep me\n"));
-    await ev(() => setColor(["cards/Bad.md"], "red"));
+    await ev(() => setIconFor(["cards/Bad.md"], "star"));
     assert.equal(await raw("cards/Bad.md"), "---\na: [\n---\nkeep me\n");
   });
 });
@@ -147,7 +146,7 @@ describe("delete and undo", () => {
 
   test("undo reverts a change, then nothing is left to undo", async () => {
     const before = await raw("cards/Shed.md");
-    await ev(() => setColor(["cards/Shed.md"], "red"));
+    await ev(() => setIconFor(["cards/Shed.md"], "hammer"));
     await ev(() => undo());
     assert.equal(await raw("cards/Shed.md"), before);
     assert.equal(await ev(() => undoStack.length), 0);
@@ -180,7 +179,7 @@ describe("delete and undo", () => {
   });
 
   test("the undo stack keeps the last 20 actions", async () => {
-    await ev(async () => { for (let i = 0; i < 25; i++) await setColor(["cards/Shed.md"], i % 2 ? "red" : "blue"); });
+    await ev(async () => { for (let i = 0; i < 25; i++) await setIconFor(["cards/Shed.md"], i % 2 ? "hammer" : "star"); });
     assert.equal(await ev(() => undoStack.length), 20);
   });
 });

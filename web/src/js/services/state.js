@@ -31,7 +31,7 @@ export let graph = new HierarchyGraph();
 export const setGraph = (g) => { graph = g; };
 export const board = {
   target: null, depth: 1, layout: "columns", sort: "manual", grouped: false,
-  filter: { query: "", colors: [], tags: [] }, searchOpen: false, heroCollapsed: false,
+  filter: { query: "", tags: [] }, searchOpen: false, heroCollapsed: false,
   history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
 };
 export const tree = { expanded: new Set() };

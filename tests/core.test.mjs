@@ -9,7 +9,7 @@ import { runInThisContext } from "node:vm";
 runInThisContext(readFileSync(new URL("../web/src/vendor/js-yaml.js", import.meta.url), "utf8"));
 
 const { t, pluralIndex, setLang, LANG } = await import("../web/src/js/core/i18n.js");
-const { baseName, dirName, norm, esc, colorLabel } = await import("../web/src/js/core/util.js");
+const { baseName, dirName, norm, esc } = await import("../web/src/js/core/util.js");
 const { formatMoment } = await import("../web/src/js/core/dates.js");
 const fm = await import("../web/src/js/core/frontmatter.js");
 const { HierarchyGraph, groupByTopLevel, reorderBlock } = await import("../web/src/js/core/graph.js");
@@ -27,8 +27,6 @@ describe("i18n and helpers", () => {
     assert.equal(t("writeFailed", { name: "A", msg: "disk full" }), "Couldn't save “A”: disk full");
     assert.deepEqual(withLang("ru", () => [1, 3, 5, 11, 21, 22].map(pluralIndex)), [0, 1, 2, 2, 0, 1]);
     assert.deepEqual([1, 2].map(pluralIndex), [0, 1]);
-    assert.equal(colorLabel("red"), "Red");
-    assert.equal(colorLabel(null), "No color");
   });
 
   test("paths and text", () => {
@@ -113,9 +111,8 @@ describe("hierarchy graph", () => {
 describe("board model", () => {
   const g = new HierarchyGraph();
   for (const [p, parents] of [["Home", []], ["Red one", ["Home"]], ["Blue one", ["Home"]], ["Deep", ["Red one"]]]) g.setNode(p, parents, [], [], []);
-  const colors = { "Red one": "red", "Blue one": "blue", Deep: "red" };
-  const cards = { cmp: (a, b) => a.localeCompare(b), colorOf: (p) => colors[p] ?? null, tagsOf: (p) => (p === "Deep" ? ["#x"] : []), textOf: (p) => p + "\nbody of " + p, maxCards: 100 };
-  const view = (o = {}) => ({ target: "Home", depth: 1, grouped: false, ...o, filter: { query: "", colors: [], tags: [], ...o.filter } });
+  const cards = { cmp: (a, b) => a.localeCompare(b), tagsOf: (p) => (p === "Deep" ? ["#x"] : []), textOf: (p) => p + "\nbody of " + p, maxCards: 100 };
+  const view = (o = {}) => ({ target: "Home", depth: 1, grouped: false, ...o, filter: { query: "", tags: [], ...o.filter } });
   const paths = (m) => m.shown.map((c) => c.path);
 
   test("depth below the target", () => {
@@ -125,9 +122,8 @@ describe("board model", () => {
     assert.equal(m.total, 3);
   });
 
-  test("filters search every level: color, tag, words", () => {
+  test("filters search every level: tag, words", () => {
     assert.ok(!filterActive(view().filter));
-    assert.deepEqual(paths(computeModel(g, view({ filter: { colors: ["red"] } }), cards)), ["Red one", "Deep"]);
     assert.deepEqual(paths(computeModel(g, view({ filter: { tags: ["#x"] } }), cards)), ["Deep"]);
     assert.deepEqual(paths(computeModel(g, view({ filter: { query: "BODY deep" } }), cards)), ["Deep"]);
     assert.deepEqual(paths(computeModel(g, view({ target: "Red one", filter: { query: "one" } }), cards)), [], "only below the target");

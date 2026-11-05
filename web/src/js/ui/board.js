@@ -2,14 +2,14 @@
    Board view
    ========================================================= */
 import { LANG, t } from "../core/i18n.js";
-import { baseName, colorLabel, COLORS, debounce } from "../core/util.js";
+import { baseName, debounce } from "../core/util.js";
 import { filterActive } from "../core/board-model.js";
 import { board, editor, graph, S, vault } from "../services/state.js";
-import { boardModel, cardColor, cardIcon, cardTags, makeComparator, persistBoard } from "../services/vault.js";
+import { boardModel, cardIcon, cardTags, makeComparator, persistBoard } from "../services/vault.js";
 import { $, $$, h, ic, iconBtn, isMod, setIcon } from "./dom.js";
 import { Menu } from "./ui.js";
 import { wireRendered } from "./markdown.js";
-import { createCard, deleteCards, dropCards, promptAddParent, promptIcon, promptMove, saveCurrentView, setColor } from "./actions.js";
+import { createCard, deleteCards, dropCards, promptAddParent, promptIcon, promptMove, saveCurrentView } from "./actions.js";
 import { boardResize, masonries, Masonry } from "./masonry.js";
 import { cardBodyText, cardMenu, parentChip, renderBody, renderCard, setupClamp } from "./cards.js";
 import { dnd } from "./dnd.js";
@@ -30,7 +30,7 @@ export function navEntry() {
 export function leaveTagView() {
   if (!board.tagView) return;
   board.tagView = null;
-  board.filter = { query: "", colors: [], tags: [], scope: "here" };
+  board.filter = { query: "", tags: [], scope: "here" };
   board.searchOpen = false;
 }
 /** Open a tag as its own view: every card with the tag, from the whole vault. */
@@ -42,7 +42,7 @@ export function openTagView(tag, push = true) {
   board.tagView = tag;
   board.view = null;
   board.target = null;
-  board.filter = { query: "", colors: [], tags: [tag], scope: "all" };
+  board.filter = { query: "", tags: [tag], scope: "all" };
   board.searchOpen = false;
   board.selection.clear();
   board.rendered = 60;
@@ -133,9 +133,7 @@ export function renderBoard(resetScroll = false) {
     addCards(main, mainBlock.cards);
     for (const b of model.blocks.slice(1)) {
       const g = h("div", { cls: "sn-group" });
-      const color = cardColor(b.head);
       const headEl = h("div", { cls: "sn-group-head" });
-      if (color) headEl.dataset.color = color;
       const title = h("a", { cls: "sn-group-title", href: "#" }, ic("sn-group-icon", cardIcon(b.head) || "layers", "layers"), h("span", { text: baseName(b.head) }));
       title.addEventListener("click", (e) => { e.preventDefault(); setTarget(b.head); });
       headEl.append(title, h("span", { cls: "sn-group-count", text: String(b.cards.length - 1) }));
@@ -198,7 +196,7 @@ function boardSig(model) {
 export function cardSig(path) {
   const n = vault.notes.get(path);
   return [n?.raw, n?.mtime, graph.childrenOf(path).length, graph.backlinksOf(path).length, graph.unresolvedParentsOf(path).join(","),
-    graph.parentsOf(path).map((p) => `${p}:${cardIcon(p)}:${cardColor(p)}`).join(","), board.selection.has(path), editor.path === path, board.expanded.has(path)].join("\u0001");
+    graph.parentsOf(path).map((p) => `${p}:${cardIcon(p)}`).join(","), board.selection.has(path), editor.path === path, board.expanded.has(path)].join("\u0001");
 }
 function heroSig() { const p = board.target; return p ? [vault.notes.get(p)?.raw, graph.parentsOf(p).join(","), board.heroCollapsed].join("\u0001") : ""; }
 /** Update the board after a note change: replace only the cards that changed, keep scroll, focus and layout. */
@@ -303,7 +301,7 @@ function renderToolbar() {
 }
 export function toggleSearch(open) {
   board.searchOpen = open ?? !board.searchOpen;
-  if (!board.searchOpen) board.filter = { query: "", colors: [], tags: [] };
+  if (!board.searchOpen) board.filter = { query: "", tags: [] };
   persistBoard();
   renderBoard();
   if (board.searchOpen) $(".sn-search-input")?.focus();
@@ -326,20 +324,6 @@ function renderFilterBar(model) {
     scope.append(b);
   }
   bar.append(scope);
-  const present = new Set(model.all.cards.map((c) => cardColor(c.path) ?? "none"));
-  const colorBox = h("div", { cls: "sn-color-filter" });
-  for (const c of [...COLORS, "none"]) {
-    if (!present.has(c) && !board.filter.colors.includes(c)) continue;
-    const d = h("button", { cls: "sn-color-dot" + (c === "none" ? " is-none" : "") + (board.filter.colors.includes(c) ? " is-active" : ""), type: "button", title: colorLabel(c === "none" ? null : c) });
-    if (c !== "none") d.dataset.color = c;
-    d.addEventListener("click", () => {
-      const s = new Set(board.filter.colors);
-      if (s.has(c)) s.delete(c); else s.add(c);
-      board.filter.colors = [...s]; persistBoard(); renderBoard();
-    });
-    colorBox.append(d);
-  }
-  if (present.size > 1 || board.filter.colors.length) bar.append(colorBox);
   const tagCounts = new Map();
   for (const c of model.all.cards) for (const tg of cardTags(c.path)) tagCounts.set(tg, (tagCounts.get(tg) || 0) + 1);
   const tb = h("button", { cls: "clickable-icon sn-filter-btn" + (board.filter.tags.length ? " is-active" : ""), type: "button" }, ic("", "tag"), h("span", { text: t("tags") }));
@@ -353,7 +337,7 @@ function renderFilterBar(model) {
   bar.append(tb);
   for (const tg of board.filter.tags) bar.append(h("button", { cls: "clickable-icon sn-filter-chip", type: "button", onClick: () => toggleTagFilter(tg) }, h("span", { text: "#" + tg }), ic("sn-filter-chip-x", "x")));
   bar.append(h("div", { cls: "sn-spacer" }));
-  if (filterActive(board.filter)) bar.append(h("button", { cls: "clickable-icon", type: "button", text: t("clear"), onClick: () => { board.filter = { query: "", colors: [], tags: [], scope: board.filter.scope }; persistBoard(); renderBoard(); $(".sn-search-input")?.focus(); } }));
+  if (filterActive(board.filter)) bar.append(h("button", { cls: "clickable-icon", type: "button", text: t("clear"), onClick: () => { board.filter = { query: "", tags: [], scope: board.filter.scope }; persistBoard(); renderBoard(); $(".sn-search-input")?.focus(); } }));
   bar.append(iconBtn("x", t("close"), () => toggleSearch(false)));
   return bar;
 }
@@ -361,8 +345,6 @@ function renderHero(model) {
   const target = board.target;
   const hero = h("div", { cls: "sn-hero" });
   if (target) {
-    const c = cardColor(target);
-    if (c) hero.dataset.color = c;
     dnd.dropTarget(hero, () => ({ path: target, parent: null, zones: ["inside"] }));
   }
   const tv = board.tagView;
@@ -385,7 +367,7 @@ function renderHero(model) {
   const foot = h("div", { cls: "sn-hero-foot" });
   const shown = model.shown.length, total = model.total;
   const count = total === shown && !model.active ? t("cardsCount", { n: total }) : t("cardsOf", { shown, n: total });
-  const onlyTag = tv && !board.filter.query.trim() && !board.filter.colors.length && board.filter.tags.length === 1;
+  const onlyTag = tv && !board.filter.query.trim() && board.filter.tags.length === 1;
   foot.append(h("span", { cls: "sn-hero-count", text: onlyTag ? t("cardsCount", { n: shown }) : model.active ? t("filteredSuffix", { count }) : count }));
   if (target && cardBodyText(target).trim()) {
     const tg = iconBtn(board.heroCollapsed ? "chevron-down" : "chevron-up", board.heroCollapsed ? t("expandDescription") : t("collapseDescription"), () => {
@@ -426,7 +408,6 @@ function renderSelbar() {
   const bar = h("div", { cls: "sn-selbar" }, h("span", { cls: "sn-selbar-count", text: t("selected", { n: sel.length }) }));
   const btn = (icn, label, fn, warn) => { const b = h("button", { cls: "clickable-icon sn-selbar-btn" + (warn ? " is-warning" : ""), type: "button" }, ic("", icn), h("span", { text: label })); b.addEventListener("click", fn); bar.append(b); };
   const viaOf = (p) => $(`.sn-card[data-path="${CSS.escape(p)}"]`)?.dataset.via || null;
-  btn("palette", t("color"), (e) => { const m = new Menu(); m.colors(null, (c) => setColor(sel, c)); m.showBelow(e.currentTarget); });
   btn("smile", t("icon"), () => promptIcon(sel));
   btn("git-merge", t("selAddParent"), () => promptAddParent(sel));
   btn("folder-input", t("selMove"), () => promptMove(sel.map((p) => ({ child: p, from: viaOf(p) }))));

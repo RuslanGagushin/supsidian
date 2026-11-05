@@ -55,7 +55,6 @@ button.fchip.exc { background: color-mix(in srgb, var(--todo) 12%, transparent);
 .ag-row:hover { background: var(--hover-bg, var(--panel)); }
 .ag-row.sel { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .ag-cat { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ag-cat[data-color] { color: var(--sn-ink, var(--muted)); }
 .ag-time { color: var(--fg); font-size: 12.5px; white-space: nowrap; }
 .ag-lab { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .k-dead .ag-lab { color: var(--todo); }

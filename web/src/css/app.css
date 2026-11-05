@@ -129,7 +129,7 @@ body.sn-app .sn-hero-desc { font-size: 14px; color: var(--fg); }
 body.sn-app .sn-masonry, body.sn-app .sn-col { gap: 12px; }
 body.sn-app .sn-card {
   display: flex; flex-direction: column; padding: 14px 16px 8px; border-radius: 10px;
-  background: var(--sn-tint, var(--win)); box-shadow: 0 0 0 1px var(--sn-card-border, var(--line));
+  background: var(--win); box-shadow: 0 0 0 1px var(--sn-card-border, var(--line));
 }
 body.sn-app .sn-card:hover { box-shadow: 0 0 0 1px var(--sn-card-border-hover, color-mix(in srgb, var(--faint) 50%, var(--line))), 0 4px 14px rgba(0,0,0,.06); }
 body.sn-app .sn-card.is-editing { box-shadow: 0 0 0 2px var(--accent); }

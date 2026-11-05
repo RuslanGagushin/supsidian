@@ -7,7 +7,7 @@ import { composeBody, dumpYaml, extractLinkpath, fillTemplate, parentLinkpaths, 
 import { reorderBlock } from "../core/graph.js";
 import { board, editor, graph, PARENTS_FIELD, S, tree, vault } from "../services/state.js";
 import { CARDS, inFolder, vaultFolder } from "../services/folders.js";
-import { cardColor, cardIcon, indexNames, linkText, manualCmp, parseNote, persistBoard, resolveLink, saveSettings } from "../services/vault.js";
+import { cardIcon, indexNames, linkText, manualCmp, parseNote, persistBoard, resolveLink, saveSettings } from "../services/vault.js";
 import { removeNote, txn, updateFM, writeRaw } from "../services/save.js";
 import { syncHook } from "../services/sync.js";
 import { confirmModal, iconModal, notice, promptModal, suggestModal } from "./ui.js";
@@ -136,9 +136,6 @@ export async function dropCards(items, toParent, move, anchor) {
   });
   if (order && board.sort !== "manual") { board.sort = "manual"; persistBoard(); renderBoard(); notice(t("switchedManual")); }
 }
-export async function setColor(paths, color) {
-  await txn(t("colorChanged"), async () => { for (const p of paths) await updateFM(p, (fm) => { if (color) fm.color = color; else delete fm.color; }); });
-}
 export async function setIconFor(paths, iconName) {
   await txn(t("iconChanged"), async () => { for (const p of paths) await updateFM(p, (fm) => { if (iconName) fm.icon = iconName; else delete fm.icon; }); });
 }
@@ -241,8 +238,8 @@ export async function saveCurrentView() {
 export function applyView(v) {
   board.history.push(board.target);
   Object.assign(board, { target: v.target && graph.has(v.target) ? v.target : null, depth: v.depth ?? board.depth, layout: v.layout === "list" ? "list" : "columns", sort: v.sort ?? board.sort, grouped: !!v.grouped });
-  board.filter = { query: v.filter?.query || "", colors: v.filter?.colors || [], tags: v.filter?.tags || [] };
-  board.searchOpen = !!(board.filter.query || board.filter.colors.length || board.filter.tags.length);
+  board.filter = { query: v.filter?.query || "", tags: v.filter?.tags || [] };
+  board.searchOpen = !!(board.filter.query || board.filter.tags.length);
   board.selection.clear(); board.rendered = 60;
   persistBoard();
   renderBoard(); renderTree();
@@ -251,7 +248,7 @@ export function applyView(v) {
 /* Prompts for actions */
 function cardItems(exclude = new Set()) {
   return [...graph.nodes].filter((p) => !exclude.has(p)).sort((a, b) => baseName(a).localeCompare(baseName(b), undefined, { numeric: true })).map((p) => ({
-    value: p, title: baseName(p), icon: cardIcon(p) || "file-text", color: cardColor(p), note: dirName(p),
+    value: p, title: baseName(p), icon: cardIcon(p) || "file-text", note: dirName(p),
   }));
 }
 export async function promptAddParent(paths) {
@@ -272,7 +269,7 @@ export async function promptMove(items) {
 export async function promptRemoveParent(path) {
   const ps = graph.parentsOf(path).filter((p) => graph.has(p));
   const un = graph.unresolvedParentsOf(path);
-  const all = [...ps.map((p) => ({ value: p, title: baseName(p), icon: cardIcon(p) || "layers", color: cardColor(p) })), ...un.map((u) => ({ value: u, title: u, icon: "alert-triangle", note: t("parentMissing") }))];
+  const all = [...ps.map((p) => ({ value: p, title: baseName(p), icon: cardIcon(p) || "layers" })), ...un.map((u) => ({ value: u, title: u, icon: "alert-triangle", note: t("parentMissing") }))];
   if (!all.length) return;
   if (all.length === 1) return removeParent(path, all[0].value);
   const pick = await suggestModal({ placeholder: t("pickRemoveParent"), items: all });

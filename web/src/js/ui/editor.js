@@ -6,7 +6,7 @@ import { baseName, debounce, dirName } from "../core/util.js";
 import { splitNote } from "../core/frontmatter.js";
 import { on } from "../services/events.js";
 import { board, editor, UI, vault } from "../services/state.js";
-import { cardColor, cardIcon } from "../services/vault.js";
+import { cardIcon } from "../services/vault.js";
 import { writeRaw } from "../services/save.js";
 import { syncHook } from "../services/sync.js";
 import { $, $$, h, ic, iconBtn } from "./dom.js";
@@ -161,8 +161,6 @@ export function renderEditor() {
   scroll.append(page);
   host.append(scroll);
   if (!n) { page.append(h("div", { cls: "sn-editor-empty", text: t("noteGone") })); return; }
-  const color = cardColor(path);
-  if (color) host.dataset.color = color; else delete host.dataset.color;
 
   if (editor.mode !== "source") {
     const badge = ic("sn-editor-badge", cardIcon(path) || "file-text", "file-text");

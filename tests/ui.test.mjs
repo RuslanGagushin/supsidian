@@ -731,3 +731,18 @@ describe("phone layout", () => {
     assert.equal(await ev(() => $("#app").classList.contains("side-closed")), true);
   });
 });
+
+describe("no note colors", () => {
+  test("no color in the properties or on the board, and a color left in a note's frontmatter is an ordinary property", async () => {
+    await openVault({ demo: false, notes: { "cards/Old.md": "---\ncolor: red\n---\nText\n" } });
+    await ev(() => openEditor("cards/Old.md", { focus: false, wide: false }));
+    const r = await ev(() => ({
+      dots: document.querySelectorAll(".sn-color-dot").length, tinted: document.querySelectorAll("[data-color]").length,
+      keys: [...document.querySelectorAll("#editor-props .sn-prop-key")].map((k) => k.textContent),
+    }));
+    assert.equal(r.dots, 0);
+    assert.equal(r.tinted, 0);
+    assert.ok(r.keys.includes("color"), "shown like any other property");
+    noErrors();
+  });
+});

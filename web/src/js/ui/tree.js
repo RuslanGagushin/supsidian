@@ -4,7 +4,7 @@
 import { LANG, t } from "../core/i18n.js";
 import { baseName } from "../core/util.js";
 import { board, editor, graph, S, tree, vault } from "../services/state.js";
-import { cardColor, cardIcon, makeComparator, persistBoard, saveSettings } from "../services/vault.js";
+import { cardIcon, makeComparator, persistBoard, saveSettings } from "../services/vault.js";
 import { $, h, ic, iconBtn, isMod, setIcon } from "./dom.js";
 import { Menu, promptModal } from "./ui.js";
 import { applyView, createCard } from "./actions.js";
@@ -43,11 +43,9 @@ export function renderTree() {
   if (recent.length > 3) {
     box.append(h("div", { cls: "sn-tree-section", text: t("recent") }));
     for (const p of recent) {
-      const color = cardColor(p);
       const row = h("div", { cls: "tree-item-self is-clickable sn-tree-row is-recent" + (board.target === p ? " is-active" : "") + (editor.path === p ? " is-editing" : "") },
         h("span", { cls: "sn-tree-toggle is-leaf" }), ic("sn-tree-icon", cardIcon(p) || "file-text", "file-text"), h("div", { cls: "tree-item-inner sn-tree-label", text: baseName(p) }),
         h("div", { cls: "tree-item-flair-outer" }, h("span", { cls: "tree-item-flair", text: shortAgo(vault.notes.get(p)?.mtime || 0) })));
-      if (color) row.dataset.color = color;
       row.addEventListener("click", (e) => { if (isMod(e) || editor.path) openEditor(p); else setTarget(p); });
       row.addEventListener("dblclick", () => openEditor(p, { focus: true }));
       row.addEventListener("contextmenu", (e) => cardMenu(p, null).showAtEvent(e));
@@ -107,11 +105,9 @@ function treeNode(path, chain, cmp, o) {
   const kids = isCycle ? [] : graph.sortedChildren(path, cmp);
   const open = !isCycle && tree.expanded.has(key) && kids.length > 0;
   const item = h("div", { cls: "tree-item" });
-  const color = cardColor(path);
   const row = h("div", { cls: "tree-item-self is-clickable sn-tree-row" + (open ? " is-open" : "") + (board.target === path ? " is-active" : "") + (isCycle ? " is-cycle" : "") });
   row.dataset.path = path;
   row.dataset.lv = String((chain.length - 1) % 8 + 1);
-  if (color) row.dataset.color = color;
   const toggle = h("span", { cls: "sn-tree-toggle" + (kids.length ? "" : " is-leaf") });
   setIcon(toggle, "chevron-down");
   toggle.addEventListener("click", (e) => { e.stopPropagation(); if (tree.expanded.has(key)) tree.expanded.delete(key); else tree.expanded.add(key); persistBoard(); renderTree(); });

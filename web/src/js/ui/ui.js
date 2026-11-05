@@ -2,7 +2,7 @@
    UI: menus, modals, notices
    ========================================================= */
 import { t } from "../core/i18n.js";
-import { colorLabel, COLORS, norm } from "../core/util.js";
+import { norm } from "../core/util.js";
 import { on } from "../services/events.js";
 import { vault } from "../services/state.js";
 import { undo } from "../services/save.js";
@@ -15,7 +15,6 @@ export class Menu {
   add(title, iconName, onClick, o = {}) { this.items.push({ title, icon: iconName, onClick, ...o }); return this; }
   sep() { if (this.items.length && this.items[this.items.length - 1] !== "sep") this.items.push("sep"); return this; }
   label(text) { this.items.push({ label: text }); return this; }
-  colors(current, onPick) { this.items.push({ colors: true, current, onPick }); return this; }
   showAt(x, y) {
     closeMenu();
     const m = h("div", { cls: "menu", role: "menu" });
@@ -23,17 +22,6 @@ export class Menu {
     for (const it of items) {
       if (it === "sep") { m.append(h("div", { cls: "menu-separator" })); continue; }
       if (it.label) { m.append(h("div", { cls: "menu-label", text: it.label })); continue; }
-      if (it.colors) {
-        const row = h("div", { cls: "menu-colors" });
-        for (const c of [null, ...COLORS]) {
-          const d = h("button", { cls: "sn-color-dot" + (c ? "" : " is-none") + (c === it.current ? " is-active" : ""), title: colorLabel(c), "aria-label": colorLabel(c), type: "button" });
-          if (c) d.dataset.color = c;
-          d.addEventListener("click", () => { closeMenu(); it.onPick(c); });
-          row.append(d);
-        }
-        m.append(row);
-        continue;
-      }
       const row = h("div", { cls: "menu-item" + (it.warning ? " is-warning" : "") + (it.disabled ? " is-disabled" : ""), role: "menuitem" },
         it.icon ? ic("menu-item-icon", it.icon) : h("span", { cls: "menu-item-icon" }), h("span", { cls: "menu-item-title", text: it.title }),
         it.checked ? ic("menu-item-check", "check") : null);
@@ -107,7 +95,6 @@ export function minibufPick({ placeholder, items, allowCreate = false, limit = 2
       sel = Math.min(sel, Math.max(0, shown.length - 1));
       comp.replaceChildren(...shown.map((it, i) => {
         const li = h("li", { cls: i === sel ? "on" : "", role: "option" }, it.icon ? ic("comp-icon", it.icon, "file-text") : null, h("span", { cls: "comp-title", text: it.title }), it.note ? h("span", { cls: "comp-note", text: it.note }) : null);
-        if (it.color) li.dataset.color = it.color;
         li.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); finish(it); });
         return li;
       }));
@@ -212,7 +199,6 @@ export function suggestModal({ placeholder, items, allowCreate = false, grid = f
           it.icon ? ic("suggestion-icon", it.icon) : null, h("span", { cls: "suggestion-title", text: it.title }), it.note ? h("span", { cls: "suggestion-note", text: it.note }) : null);
         row.classList.add("suggestion-item");
         if (current !== undefined && it.value === current) row.classList.add("is-current");
-        if (it.color) row.dataset.color = it.color;
         if (i === sel) row.classList.add("is-selected");
         row.addEventListener("mousemove", () => { if (sel !== i) { sel = i; mark(); } });
         row.addEventListener("click", () => choose(i));
