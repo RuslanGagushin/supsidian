@@ -101,6 +101,23 @@ describe("board", () => {
     noErrors();
   });
 
+  test("no status line under the board or the note; code in a code block has no grey chip", async () => {
+    await ev(() => setTarget("cards/Roman Empire.md"));
+    await ev(() => openEditor("cards/Colosseum.md", { mode: "read" }));
+    assert.equal(await ev(() => document.querySelectorAll(".modeline").length), 0);
+    const bg = await ev(() => {
+      const box = renderMarkdown("Inline `x`\n\n```js\nconst a = 1;\n```\n", "cards/x.md");
+      box.classList.add("markdown-rendered");
+      document.body.append(box);
+      const r = [getComputedStyle(box.querySelector(".code-body code")).backgroundColor, getComputedStyle(box.querySelector("p code")).backgroundColor];
+      box.remove();
+      return r;
+    });
+    assert.equal(bg[0], "rgba(0, 0, 0, 0)", "the code block's text sits on the block");
+    assert.notEqual(bg[1], "rgba(0, 0, 0, 0)", "inline code keeps its chip");
+    noErrors();
+  });
+
   test("depth ∞ over a parent cycle finishes", async () => {
     await ev(() => { board.depth = 0; setTarget("cards/Cycle A.md"); });
     assert.deepEqual(await titles(), ["Cycle B"]);

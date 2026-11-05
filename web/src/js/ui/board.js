@@ -175,7 +175,6 @@ export function renderBoard(resetScroll = false) {
   if (notes.length) page.append(h("div", { cls: "sn-footnote", text: notes.join(" · ") }));
   root.append(h("div", { id: "selbar-host" }));
   board.lastModel = model;
-  root.append(boardModeline(model));
   renderSelbar();
   scroll.scrollTop = scrollTop;
 
@@ -226,7 +225,6 @@ export function patchBoard() {
   const hs = heroSig();
   if (hs !== board.heroSig) { $(".sn-hero", root)?.replaceWith(renderHero(model)); board.heroSig = hs; }
   board.lastModel = model;
-  $("#board > .modeline")?.replaceWith(boardModeline(model));
 }
 function renderToolbar() {
   const bar = h("div", { cls: "sn-topbar" });
@@ -419,22 +417,7 @@ function renderComposer() {
   });
   return { el: box, input: ta, grow };
 }
-function boardModeline(model) {
-  const sp = (cls, text) => h("span", { cls, text });
-  const name = board.tagView ? "#" + board.tagView : board.target ? baseName(board.target) : t("allCards");
-  const sortName = { manual: "manual", name: "a-z", modified: "modified", created: "newest" }[board.sort] || board.sort;
-  return h("div", { cls: "modeline" },
-    sp("dim", board.selection.size ? "-:**-" : "-:---"), sp("hi", name), sp("", board.tagView ? "(Tag)" : "(Board)"),
-    sp("dim", `depth:${board.depth === 0 ? "∞" : board.depth}`), sp("dim", board.layout), sp("dim", `sort:${sortName}`),
-    board.grouped && board.depth !== 1 ? sp("dim", "grouped") : null,
-    filterActive(board.tagView ? { ...board.filter, tags: board.filter.tags.filter((x) => x !== board.tagView) } : board.filter) ? sp("hi", "filter") : null,
-    sp("grow", ""),
-    board.selection.size ? sp("hi", t("selected", { n: board.selection.size })) : null,
-    sp("", board.tagView ? `${model.shown.length}` : model.active || model.shown.length !== model.total ? `${model.shown.length}/${model.total}` : `${model.total}`));
-}
 function renderSelbar() {
-  const ml = $("#board > .modeline");
-  if (ml && board.lastModel) ml.replaceWith(boardModeline(board.lastModel));
   const host = $("#selbar-host");
   if (!host) return;
   host.replaceChildren();

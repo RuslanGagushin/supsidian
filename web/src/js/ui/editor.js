@@ -77,22 +77,7 @@ export async function saveEditor() {
   setSaveState();
   refresh({ keepEditor: true });
 }
-export function editorModeline() {
-  const ml = $("#editor > .modeline");
-  if (!ml || !editor.path) return;
-  const ta = $(".sn-editor-text");
-  const n = vault.notes.get(editor.path);
-  const live = editor.mode === "edit" && editor.live;
-  const text = live ? liveText() : ta ? ta.value : n?.body || "";
-  const line = ta ? text.slice(0, ta.selectionStart).split("\n").length : 1;
-  const words = text.split(/\s+/).filter(Boolean).length;
-  const mode = editor.mode === "source" ? "(Source)" : editor.mode === "read" ? "(Reading)" : "(Markdown)";
-  const state = editor.saving ? t("saving") : editor.dirty ? t("unsaved") : vault.fs?.kind === "disk" ? t("saved") : "";
-  const sp = (cls, txt) => h("span", { cls, text: txt });
-  ml.replaceChildren(sp(editor.dirty ? "hi" : "dim", editor.dirty ? "-:**-" : "-:---"), sp("hi", editor.path.split("/").pop()), sp("", mode), sp("dim", state), sp("grow", ""), sp("dim", `${words}w · ${wt("readTime", { n: Math.max(1, Math.round(words / 220)) })}`), sp("", `L${line}`));
-}
 export function setSaveState() {
-  editorModeline();
   const el = $(".sn-save-state");
   if (!el) return;
   el.textContent = editor.saving ? t("saving") : editor.dirty ? t("unsaved") : vault.fs.kind === "disk" ? t("saved") : "";
@@ -175,7 +160,7 @@ export function renderEditor() {
   const page = h("div", { cls: "sn-editor-page" });
   scroll.append(page);
   host.append(scroll);
-  if (!n) { page.append(h("div", { cls: "sn-editor-empty", text: t("noteGone") })); host.append(h("div", { cls: "modeline" })); return; }
+  if (!n) { page.append(h("div", { cls: "sn-editor-empty", text: t("noteGone") })); return; }
   const color = cardColor(path);
   if (color) host.dataset.color = color; else delete host.dataset.color;
 
@@ -213,7 +198,6 @@ export function renderEditor() {
     renderLive();
   }
   page.append(h("div", { id: "editor-foot" }));
-  host.append(h("div", { cls: "modeline" }));
   renderEditorProps();
   setSaveState();
 }
@@ -295,7 +279,7 @@ export function editorTextarea(value, live = false) {
   ta.addEventListener("blur", () => { if (editor.dirty) saveEditor(); });
   ta.addEventListener("select", () => updateFmtBar(ta));
   ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) updateFmtBar(null); }, 0));
-  ta.addEventListener("keyup", (e) => { updateFmtBar(ta); editorTableWrap(ta); editorModeline(); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
+  ta.addEventListener("keyup", (e) => { updateFmtBar(ta); editorTableWrap(ta); updateEdToolbar(); if (ac.el && /^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(ta); });
   ta.addEventListener("mouseup", () => { editorTableWrap(ta); updateEdToolbar(); setTimeout(() => updateFmtBar(ta), 0); });
   ta.addEventListener("input", () => { editorTableWrap(ta); updateEdToolbar(); });
   ta.addEventListener("focus", () => { editorTableWrap(ta); updateEdToolbar(); });
@@ -308,7 +292,6 @@ export function editorTextarea(value, live = false) {
     const at = editorTable(ta);
     if (at) tableMenu((op) => editorTableOp(ta, op, at), at.row).showAtEvent(e);
   });
-  ta.addEventListener("click", editorModeline);
   requestAnimationFrame(() => autosize(ta));
   return ta;
 }

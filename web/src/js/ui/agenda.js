@@ -171,14 +171,12 @@ export function renderTasksView(root) {
   root.append(scroll);
   AGROWS = [];
   const pass = (e) => orgTagPass(e);
-  let count = 0;
   if (AG.view === "agenda") {
     const days = AG.span === "day" ? [AG.anchor] : Array.from({ length: 7 }, (_, i) => AG.anchor - ((oymd(AG.anchor).w + 6) % 7) + i);
     body.append(h("div", { cls: "ag-title" }, h("b", { text: tt(AG.span === "week" ? "weekAgenda" : "dayAgenda") }), ` (W${opad(oisoWeek(days[0]))})`, AG.log ? h("span", { cls: "ag-flag", text: " · " + tt("log") }) : null));
     for (const dn of days) {
       const o = oymd(dn);
       let ents = orgDayEntries(dn, all, T, { log: AG.log }).filter((x) => pass(x.e));
-      count += ents.length;
       const card = h("section", { cls: "ag-card" + (dn === T ? " is-today" : "") + (ents.length ? "" : " is-empty") });
       card.append(h("div", { cls: "ag-day" + (dn === T ? " today" : "") + (o.w === 0 || o.w === 6 ? " weekend" : "") },
         h("span", { text: oFmt(dn, "dddd") }), h("span", { cls: "num", text: oFmt(dn, "D MMMM YYYY") + (o.w === 1 || AG.span === "day" ? ` · W${opad(oisoWeek(dn))}` : "") }),
@@ -190,14 +188,12 @@ export function renderTasksView(root) {
   } else if (AG.view === "todo") {
     const items = all.filter((e) => e.isTodo && !e.done && !orgSkip(e) && (e.kind !== "box" || AG.boxes) && (AG.todoKw === "ALL" || e.kw === AG.todoKw) && pass(e))
       .sort((a, b) => orgPriRank(b) - orgPriRank(a) || (a.category < b.category ? -1 : a.category > b.category ? 1 : a.line - b.line));
-    count = items.length;
     body.append(h("div", { cls: "ag-title" }, tt("todoTitle") + " ", h("b", { text: AG.todoKw }), ` · ${items.length}`));
     if (items.length) body.append(h("section", { cls: "ag-card" }, items.map((e) => orgRow({ e, kind: "todo", label: "", time: null, dn: null }))));
     if (!items.length) body.append(h("div", { cls: "ag-help", text: tt("noTodo") }));
   } else if (AG.view === "match") {
     const fn = orgMatcher(AG.match);
     const items = all.filter((e) => !orgSkip(e) && e.kind !== "event" && (e.kind !== "box" || AG.boxes || AG.match.includes("/")) && fn(e) && pass(e));
-    count = items.length;
     body.append(h("div", { cls: "ag-title" }, tt("matchTitle") + " ", h("b", { text: AG.match || tt("everything") }), ` · ${items.length}`));
     if (items.length) body.append(h("section", { cls: "ag-card" }, items.map((e) => orgRow({ e, kind: "match", label: "", time: null, dn: null }))));
     if (!items.length) body.append(h("div", { cls: "ag-help", text: tt("noMatch") }));
@@ -212,7 +208,6 @@ export function renderTasksView(root) {
         const txt = norm(n.raw.split("\n").slice(e.line, e.kind === "event" ? e.line + 1 : e.secEnd).join("\n") + " " + e.alltags.join(" "));
         return words.every((w) => (w.startsWith("-") && w.length > 1 ? !txt.includes(w.slice(1)) : txt.includes(w.replace(/^\+/, ""))));
       });
-      count = items.length;
       if (items.length) body.append(h("section", { cls: "ag-card" }, items.map((e) => orgRow({ e, kind: "search", label: "", time: null, dn: null }))));
       if (!items.length) body.append(h("div", { cls: "ag-help", text: tt("nothingFound") }));
     }
@@ -232,11 +227,6 @@ export function renderTasksView(root) {
   body.addEventListener("dblclick", (e) => { const row = e.target.closest(".ag-row"); if (row && !e.target.closest("button, a")) orgAct(AGROWS[+row.dataset.i], "goto"); });
   body.addEventListener("contextmenu", (e) => { const row = e.target.closest(".ag-row"); if (!row) return; orgSelect(+row.dataset.i); orgRowMenu(AGROWS[+row.dataset.i]).showAtEvent(e); });
 
-  root.append(h("div", { cls: "modeline" },
-    h("span", { cls: "dim", text: "-:%%-" }), h("span", { cls: "hi", text: "*Org Agenda*" }),
-    h("span", { text: `(Org-Agenda ${AG.view === "agenda" ? (AG.span === "week" ? "Week" : "Day") : AG.view === "todo" ? "Todo" : AG.view === "match" ? "Match" : "Search"}${AG.log ? " Log" : ""})` }),
-    Object.keys(AG.filter).length ? h("span", { cls: "hi", text: "[" + Object.entries(AG.filter).map(([k, v]) => (v === 1 ? "+" : "-") + k).join("") + "]" }) : null,
-    h("span", { cls: "grow" }), h("span", { text: String(count) })));
   scroll.scrollTop = oldScroll;
   if (AG.sel) {
     let i = AGROWS.findIndex((x) => orgRowKey(x) === AG.sel);

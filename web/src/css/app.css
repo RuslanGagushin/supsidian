@@ -173,13 +173,7 @@ body.sn-app .sn-board .sn-filter-chip { height: 24px; border: 0; border-radius: 
 body.sn-app .sn-selbar { border-radius: 12px; }
 body.sn-app :is(.sn-selbar-count, .sn-board .sn-selbar-btn) { font-family: var(--font-inter); }
 
-/* ---------- Status line and minibuffer: light, a quiet footer */
-body.sn-app .modeline {
-  min-height: 30px; padding: 4px 24px; gap: 12px; background: transparent; color: var(--faint); border-top: 1px solid var(--line);
-  font-family: var(--font-inter); font-size: 12px;
-}
-body.sn-app .modeline .dim { color: var(--faint); }
-body.sn-app .modeline .hi { color: var(--muted); font-weight: 600; }
+/* ---------- Minibuffer: light, a quiet footer */
 body.sn-app .minibuf, body.sn-app .minibuf input { font-family: var(--font-inter); font-size: 12.5px; }
 body.sn-app .minibuf .mb-prompt { color: var(--accent); font-weight: 600; }
 body.sn-app .minibuf .echo.is-hint { color: var(--faint); }
@@ -209,7 +203,8 @@ body.sn-app .markdown-rendered a { color: var(--accent); }
 body.sn-app .markdown-rendered input[type="checkbox"] { accent-color: var(--accent); }
 body.sn-app .markdown-rendered code { font-family: var(--font-code); color: #d13438; background: var(--code-bg); }
 body.sn-app.theme-dark .markdown-rendered code { color: #ff8a8d; }
-body.sn-app .markdown-rendered pre code, body.sn-app .markdown-rendered .code-body code { color: inherit; }
+/* the grey chip is for inline code only: inside a code block the text sits on the block itself */
+body.sn-app .markdown-rendered pre code, body.sn-app .markdown-rendered .code-body code { color: inherit; background: none; padding: 0; border-radius: 0; }
 body.sn-app .markdown-rendered .code-body, body.sn-app .fv-text { font-family: var(--font-code); }
 body.sn-app .markdown-rendered .code-block, body.sn-app .markdown-rendered .sn-table-wrap { border-radius: 10px; }
 body.sn-app .markdown-rendered th { font-weight: 600; text-align: left; }

@@ -8,7 +8,7 @@ import { $, $$, h, isMod } from "./dom.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
 import { createCard } from "./actions.js";
 import { openTagView, setTarget } from "./board.js";
-import { edDom, editorModeline, editorTextarea, openEditor } from "./editor.js";
+import { edDom, editorTextarea, openEditor } from "./editor.js";
 import { liveCellOpen, liveTableAt, liveTableButtons, liveTableOp, tableMenu } from "./table-editor.js";
 import { updateEdToolbar } from "./editor-toolbar.js";
 import { ORG_DECOR_RE } from "./org-editing.js";
@@ -37,7 +37,7 @@ export function liveActivate(off) {
   off = Math.max(0, Math.min(off, ta.value.length));
   ta.focus({ preventScroll: true });
   ta.cmView.dispatch({ selection: { anchor: off }, effects: CM.EditorView.scrollIntoView(off, { y: "center" }) });
-  editorModeline(); updateEdToolbar();
+  updateEdToolbar();
   return ta;
 }
 export function liveActivateEnd() { return liveActivate(liveText().length); }

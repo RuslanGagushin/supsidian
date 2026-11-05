@@ -21,7 +21,7 @@ import { masonries } from "./masonry.js";
 import { goBack, openTagView } from "./board.js";
 import { dnd } from "./dnd.js";
 import { renderTree } from "./tree.js";
-import { editorModeline, isBoardNote, openEditor, renderEditor } from "./editor.js";
+import { isBoardNote, openEditor, renderEditor } from "./editor.js";
 import { liveActivate, liveTa, liveText } from "./live-preview.js";
 import { edInsert } from "./editor-toolbar.js";
 import { refresh } from "./shell.js";
@@ -354,14 +354,12 @@ export function outlineMenu(anchor) {
       liveActivate(hd.offset);
       const sc = $(".sn-editor-scroll"), lt = liveTa();
       if (sc && lt) sc.scrollTop += caretRect(lt, lt.selectionStart).top - sc.getBoundingClientRect().top - 60;
-      editorModeline();
     } else if (ta) {
       ta.focus();
       ta.setSelectionRange(hd.offset, hd.offset);
       const r = caretRect(ta, hd.offset);
       const sc = $(".sn-editor-scroll");
       if (sc) sc.scrollTop += r.top - sc.getBoundingClientRect().top - 60;
-      editorModeline();
     } else {
       $$("#editor .sn-reading :is(h1,h2,h3,h4,h5,h6)")[i]?.scrollIntoView({ block: "start", behavior: "smooth" });
     }

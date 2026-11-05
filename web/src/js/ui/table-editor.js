@@ -8,7 +8,7 @@ import { editor } from "../services/state.js";
 import { syncHook } from "../services/sync.js";
 import { $$, h, ic, isMod } from "./dom.js";
 import { Menu } from "./ui.js";
-import { editorModeline, saveEditor, scheduleSave, setSaveState } from "./editor.js";
+import { saveEditor, scheduleSave, setSaveState } from "./editor.js";
 import { liveActivate, liveTa, lpTableFill } from "./live-preview.js";
 import { edInsert, updateEdToolbar } from "./editor-toolbar.js";
 
@@ -128,7 +128,7 @@ export function liveCellOpen(from, row, col, o = {}) {
   el.addEventListener("blur", () => setTimeout(() => { if (editor.cell?.el === el && document.activeElement !== el) liveCellClose(); }, 0));
   el.focus({ preventScroll: true });
   cellSetCaret(el, o.select ? 0 : o.atStart ? 0 : o.caret ?? text.length, o.select ? text.length : o.atStart ? 0 : o.caret ?? text.length);
-  editorModeline(); updateEdToolbar();
+  updateEdToolbar();
   return el;
 }
 /** The cell's text into the note: pipes are escaped, line breaks become <br>. */
@@ -176,7 +176,7 @@ function liveCellLeave(down, o = {}) {
   if (l) { liveActivate(l.from); return; }
   ta.focus({ preventScroll: true }); // first: CodeMirror reads the browser's caret when it gets the focus
   view.dispatch({ changes: { from: c.to, insert: "\n\n" }, selection: { anchor: c.to + 2 }, userEvent: "input.table" });
-  editorModeline(); updateEdToolbar();
+  updateEdToolbar();
 }
 /** Keys in a cell: Tab / Shift+Tab and Enter move on as in the source (a new row after the last; Enter on an empty last row ends the table),
    Shift+Enter a <br>, arrows at the edge of the text go to the next cell or out of the table, Alt+arrows move the row or column, Escape stops editing. */

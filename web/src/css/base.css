@@ -4,7 +4,6 @@ body {
   /* Base palette (paper + ink, level colours like an org outline); body.sn-app below refines it */
   --bg:#f3f4ef; --win:#fbfbf8; --panel:#e9ebe4; --fg:#1b221f; --muted:#56625c; --faint:#66716b; --line:#d4d8cf;
   --accent:#2f4fb5; --accent-soft:#e2e7f7; --sel:#dfe6fb; --flash:#fff0b3; --code-bg:#eef0e9;
-  --mode-bg:#262e2a; --mode-fg:#e8ece5; --mode-dim:#a7b2ab; --mode-hi:#f3d36b;
   --l1:#2f4fb5; --l2:#9a5524; --l3:#7a3fb0; --l4:#b02b2b; --l5:#2d7a3a; --l6:#9a4f93; --l7:#946500; --l8:#1d7385;
   --todo:#c42f27; --next:#b25f06; --done:#2d7a3a; --tag:#5b6761; --tbl-head:#cfe6fb; --tbl-head-line:#93c5f0;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -16,7 +15,6 @@ body {
 body.theme-dark {
   --bg:#141917; --win:#1a201d; --panel:#212825; --fg:#dde3dc; --muted:#a3aea7; --faint:#8a958e; --line:#2e3632;
   --accent:#8fa6ff; --accent-soft:#25304f; --sel:#26314f; --flash:#4a3f12; --code-bg:#202724;
-  --mode-bg:#c9d0c8; --mode-fg:#141917; --mode-dim:#4c5752; --mode-hi:#7a4d00;
   --l1:#8fa6ff; --l2:#e3a46f; --l3:#c39cf0; --l4:#f07f78; --l5:#8ccb90; --l6:#dca2df; --l7:#e2c162; --l8:#78c6d4;
   --todo:#ff7c70; --next:#f0a650; --done:#8ccb90; --tag:#94a098; --tbl-head:#1e3a52; --tbl-head-line:#2f5878;
   color-scheme: dark;

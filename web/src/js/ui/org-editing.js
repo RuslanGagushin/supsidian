@@ -7,7 +7,7 @@ import { editor, vault } from "../services/state.js";
 import { orgAll, todoSet } from "../services/tasks.js";
 import { $, $$, h, ic, isMod, setIcon } from "./dom.js";
 import { echo, mbBegin, mbEnd, minibufRead, promptModal } from "./ui.js";
-import { editorModeline, openEditor } from "./editor.js";
+import { openEditor } from "./editor.js";
 import { liveActivate, liveText } from "./live-preview.js";
 import { edInsert, updateEdToolbar } from "./editor-toolbar.js";
 import { caretRect } from "./completion.js";
@@ -214,7 +214,6 @@ function orgEd(ta, fn) {
   ta.setSelectionRange(pos, pos);
   if (r.msg) echo(r.msg);
   updateEdToolbar?.();
-  editorModeline?.();
 }
 /** Ctrl+Enter / C-c C-t: tick a checkbox, otherwise cycle the TODO keyword (a plain line becomes "- TODO …"). */
 function edToggleTask(ta, dir = 1) {
@@ -359,7 +358,7 @@ export function openEditorAtLine(path, lineIndex) {
     ta.setSelectionRange(le < 0 ? ta.value.length : le, le < 0 ? ta.value.length : le);
     const r = caretRect(ta, off), sc = $(".sn-editor-scroll");
     if (sc) sc.scrollTop += r.top - sc.getBoundingClientRect().top - sc.clientHeight / 3;
-    editorModeline(); updateEdToolbar?.();
+    updateEdToolbar?.();
   }, 30);
 }
 
