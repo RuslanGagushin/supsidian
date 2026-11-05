@@ -6,7 +6,7 @@ import { LANG, t, wt } from "../core/i18n.js";
 import { baseName, colorLabel, COLORS } from "../core/util.js";
 import { dumpYaml } from "../core/frontmatter.js";
 import { formatTable } from "../core/tables.js";
-import { board, editor, graph, S, UI, vault } from "../services/state.js";
+import { board, editor, graph, PARENTS_FIELD, UI, vault } from "../services/state.js";
 import { cardColor, cardIcon, makeComparator } from "../services/vault.js";
 import { txn, updateFM } from "../services/save.js";
 import { $, h, ic, isMod, setIcon } from "./dom.js";
@@ -27,7 +27,7 @@ export function renderEditorProps() {
   const host = $("#editor-props");
   const foot = $("#editor-foot");
   if (!n) return;
-  const field = S.parentsField;
+  const field = PARENTS_FIELD;
   if (host && !n.fmError) {
     host.replaceChildren();
     const props = h("div", { cls: "sn-props" + (editor.propsCollapsed ? " is-collapsed" : "") });

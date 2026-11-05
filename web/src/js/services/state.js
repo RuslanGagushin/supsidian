@@ -6,8 +6,7 @@ import { HierarchyGraph } from "../core/graph.js";
 import { lsGet, lsSet } from "./storage.js";
 
 export const DEFAULTS = {
-  pinned: [], savedViews: [], language: "auto", parentsField: "parents",
-  templatesFolder: "", defaultDepth: 1, defaultLayout: "columns", defaultSort: "manual", defaultGrouped: false,
+  pinned: [], savedViews: [], language: "auto", defaultDepth: 1, defaultLayout: "columns", defaultSort: "manual", defaultGrouped: false,
   outlineSort: "manual", previewLength: 600, cardMaxHeight: 360, maxCards: 1000,
 };
 export const UI = Object.assign({ theme: "auto", sideW: 280, editorW: 560, sideOpen: true, lang: "auto" }, lsGet("sn-ui", {}));
@@ -23,6 +22,8 @@ export const vault = {
   sizes: new Map(), // path -> bytes (for the sync size limit)
   mtimes: new Map(), // attachment path -> last modified (for the Files view)
 };
+/** The frontmatter property that lists a card's parents. */
+export const PARENTS_FIELD = "parents";
 export const S = { ...DEFAULTS }; // the vault's settings (services/vault.js keeps them in .supstack/settings.json)
 /** Settings of a newly opened vault: the defaults, then `saved`. */
 export function resetSettings(saved) { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, DEFAULTS, saved); }

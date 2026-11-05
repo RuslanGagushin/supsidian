@@ -10,7 +10,7 @@ const NOTES = {
   "cards/Garden.md": '---\nparents:\n  - "[[Home]]"\n---\nBeds and trees.\n- [ ] water\n- [x] plant\n```\n- [ ] not a task\n```\n- [ ] weed\n',
   "cards/Shed.md": '---\nparents: ["[[Home]]"]\n---\nTools.\n',
   "cards/Tools/Saw.md": '---\nparents: ["[[Shed]]"]\n---\n',
-  "cards/Templates/Plant.md": "---\nicon: sprout\ntags: [plant]\nchild_order: [\"[[x]]\"]\nparents: [\"[[Home]]\"]\nnote: \"{{title}} on {{date:YYYY}}\"\n---\n# {{title}}\nPlanted: {{date}}\n",
+  "cards/Templates/Plant.md": "---\nicon: sprout\ntags: [plant]\nchild_order: [\"[[x]]\"]\nparents: [\"[[Elsewhere]]\"]\nnote: \"{{title}} on {{date:YYYY}}\"\n---\n# {{title}}\nPlanted: {{date}}\n",
 };
 
 describe("create", () => {
@@ -220,7 +220,7 @@ describe("tasks, daily notes and settings", () => {
     });
     const data = JSON.parse(await fsText(".supstack/settings.json"));
     assert.deepEqual(data.pinned, ["cards/Home.md"]);
-    assert.equal(data.parentsField, "parents");
+    assert.equal(data.defaultDepth, 1);
     assert.equal(data.cardsFolder, undefined, "the folders are fixed, not settings");
   });
 
@@ -229,14 +229,14 @@ describe("tasks, daily notes and settings", () => {
     const r = await ev(async () => {
       const fs = vault.fs;
       fs.kind = "disk";
-      fs.add(".obsidian/plugins/supsidian/data.json", JSON.stringify({ pinned: ["cards/A.md"], parentsField: "up", unknown: 1 }));
+      fs.add(".obsidian/plugins/supsidian/data.json", JSON.stringify({ pinned: ["cards/A.md"], defaultDepth: 3, parentsField: "up", unknown: 1 }));
       await loadVault(fs);
       fs.kind = "demo";
-      return { pinned: S.pinned, field: S.parentsField };
+      return { pinned: S.pinned, depth: S.defaultDepth };
     });
-    assert.deepEqual(r, { pinned: ["cards/A.md"], field: "up" });
+    assert.deepEqual(r, { pinned: ["cards/A.md"], depth: 3 });
     const data = JSON.parse(await fsText(".supstack/settings.json"));
-    assert.deepEqual([data.pinned, data.parentsField, data.unknown], [["cards/A.md"], "up", undefined]);
+    assert.deepEqual([data.pinned, data.defaultDepth, data.parentsField, data.unknown], [["cards/A.md"], 3, undefined, undefined], "settings that no longer exist are dropped");
   });
 
   test("notes outside the three folders move into cards/ on open, and pins, the board and links follow", async () => {
@@ -260,10 +260,4 @@ describe("tasks, daily notes and settings", () => {
     assert.deepEqual(r, [["cards/Later.md"], "cards/Later.md", true]);
   });
 
-  test("a custom parents field is used for the hierarchy", async () => {
-    await ev(async () => { S.parentsField = "up"; await writeRaw("cards/Kid.md", '---\nup: ["[[Shed]]"]\n---\n'); });
-    assert.deepEqual(await parentsOf("cards/Kid.md"), ["cards/Shed.md"]);
-    assert.deepEqual(await parentsOf("cards/Garden.md"), [], "the old field is ignored");
-    await settle();
-  });
 });

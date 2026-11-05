@@ -8,7 +8,7 @@ import { HierarchyGraph } from "../core/graph.js";
 import { computeModel } from "../core/board-model.js";
 import { lsGet, lsSet } from "./storage.js";
 import { emit } from "./events.js";
-import { board, DEFAULTS, graph, resetSettings, S, setGraph, tree, undoStack, vault } from "./state.js";
+import { board, DEFAULTS, graph, PARENTS_FIELD, resetSettings, S, setGraph, tree, undoStack, vault } from "./state.js";
 import { ATTACHMENTS, CARDS, DAILY, inFolder, vaultFolder } from "./folders.js";
 import { dropAttachment } from "./attachments.js";
 import { stopSync, syncHook } from "./sync.js";
@@ -17,7 +17,6 @@ export function isMd(p) { return /\.md$/i.test(p); }
 export function isCard(path) {
   if (!isMd(path)) return false;
   if (!inFolder(path, CARDS) && !inFolder(path, DAILY)) return false;
-  if (S.templatesFolder && (path === S.templatesFolder || path.startsWith(S.templatesFolder + "/"))) return false;
   return true;
 }
 export function parseNote(path, raw, mtime) {
@@ -78,7 +77,7 @@ export function linkText(path) {
 }
 export function buildGraph() {
   const g = new HierarchyGraph();
-  const field = S.parentsField || "parents";
+  const field = PARENTS_FIELD;
   for (const n of vault.notes.values()) {
     if (!isCard(n.path)) continue;
     const parents = [], unresolved = [];
@@ -203,12 +202,11 @@ async function gatherNotes() {
   if (moved.size) indexNames();
   return moved;
 }
-/** Pins, saved views, the templates folder, the board and the tree follow notes that moved. */
+/** Pins, saved views, the board and the tree follow notes that moved. */
 function followMoves(moved) {
   const m = (p) => moved.get(p) ?? p;
   S.pinned = S.pinned.map(m);
   S.savedViews = S.savedViews.map((v) => (v.target ? { ...v, target: m(v.target) } : v));
-  if (S.templatesFolder && !inFolder(S.templatesFolder + "/", CARDS) && !inFolder(S.templatesFolder + "/", DAILY)) S.templatesFolder = vaultFolder(CARDS) + "/" + S.templatesFolder;
   board.target = board.target && m(board.target);
   board.history = board.history.map((p) => p && m(p));
   tree.expanded = new Set([...tree.expanded].map((k) => k.split("\u0000").map(m).join("\u0000")));
@@ -220,7 +218,7 @@ export const SETTINGS_PATH = ".supstack/settings.json";
 export const OLD_SETTINGS_PATH = ".obsidian/plugins/supsidian/data.json"; // where versions up to 0.15 kept them; moved on first open
 async function loadSettings() {
   resetSettings(lsGet("sn-settings:" + vault.fs.name, {}));
-  if (vault.fs.kind === "demo") { S.templatesFolder = S.templatesFolder || CARDS + "/Templates"; return; }
+  if (vault.fs.kind === "demo") return;
   let saved = null, moved = false;
   try { saved = JSON.parse(await vault.fs.read(SETTINGS_PATH)); } catch {
     try { saved = JSON.parse(await vault.fs.read(OLD_SETTINGS_PATH)); moved = true; } catch { /* none yet */ }
