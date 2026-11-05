@@ -338,9 +338,9 @@ export const orgLineIsEntry = (ta) => {
   return !!info && !!orgHead(info.rest, todoSet(vault.notes.get(editor.path))).kw;
 };
 
-/** Open a note in the editor with the caret at the end of a line. */
+/** Open a note in the editor with the caret at the end of a line: beside the agenda, which stays in view. */
 export function openEditorAtLine(path, lineIndex) {
-  openEditor(path, { focus: true, keepCaret: true });
+  openEditor(path, { focus: true, keepCaret: true, wide: false });
   setTimeout(() => {
     const ta = $(".sn-editor-text");
     const n = vault.notes.get(path);

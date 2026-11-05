@@ -135,7 +135,7 @@ function copyAttachmentLink(path) {
 async function goToAttachmentNote(path, anchor) {
   const refs = FV.refs?.get(path) || attachmentRefs().get(path) || [];
   if (!refs.length) return;
-  const open = (p) => { if (innerWidth <= 820) FV.sel = null; openEditor(p, { focus: false }); };
+  const open = (p) => { if (innerWidth <= 820) FV.sel = null; openEditor(p, { focus: false, wide: false }); }; // beside the list of files
   if (refs.length === 1) { open(refs[0]); return; }
   const m = new Menu();
   m.label(fvt("pickNote"));

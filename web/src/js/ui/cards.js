@@ -92,7 +92,7 @@ export function renderCard(path, via, depth = 1) {
   const kids = graph.childrenOf(path).length;
   if (kids) head.append(h("button", { cls: "sn-kids", type: "button", text: String(kids), title: t("childCards", { n: kids }), onClick: (e) => { e.stopPropagation(); setTarget(path); } }));
   const add = iconBtn("plus", t("addChild"), async (e) => { e.stopPropagation(); const title = await promptModal(t("addChild") + " → " + baseName(path)); if (title) createCard(title, path); }, "sn-card-edit sn-card-add");
-  const edit = iconBtn("pencil", t("edit"), (e) => { e.stopPropagation(); openEditor(path, { wide: isMod(e), focus: true }); }, "sn-card-edit");
+  const edit = iconBtn("pencil", t("edit"), (e) => { e.stopPropagation(); openEditor(path, { focus: true }); }, "sn-card-edit");
   head.append(add, edit);
   card.append(head);
 
@@ -206,7 +206,6 @@ export function cardMenu(path, via = null) {
   const m = new Menu();
   m.add(t("menuOpenOnBoard"), "layout-dashboard", () => setTarget(path));
   m.add(t("menuEdit"), "pencil", () => openEditor(path));
-  m.add(t("menuEditWide"), "maximize-2", () => openEditor(path, { wide: true }));
   m.sep();
   m.add(t("menuNewChild"), "plus", async () => { const title = await promptModal(t("menuNewChild")); if (title) createCard(title, path); });
   const tpl = templateFor(path);

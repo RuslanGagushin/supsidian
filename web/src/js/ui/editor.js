@@ -27,11 +27,12 @@ export function openEditor(path, o = {}) {
   if (!vault.notes.has(path)) return;
   if (editor.path && editor.path !== path && editor.dirty) saveEditor();
   if (editor.path !== path) editor.propsCollapsed = true;
+  // a note opens as a page in the board's place; put beside the board, it stays there for the next note until the editor closes.
+  // The board's own note is never beside the board: it would show twice, in the editor and in its hero.
+  if (o.wide !== undefined) editor.wide = o.wide;
+  else if (!editor.path) editor.wide = true;
+  if (isBoardNote(path)) editor.wide = true;
   editor.path = path;
-  if (o.wide !== undefined) { editor.wide = o.wide; editor.pageWide = false; }
-  // the board's own note fills the board; that page width goes again with the next note, unless asked for
-  if (isBoardNote(path)) { if (!editor.wide) editor.wide = editor.pageWide = true; }
-  else if (editor.pageWide) editor.wide = editor.pageWide = false;
   if (editor.mode === "source" && o.keepMode !== true) editor.mode = "edit";
   $("#app").classList.add("editor-open");
   $("#app").classList.toggle("editor-wide", editor.wide);
@@ -54,7 +55,6 @@ export function closeEditor(force = false) {
   if (force) { scheduleSave.cancel(); editor.dirty = false; }
   editor.path = null;
   editor.live = null;
-  if (editor.pageWide) editor.wide = editor.pageWide = false;
   $("#app")?.classList.remove("editor-open", "editor-wide");
   $$(".sn-card.is-editing").forEach((c) => c.classList.remove("is-editing"));
   const host = $("#editor");

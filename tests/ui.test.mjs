@@ -80,21 +80,24 @@ describe("board", () => {
     noErrors();
   });
 
-  test("the board's own note is edited as a page in the board's place, never beside its hero", async () => {
+  test("a note is edited as a page in the board's place; the board's own note is never beside its hero", async () => {
     await ev(() => setTarget("cards/Roman Empire.md"));
     await page().click(".sn-hero-tools button[aria-label]:first-child");
     const st = () => ev(() => ({ path: editor.path, wide: editor.wide, board: getComputedStyle($(".sn-main")).display }));
-    const s = await st();
-    assert.equal(s.path, "cards/Roman Empire.md");
-    assert.equal(s.wide, true);
-    assert.equal(s.board, "none", "the cards below the hero are hidden");
-    assert.equal(await ev(() => $$("#editor .sn-editor-head button").some((b) => [t("collapseEditor"), t("menuOpenOnBoard")].includes(b.title))), false, "no way to put it beside its hero");
-    await ev(() => { closeEditor(); openEditor("cards/Colosseum.md"); });
-    assert.equal(await ev(() => editor.wide), false, "a card still opens beside the board");
-    await ev(() => setTarget("cards/Colosseum.md"));
+    const besideBtn = () => ev(() => $$("#editor .sn-editor-head button").some((b) => b.title === t("collapseEditor")));
+    assert.deepEqual(await st(), { path: "cards/Roman Empire.md", wide: true, board: "none" }, "the cards below the hero are hidden");
+    assert.equal(await besideBtn(), false, "no way to put it beside its hero");
+    await page().keyboard.press("Escape");
+    await page().click('.sn-card[data-path="cards/Colosseum.md"] .sn-card-edit:not(.sn-card-add)');
+    assert.deepEqual(await st(), { path: "cards/Colosseum.md", wide: true, board: "none" }, "a card from the list opens as a page too");
+    assert.equal(await besideBtn(), true, "a card can still be put beside the board");
+    await ev(() => $$("#editor .sn-editor-head button").find((b) => b.title === t("collapseEditor")).click());
+    await ev(() => openEditor("cards/Aqueducts.md"));
+    assert.equal(await ev(() => editor.wide), false, "beside the board, the next note stays beside it");
+    await ev(() => setTarget("cards/Aqueducts.md"));
     assert.equal(await ev(() => editor.path), null, "going to the open note's board closes it beside");
     await ev(() => openEditor("cards/Colosseum.md"));
-    assert.equal(await ev(() => editor.wide), true, "opened from anywhere, the board's note fills the board");
+    assert.equal(await ev(() => editor.wide), true, "after closing, the next note opens as a page again");
     noErrors();
   });
 

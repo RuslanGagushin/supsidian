@@ -73,7 +73,7 @@ document.addEventListener("keydown", (e) => {
   }
   if (card) {
     const p = card.dataset.path;
-    if (e.key === "Enter") { e.preventDefault(); if (e.shiftKey) setTarget(p); else openEditor(p, { wide: isMod(e), focus: true }); return; }
+    if (e.key === "Enter") { e.preventDefault(); if (e.shiftKey) setTarget(p); else openEditor(p, { focus: true }); return; }
     if (e.key === " ") { e.preventDefault(); toggleSelect(p); return; }
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteCards(board.selection.size ? [...board.selection] : [p]); return; }
   }
