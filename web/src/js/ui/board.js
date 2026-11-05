@@ -14,7 +14,7 @@ import { boardResize, masonries, Masonry } from "./masonry.js";
 import { cardBodyText, cardMenu, parentChip, renderBody, renderCard, setupClamp } from "./cards.js";
 import { dnd } from "./dnd.js";
 import { renderTree } from "./tree.js";
-import { openEditor } from "./editor.js";
+import { closeEditor, openEditor } from "./editor.js";
 import { setSide } from "./shell.js";
 import { openTasksView, renderTasksView } from "./agenda.js";
 import { fvRenderList, openFilesView, renderFilesView } from "./files.js";
@@ -59,6 +59,8 @@ export function setTarget(path, push = true) {
   board.view = null;
   if (board.history.length > 100) board.history.shift();
   board.target = path;
+  // the board's own note shows in the hero, so it isn't kept open beside it as well
+  if (path && editor.path === path && !editor.wide) closeEditor();
   board.selection.clear();
   board.rendered = 60;
   persistBoard();
@@ -371,12 +373,12 @@ function renderHero(model) {
   hero.append(h("div", { cls: "sn-hero-title-row" }, h("h1", { cls: "sn-hero-title", text: tv ? "#" + tv : target ? baseName(target) : t("allCards") })));
   const tools = h("div", { cls: "sn-hero-tools" });
   if (target) {
-    tools.append(iconBtn("pencil", t("edit"), (e) => openEditor(target, { wide: isMod(e) })));
+    tools.append(iconBtn("pencil", t("edit"), () => openEditor(target, { focus: true })));
     tools.append(iconBtn("more-horizontal", t("more"), (e) => cardMenu(target, null).showBelow(e.currentTarget)));
     const parents = graph.parentsOf(target).filter((p) => graph.has(p));
     if (parents.length) hero.append(h("div", { cls: "sn-chips sn-hero-chips" }, parents.map((p) => parentChip(p))));
     const desc = h("div", { cls: "sn-hero-desc markdown-rendered" + (board.heroCollapsed ? " is-collapsed" : "") });
-    desc.addEventListener("dblclick", (e) => { if (!e.target.closest("a, button, input")) openEditor(target); });
+    desc.addEventListener("dblclick", (e) => { if (!e.target.closest("a, button, input")) openEditor(target, { focus: true }); });
     wireRendered(desc, target);
     renderBody(desc, target, 0);
     hero.append(desc);

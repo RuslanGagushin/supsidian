@@ -28,7 +28,10 @@ export function openEditor(path, o = {}) {
   if (editor.path && editor.path !== path && editor.dirty) saveEditor();
   if (editor.path !== path) editor.propsCollapsed = true;
   editor.path = path;
-  if (o.wide !== undefined) editor.wide = o.wide;
+  if (o.wide !== undefined) { editor.wide = o.wide; editor.pageWide = false; }
+  // the board's own note fills the board; that page width goes again with the next note, unless asked for
+  if (isBoardNote(path)) { if (!editor.wide) editor.wide = editor.pageWide = true; }
+  else if (editor.pageWide) editor.wide = editor.pageWide = false;
   if (editor.mode === "source" && o.keepMode !== true) editor.mode = "edit";
   $("#app").classList.add("editor-open");
   $("#app").classList.toggle("editor-wide", editor.wide);
@@ -42,6 +45,8 @@ export function openEditor(path, o = {}) {
     if (ta && editor.mode !== "read") { ta.focus(); if (!o.keepCaret) ta.setSelectionRange(ta.value.length, ta.value.length); }
   }, 0);
 }
+/** The note the board is showing: it opens as a page in the board's place, never beside its own hero. */
+export function isBoardNote(path) { return !!path && path === board.target && !board.tagView && !board.view; }
 export function closeEditor(force = false) {
   if (!force && editor.dirty) saveEditor();
   const was = editor.path;
@@ -49,6 +54,7 @@ export function closeEditor(force = false) {
   if (force) { scheduleSave.cancel(); editor.dirty = false; }
   editor.path = null;
   editor.live = null;
+  if (editor.pageWide) editor.wide = editor.pageWide = false;
   $("#app")?.classList.remove("editor-open", "editor-wide");
   $$(".sn-card.is-editing").forEach((c) => c.classList.remove("is-editing"));
   const host = $("#editor");
@@ -142,14 +148,15 @@ export function renderEditor() {
   const n = vault.notes.get(path);
   const head = h("div", { cls: "sn-editor-head" });
   head.append(iconBtn("x", t("closeEditor"), () => closeEditor()));
-  head.append(iconBtn(editor.wide ? "minimize-2" : "maximize-2", editor.wide ? t("collapseEditor") : t("expandEditor"), () => { editor.wide = !editor.wide; $("#app").classList.toggle("editor-wide", editor.wide); renderEditor(); for (const m of masonries) m.relayout(false); }, "sn-hide-narrow"));
+  const boardNote = isBoardNote(path);
+  if (!boardNote) head.append(iconBtn(editor.wide ? "minimize-2" : "maximize-2", editor.wide ? t("collapseEditor") : t("expandEditor"), () => { editor.wide = !editor.wide; $("#app").classList.toggle("editor-wide", editor.wide); renderEditor(); for (const m of masonries) m.relayout(false); }, "sn-hide-narrow"));
   const crumbPath = dirName(path);
   head.append(h("div", { cls: "sn-editor-path", title: path }, crumbPath ? crumbPath + " / " : "", h("b", { text: baseName(path) })));
   head.append(h("span", { cls: "sn-save-state" }));
   if (n) {
     head.append(iconBtn("table-of-contents", wt("outline"), (e) => outlineMenu(e.currentTarget)));
     head.append(iconBtn("focus", UI.focus ? wt("focusExit") : wt("focus"), () => setFocusMode(!UI.focus), UI.focus ? "is-active" : ""));
-    head.append(iconBtn("layout-dashboard", t("menuOpenOnBoard"), () => setTarget(path)));
+    if (!boardNote) head.append(iconBtn("layout-dashboard", t("menuOpenOnBoard"), () => setTarget(path)));
     const modeBtn = iconBtn(editor.mode === "read" ? "pencil" : "book-open", editor.mode === "read" ? t("editingView") : t("readingView"), async () => { if (editor.dirty) await saveEditor(); editor.mode = editor.mode === "read" ? "edit" : "read"; renderEditor(); if (editor.mode === "edit") $(".sn-editor-text")?.focus(); });
     head.append(modeBtn);
     const src = iconBtn("code-2", t("sourceMode"), async () => { if (editor.dirty) await saveEditor(); editor.mode = editor.mode === "source" ? "edit" : "source"; renderEditor(); $(".sn-editor-text")?.focus(); });

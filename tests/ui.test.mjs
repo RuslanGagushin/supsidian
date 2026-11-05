@@ -80,6 +80,24 @@ describe("board", () => {
     noErrors();
   });
 
+  test("the board's own note is edited as a page in the board's place, never beside its hero", async () => {
+    await ev(() => setTarget("cards/Roman Empire.md"));
+    await page().click(".sn-hero-tools button[aria-label]:first-child");
+    const st = () => ev(() => ({ path: editor.path, wide: editor.wide, board: getComputedStyle($(".sn-main")).display }));
+    const s = await st();
+    assert.equal(s.path, "cards/Roman Empire.md");
+    assert.equal(s.wide, true);
+    assert.equal(s.board, "none", "the cards below the hero are hidden");
+    assert.equal(await ev(() => $$("#editor .sn-editor-head button").some((b) => [t("collapseEditor"), t("menuOpenOnBoard")].includes(b.title))), false, "no way to put it beside its hero");
+    await ev(() => { closeEditor(); openEditor("cards/Colosseum.md"); });
+    assert.equal(await ev(() => editor.wide), false, "a card still opens beside the board");
+    await ev(() => setTarget("cards/Colosseum.md"));
+    assert.equal(await ev(() => editor.path), null, "going to the open note's board closes it beside");
+    await ev(() => openEditor("cards/Colosseum.md"));
+    assert.equal(await ev(() => editor.wide), true, "opened from anywhere, the board's note fills the board");
+    noErrors();
+  });
+
   test("depth ∞ over a parent cycle finishes", async () => {
     await ev(() => { board.depth = 0; setTarget("cards/Cycle A.md"); });
     assert.deepEqual(await titles(), ["Cycle B"]);

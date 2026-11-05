@@ -35,6 +35,6 @@ export const board = {
   history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
 };
 export const tree = { expanded: new Set() };
-export const editor = { path: null, mode: "edit", dirty: false, saving: false, wide: false, propsCollapsed: true };
+export const editor = { path: null, mode: "edit", dirty: false, saving: false, wide: false, pageWide: false, propsCollapsed: true };
 export const undoStack = [];
 
