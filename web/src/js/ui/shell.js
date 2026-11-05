@@ -13,7 +13,7 @@ import { $, h, ic, iconBtn } from "./dom.js";
 import { defaultEcho, echo, Menu, minibufPick, notice, openLayer, promptModal } from "./ui.js";
 import { createCard, quickOpen, saveCurrentView, togglePin } from "./actions.js";
 import { masonries } from "./masonry.js";
-import { goBack, patchBoard, renderBoard, setTarget, toggleSearch } from "./board.js";
+import { goBack, LAYOUTS, patchBoard, renderBoard, setLayout, setTarget, toggleSearch } from "./board.js";
 import { renderTree, renderTreeSoft, revealInTree } from "./tree.js";
 import { closeEditor, openEditor, renderEditor, syncEditorFromDisk } from "./editor.js";
 import { renderEditorProps } from "./editor-toolbar.js";
@@ -87,8 +87,7 @@ function commandList() {
   add(t("allCards"), "home", () => setTarget(null));
   add(t("searchAndFilters").replace(/ \(.*\)$/, ""), "search", () => toggleSearch(true), "C-f");
   for (const d of [1, 2, 3, 0]) add(t("cmdDepth", { d: d || "∞" }), "list-tree", () => { board.depth = d; persistBoard(); renderBoard(); });
-  add(t("cmdLayout", { l: t("layoutColumns") }), "layout-grid", () => { board.layout = "columns"; persistBoard(); renderBoard(); });
-  add(t("cmdLayout", { l: t("layoutList") }), "rows-3", () => { board.layout = "list"; persistBoard(); renderBoard(); });
+  for (const [v, icn, label] of LAYOUTS()) add(t("cmdLayout", { l: label }), icn, () => setLayout(v));
   for (const [v, k] of [["manual", "sortManual"], ["name", "sortName"], ["modified", "sortModified"], ["created", "sortCreated"]]) add(t("cmdSort", { s: t(k) }), "arrow-up-down", () => { board.sort = v; persistBoard(); renderBoard(); });
   add(t("groupByParent"), "group", () => { board.grouped = !board.grouped; persistBoard(); renderBoard(); });
   add(board.selectMode ? t("selectModeOff") : t("selectMode"), "check-square", () => { board.selectMode = !board.selectMode; if (!board.selectMode) board.selection.clear(); renderBoard(); });
@@ -142,6 +141,7 @@ function renderAll() {
   app.classList.toggle("focus-mode", !!UI.focus);
   document.documentElement.style.setProperty("--side-w", UI.sideW + "px");
   document.documentElement.style.setProperty("--editor-w", UI.editorW + "px");
+  document.documentElement.style.setProperty("--list-w", (UI.listW || 380) + "px");
   const vaultMenu = (e) => {
     const m = new Menu();
     if (vault.fs.kind === "disk") m.add(t("reload"), "refresh-cw", async () => { await loadVault(vault.fs); notice(t("vaultReloaded")); });
@@ -174,7 +174,13 @@ function renderAll() {
   makeResizer(sideRes, (dx, start) => { UI.sideW = Math.max(180, Math.min(520, start + dx)); document.documentElement.style.setProperty("--side-w", UI.sideW + "px"); }, () => UI.sideW);
   const main = h("div", { cls: "sn-main win" }, h("div", { cls: "sn-board-host" }, h("div", { id: "board", cls: "sn-board", tabindex: "0" })));
   const edRes = h("div", { cls: "sn-resizer is-editor" });
-  makeResizer(edRes, (dx, start) => { UI.editorW = Math.max(340, Math.min(innerWidth - 440 - (document.getElementById("app").classList.contains("side-closed") ? 0 : UI.sideW), start - dx)); document.documentElement.style.setProperty("--editor-w", UI.editorW + "px"); }, () => UI.editorW);
+  // the same handle sizes the note beside the board, or, in the list of notes, the list beside the note
+  const sideNow = () => (document.getElementById("app").classList.contains("side-closed") ? 0 : UI.sideW);
+  const listing = () => document.getElementById("app").classList.contains("notes-layout");
+  makeResizer(edRes, (dx, start) => {
+    if (listing()) { UI.listW = Math.max(260, Math.min(innerWidth - 420 - sideNow(), 640, start + dx)); document.documentElement.style.setProperty("--list-w", UI.listW + "px"); return; }
+    UI.editorW = Math.max(340, Math.min(innerWidth - 440 - sideNow(), start - dx)); document.documentElement.style.setProperty("--editor-w", UI.editorW + "px");
+  }, () => (listing() ? UI.listW || 380 : UI.editorW));
   const ed = h("div", { cls: "sn-editor win", id: "editor" });
   const scrim = h("div", { cls: "sn-side-scrim", onClick: () => setSide(false) });
   const frame = h("div", { cls: "wb-frame" }, side, scrim, sideRes, main, edRes, ed);
@@ -217,7 +223,7 @@ export function settingsModal(tab) {
     ]],
     ["board", t("sectionBoard"), "layout-grid", () => [
       item(t("setDefaultDepth"), null, select(S.defaultDepth, [[1, "1"], [2, "2"], [3, "3"], [0, "∞"]], (v) => { S.defaultDepth = Number(v); save(); })),
-      item(t("setDefaultLayout"), null, select(S.defaultLayout, [["columns", t("layoutColumns")], ["list", t("layoutList")]], (v) => { S.defaultLayout = v; save(); })),
+      item(t("setDefaultLayout"), null, select(S.defaultLayout, LAYOUTS().map(([v, , l]) => [v, l]), (v) => { S.defaultLayout = v; save(); })),
       item(t("setDefaultSort"), null, select(S.defaultSort, [["manual", t("sortManual")], ["name", t("sortName")], ["modified", t("sortModified")], ["created", t("sortCreated")]], (v) => { S.defaultSort = v; save(); })),
       item(t("setPreview"), t("setPreviewDesc"), text(S.previewLength, "600", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.previewLength = Math.floor(n); save(); } }, "number")),
       item(t("setCardHeight"), t("setCardHeightDesc"), text(S.cardMaxHeight, "360", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.cardMaxHeight = Math.floor(n); save(); } }, "number")),

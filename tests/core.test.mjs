@@ -9,7 +9,7 @@ import { runInThisContext } from "node:vm";
 runInThisContext(readFileSync(new URL("../web/src/vendor/js-yaml.js", import.meta.url), "utf8"));
 
 const { t, pluralIndex, setLang, LANG } = await import("../web/src/js/core/i18n.js");
-const { baseName, dirName, norm, esc } = await import("../web/src/js/core/util.js");
+const { baseName, dirName, norm, esc, plainText } = await import("../web/src/js/core/util.js");
 const { formatMoment } = await import("../web/src/js/core/dates.js");
 const fm = await import("../web/src/js/core/frontmatter.js");
 const { HierarchyGraph, groupByTopLevel, reorderBlock } = await import("../web/src/js/core/graph.js");
@@ -206,5 +206,16 @@ describe("tables", () => {
     const tb = tables.findTables(text)[0];
     const r = tables.tableEdit(text, tb, "rowBelow", 1, 0);
     assert.equal(r.insert.split("\n").length, 4);
+  });
+});
+
+describe("plain text previews", () => {
+  test("plainText keeps the words of a note and drops its Markdown", () => {
+    const md = "## Rates\n\n| Format | Hours |\n| --- | :-: |\n| Call | 0.5–1 h |\n\n- [ ] **buy** [[Milk|milk]] at [the shop](http://x)\n> [!info]+ Tip\n> text `code`\n```js\nlet x = 1\n```\n![[a.png]] ![alt](b.jpg) end";
+    assert.equal(plainText(md), "Rates Format Hours Call 0.5–1 h buy milk at the shop Tip text code end");
+  });
+  test("plainText links show their target or alias, and the text is cut to a length", () => {
+    assert.equal(plainText("See [[Notes/Rome#Forum]] and [[Rome|the city]]"), "See Notes/Rome and the city");
+    assert.equal(plainText("word ".repeat(100), 20), "word word word word ");
   });
 });

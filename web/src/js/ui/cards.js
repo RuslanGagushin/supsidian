@@ -2,10 +2,11 @@
    Card rendering: a card on the board, its body preview, chips and menu
    ========================================================= */
 import { LANG, t, tt } from "../core/i18n.js";
-import { baseName, norm } from "../core/util.js";
+import { baseName, norm, plainText } from "../core/util.js";
 import { board, editor, graph, S, vault } from "../services/state.js";
 import { cardIcon, linkText } from "../services/vault.js";
 import { cardTaskProgress } from "../services/tasks.js";
+import { attachmentUrl, firstImage } from "../services/attachments.js";
 import { $, h, ic, iconBtn, isMod } from "./dom.js";
 import { echo, Menu, notice, promptModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
@@ -154,6 +155,87 @@ export function renderCard(path, via, depth = 1) {
   dnd.draggable(card, () => ({ child: path, from: via }));
   dnd.dropTarget(card, () => ({ path, parent: via }));
   return card;
+}
+/** A note as a row in the list of notes: where it sits and when it changed, its title, two lines of its text, its tags and the first image.
+   Clicking it (or, on a wide screen, moving onto it with the arrow keys: see keyboard.js) opens it beside the list. */
+export function renderRow(path, via, depth = 1) {
+  const own = path === board.target && !board.tagView;
+  const row = h("div", { cls: "sn-card sn-row" + (own ? " is-own" : ""), tabindex: "-1" });
+  row.dataset.path = path;
+  row.dataset.via = via ?? "";
+  row.dataset.depth = String(depth || 1);
+  if (board.selection.has(path)) row.classList.add("is-picked");
+  if (editor.path === path) row.classList.add("is-editing");
+  const n = vault.notes.get(path);
+  const text = h("div", { cls: "sn-row-text" });
+
+  const meta = h("div", { cls: "sn-row-meta" });
+  const parents = graph.parentsOf(path).filter((p) => graph.has(p));
+  const where = own ? null : via && parents.includes(via) ? via : parents.find((p) => p !== board.target) ?? null;
+  if (own) meta.append(ic("sn-row-meta-icon", cardIcon(path) || "layers", "layers"), h("span", { text: t("rowOwnNote") }));
+  else if (where && where !== board.target) meta.append(h("a", { cls: "sn-row-parent", href: "#", text: baseName(where), onClick: (e) => { e.preventDefault(); e.stopPropagation(); setTarget(where); } }));
+  const mtime = n?.mtime || 0;
+  meta.append(h("span", { cls: "sn-row-date", text: formatDate(mtime), title: t("modifiedAt", { date: new Date(mtime).toLocaleString(LANG) }) }));
+  const prog = cardTaskProgress(path);
+  if (prog) meta.append(h("span", { cls: "sn-task-prog" + (prog.done === prog.n ? " is-complete" : ""), title: tt("progress", prog) }, ic("", "square-check"), h("span", { text: `${prog.done}/${prog.n}` })));
+  text.append(meta);
+
+  const head = h("div", { cls: "sn-row-head" });
+  const iconName = cardIcon(path);
+  if (iconName && !own) head.append(ic("sn-card-icon", iconName, "file-text"));
+  head.append(h("span", { cls: "sn-row-title", text: baseName(path) }));
+  const kids = own ? 0 : graph.childrenOf(path).length;
+  if (kids) head.append(h("button", { cls: "sn-kids", type: "button", text: String(kids), title: t("childCards", { n: kids }), onClick: (e) => { e.stopPropagation(); setTarget(path); } }));
+  text.append(head);
+
+  let snippet = plainText(n?.body || "", 320);
+  if (board.filter.query.trim()) {
+    // the match may be further in: start the preview a little before it
+    const q = norm(board.filter.query).split(/\s+/).filter(Boolean)[0], full = plainText(n?.body || "", 20000), i = norm(full).indexOf(q);
+    if (i > 120) snippet = "…" + full.slice(full.lastIndexOf(" ", i - 40) + 1, i + 280);
+  }
+  if (snippet) {
+    const sn = h("div", { cls: "sn-row-snippet", text: snippet });
+    if (board.filter.query.trim()) highlight(sn, norm(board.filter.query).split(/\s+/).filter(Boolean));
+    text.append(sn);
+  }
+  const tags = n?.tags || [];
+  if (tags.length) {
+    const tr = h("div", { cls: "sn-tags sn-row-tags" });
+    for (const tg of tags) tr.append(h("span", { cls: "sn-tag", text: tg.replace(/^#/, ""), onClick: (e) => { e.stopPropagation(); openTagView(tg); } }));
+    text.append(tr);
+  }
+  row.append(text);
+
+  const img = firstImage(path);
+  if (img) {
+    const thumb = h("img", { cls: "sn-row-thumb", alt: "", draggable: "false" });
+    attachmentUrl(img).then((u) => { thumb.src = u; }).catch(() => thumb.remove());
+    row.append(thumb);
+  }
+
+  row.addEventListener("contextmenu", (e) => cardMenu(path, via).showAtEvent(e));
+  row.addEventListener("click", (e) => {
+    if (e.shiftKey || board.selectMode) { e.preventDefault(); toggleSelect(path); return; }
+    if (e.target.closest("a, button, input")) return;
+    row.focus({ preventScroll: true });
+    if (editor.path !== path || !$("#app").classList.contains("editor-open")) openEditor(path, { focus: false, wide: false });
+  });
+  row.addEventListener("dblclick", (e) => {
+    if (e.target.closest("a, button, input") || e.shiftKey || board.selectMode) return;
+    e.preventDefault();
+    openEditor(path, { focus: true, wide: false });
+  });
+  row.addEventListener("focus", () => {
+    setLastFocused(path);
+    echo(t("rowHint", { name: baseName(path) }), { hint: true });
+  });
+  attachLongPress(row, (ev) => cardMenu(path, via).showAtEvent(ev));
+  if (!own) {
+    dnd.draggable(row, () => ({ child: path, from: via }));
+    dnd.dropTarget(row, () => ({ path, parent: via }));
+  } else dnd.dropTarget(row, () => ({ path, parent: null, zones: ["inside"] }));
+  return row;
 }
 export function setupClamp(card) {
   const body = $(".sn-card-body", card);

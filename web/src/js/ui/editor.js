@@ -30,7 +30,7 @@ export function openEditor(path, o = {}) {
   // a note opens as a page in the board's place; put beside the board, it stays there for the next note until the editor closes.
   // The board's own note is never beside the board: it would show twice, in the editor and in its hero.
   if (o.wide !== undefined) editor.wide = o.wide;
-  else if (!editor.path) editor.wide = true;
+  else if (!editor.path) editor.wide = board.layout !== "notes" || !!board.view;
   if (isBoardNote(path)) editor.wide = true;
   editor.path = path;
   if (editor.mode === "source" && o.keepMode !== true) editor.mode = "edit";
@@ -38,7 +38,7 @@ export function openEditor(path, o = {}) {
   $("#app").classList.toggle("editor-wide", editor.wide);
   renderEditor();
   $$(".sn-card.is-editing").forEach((c) => c.classList.remove("is-editing"));
-  $$(`.sn-card[data-path="${CSS.escape(path)}"]`).forEach((c) => c.classList.add("is-editing"));
+  $$(`.sn-card[data-path="${CSS.escape(path)}"]`).forEach((c) => { c.classList.add("is-editing"); if (c.classList.contains("sn-row")) c.scrollIntoView({ block: "nearest" }); });
   if (board.cardSigs) for (const p of [path, ...board.cardSigs.keys()]) if (board.cardSigs.has(p)) board.cardSigs.set(p, cardSig(p));
   if (o.focus === false) return;
   setTimeout(() => {
@@ -47,7 +47,8 @@ export function openEditor(path, o = {}) {
   }, 0);
 }
 /** The note the board is showing: it opens as a page in the board's place, never beside its own hero. */
-export function isBoardNote(path) { return !!path && path === board.target && !board.tagView && !board.view; }
+// In the list of notes there is no hero: the board's own note is a row of the list and opens beside it like the others.
+export function isBoardNote(path) { return !!path && path === board.target && !board.tagView && !board.view && board.layout !== "notes"; }
 export function closeEditor(force = false) {
   if (!force && editor.dirty) saveEditor();
   const was = editor.path;

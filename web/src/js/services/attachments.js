@@ -73,3 +73,19 @@ export async function saveAttachment(file, notePath, pasted) {
   syncHook("create", path);
   return path;
 }
+/** The first image a note shows (an embed of an image file in the vault), for its thumbnail in the list of notes; null without one. */
+export function firstImage(path) {
+  const n = vault.notes.get(path);
+  if (!n || !/!\[/.test(n.body)) return null;
+  const body = stripCode(n.body);
+  let best = null;
+  for (const [re, md] of [[FILE_WIKI_RE, false], [FILE_MD_RE, true]]) {
+    for (const m of body.matchAll(re)) {
+      if (best && m.index > best.i) break;
+      if (!m[1].startsWith("!")) continue;
+      const f = fileTarget(m[2], path, md);
+      if (f && IMG_EXT.test(f)) { best = { i: m.index, f }; break; }
+    }
+  }
+  return best?.f ?? null;
+}

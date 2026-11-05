@@ -16,7 +16,7 @@ import { openTasksView } from "./agenda.js";
 import { openFilesView } from "./files.js";
 
 function spatialNext(from, dir) {
-  const cards = $$(".sn-board .sn-masonry .sn-card");
+  const cards = $$(".sn-board :is(.sn-masonry, .sn-rows) .sn-card");
   if (!from) return cards[0];
   const r = from.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -57,7 +57,7 @@ document.addEventListener("keydown", (e) => {
   if (openMenuEl) { if (e.key === "Escape") closeMenu(); return; }
   if (tgt.closest?.(".sn-editor") || tgt.closest?.(".sn-side")) { if (e.key === "Escape" && editor.path && !tgt.closest?.(".sn-side")) closeEditor(); return; }
   const card = tgt.closest?.(".sn-card");
-  if (isMod(e) && k === "a") { e.preventDefault(); $$(".sn-board .sn-masonry .sn-card").forEach((c) => board.selection.add(c.dataset.path)); renderBoard(); return; }
+  if (isMod(e) && k === "a") { e.preventDefault(); $$(".sn-board :is(.sn-masonry, .sn-rows) .sn-card").forEach((c) => board.selection.add(c.dataset.path)); renderBoard(); return; }
   if (e.key === "Escape") {
     if (board.selection.size) { board.selection.clear(); renderBoard(); return; }
     if (editor.path) { closeEditor(); return; }
@@ -68,7 +68,11 @@ document.addEventListener("keydown", (e) => {
     if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); goBack(); return; }
     if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); if (board.target) { const ps = graph.parentsOf(board.target).filter((p) => graph.has(p)).sort(manualCmp); setTarget(ps[0] ?? null); } return; }
     const next = spatialNext(card || (lastFocused && $(`.sn-board .sn-card[data-path="${CSS.escape(lastFocused)}"]`)), e.key);
-    if (next) { e.preventDefault(); next.focus(); next.scrollIntoView({ block: "nearest" }); }
+    if (next) {
+      e.preventDefault(); next.focus(); next.scrollIntoView({ block: "nearest" });
+      // in the list of notes the arrows page through the notes beside it; on a phone a note would cover the list
+      if (next.classList.contains("sn-row") && innerWidth > 820 && !board.selectMode) openEditor(next.dataset.path, { focus: false, wide: false });
+    }
     return;
   }
   if (card) {

@@ -237,7 +237,7 @@ export async function saveCurrentView() {
 }
 export function applyView(v) {
   board.history.push(board.target);
-  Object.assign(board, { target: v.target && graph.has(v.target) ? v.target : null, depth: v.depth ?? board.depth, layout: v.layout === "list" ? "list" : "columns", sort: v.sort ?? board.sort, grouped: !!v.grouped });
+  Object.assign(board, { target: v.target && graph.has(v.target) ? v.target : null, depth: v.depth ?? board.depth, layout: ["list", "notes"].includes(v.layout) ? v.layout : "columns", sort: v.sort ?? board.sort, grouped: !!v.grouped });
   board.filter = { query: v.filter?.query || "", tags: v.filter?.tags || [] };
   board.searchOpen = !!(board.filter.query || board.filter.tags.length);
   board.selection.clear(); board.rendered = 60;

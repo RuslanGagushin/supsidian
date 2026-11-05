@@ -746,3 +746,84 @@ describe("no note colors", () => {
     noErrors();
   });
 });
+
+describe("list of notes", () => {
+  const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR42mP8z8DwnwEIGBmgAA5BAQBnLwP9VQyO8wAAAABJRU5ErkJggg==";
+  beforeEach(() => openVault({ notes: { "cards/Pics.md": "---\nparents: [\"[[History]]\"]\n---\nSome **photo** here\n\n![[pic.png]]\n" } }));
+  const rows = () => ev(() => [...document.querySelectorAll("#board .sn-rows .sn-row")].map((r) => r.dataset.path.replace(/^cards\/|\.md$/g, "")));
+
+  test("the notes layout lists the card's own note and its children, and opens the first child beside the list", async () => {
+    await ev(() => { setLayout("notes"); setTarget("cards/History.md"); });
+    assert.deepEqual(await rows(), ["History", "Pics", "Roman Empire"]);
+    const r = await ev(() => ({
+      path: editor.path, wide: editor.wide, app: document.getElementById("app").className,
+      list: document.querySelector(".sn-main").getBoundingClientRect().width, note: document.querySelector(".sn-editor").getBoundingClientRect().width,
+      own: document.querySelector(".sn-row.is-own .sn-row-meta").textContent, snippet: document.querySelector('.sn-row[data-path="cards/Pics.md"] .sn-row-snippet').textContent,
+      editing: document.querySelector(".sn-row.is-editing")?.dataset.path,
+    }));
+    assert.equal(r.path, "cards/Pics.md");
+    assert.equal(r.wide, false);
+    assert.match(r.app, /notes-layout/);
+    assert.equal(Math.round(r.list), 380);
+    assert.ok(r.note > 500, "the note takes the rest of the width");
+    assert.match(r.own, /^This card/);
+    assert.equal(r.snippet, "Some photo here");
+    assert.equal(r.editing, "cards/Pics.md");
+    noErrors();
+  });
+
+  test("a click or the arrow keys open a note beside the list; the card's own note opens there too", async () => {
+    await ev(() => { setLayout("notes"); setTarget("cards/History.md"); });
+    await page().click('.sn-row[data-path="cards/Roman Empire.md"]');
+    assert.equal(await ev(() => editor.path), "cards/Roman Empire.md");
+    await page().keyboard.press("ArrowUp");
+    assert.equal(await ev(() => editor.path), "cards/Pics.md");
+    await page().keyboard.press("ArrowUp");
+    assert.deepEqual(await ev(() => [editor.path, editor.wide, !!document.querySelector(".sn-board .sn-row.is-own")]), ["cards/History.md", false, true]);
+    // Enter puts the caret in the note
+    await page().keyboard.press("Enter");
+    await page().waitForFunction(() => !!document.activeElement.closest(".sn-editor"));
+    noErrors();
+  });
+
+  test("the first image of a note is its thumbnail", async () => {
+    await ev(async (b64) => { const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); vault.fs.add("attachments/pic.png", new Blob([bin], { type: "image/png" })); await loadVault(vault.fs); }, PNG);
+    await ev(() => { setLayout("notes"); setTarget("cards/History.md"); });
+    await page().waitForFunction(() => document.querySelector('.sn-row[data-path="cards/Pics.md"] .sn-row-thumb')?.naturalWidth === 2);
+    assert.equal(await ev(() => document.querySelectorAll(".sn-row-thumb").length), 1);
+    noErrors();
+  });
+
+  test("expanding the note hides the list, closing it gives the list the whole width, and other layouts close a note beside them", async () => {
+    await ev(() => { setLayout("notes"); setTarget("cards/History.md"); });
+    await ev(() => document.querySelector(".sn-editor-head .clickable-icon:nth-child(2)").click());
+    assert.deepEqual(await ev(() => [editor.wide, getComputedStyle(document.querySelector(".sn-main")).display]), [true, "none"]);
+    await ev(() => document.querySelector(".sn-editor-head .clickable-icon:nth-child(2)").click());
+    assert.equal(await ev(() => Math.round(document.querySelector(".sn-main").getBoundingClientRect().width)), 380);
+    await ev(() => closeEditor());
+    await page().waitForTimeout(50); // the closed note's row takes the focus back, which must not open it again
+    assert.deepEqual(await ev(() => [editor.path, document.querySelector(".sn-main").getBoundingClientRect().width > 900]), [null, true]);
+    await ev(() => openEditor("cards/Pics.md", { focus: false, wide: false }));
+    await ev(() => setLayout("columns"));
+    assert.deepEqual(await ev(() => [editor.path, document.getElementById("app").classList.contains("notes-layout")]), [null, false]);
+    noErrors();
+  });
+
+  test("a search shows the part of the text that matches", async () => {
+    await openVault({ notes: { "cards/Long.md": "intro " + "filler words ".repeat(40) + "the needle is here" } });
+    await ev(() => { setLayout("notes"); board.filter = { query: "needle", tags: [], scope: "all" }; board.searchOpen = true; renderBoard(true); });
+    const r = await ev(() => { const el = document.querySelector('.sn-row[data-path="cards/Long.md"] .sn-row-snippet'); return { text: el.textContent, mark: el.querySelector("mark")?.textContent }; });
+    assert.match(r.text, /^…/);
+    assert.equal(r.mark, "needle");
+    noErrors();
+  });
+
+  test("on a phone the list fills the screen and a tap opens the note", async () => {
+    await openVault({ viewport: { width: 390, height: 800 } });
+    await ev(() => { setLayout("notes"); setTarget("cards/History.md"); });
+    assert.equal(await ev(() => editor.path), null, "nothing opens by itself over the list");
+    await page().click('.sn-row[data-path="cards/Roman Empire.md"]');
+    assert.equal(await ev(() => editor.path), "cards/Roman Empire.md");
+    noErrors();
+  });
+});

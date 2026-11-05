@@ -11,7 +11,7 @@ import { Menu } from "./ui.js";
 import { wireRendered } from "./markdown.js";
 import { createCard, deleteCards, dropCards, promptAddParent, promptIcon, promptMove, saveCurrentView } from "./actions.js";
 import { boardResize, masonries, Masonry } from "./masonry.js";
-import { cardBodyText, cardMenu, parentChip, renderBody, renderCard, setupClamp } from "./cards.js";
+import { cardBodyText, cardMenu, parentChip, renderBody, renderCard, renderRow, setupClamp } from "./cards.js";
 import { dnd } from "./dnd.js";
 import { renderTree } from "./tree.js";
 import { closeEditor, openEditor } from "./editor.js";
@@ -60,7 +60,7 @@ export function setTarget(path, push = true) {
   if (board.history.length > 100) board.history.shift();
   board.target = path;
   // the board's own note shows in the hero, so it isn't kept open beside it as well
-  if (path && editor.path === path && !editor.wide) closeEditor();
+  if (path && editor.path === path && !editor.wide && board.layout !== "notes") closeEditor();
   board.selection.clear();
   board.rendered = 60;
   persistBoard();
@@ -94,6 +94,7 @@ export function renderBoard(resetScroll = false) {
   const root = $("#board");
   if (!root || !vault.fs) return;
   $("#files-btn")?.classList.toggle("is-active", board.view === "files");
+  $("#app")?.classList.toggle("notes-layout", isNotesLayout());
   if (board.view === "tasks") { renderTasksView(root); return; }
   if (board.view === "files") { renderFilesView(root); return; }
   const oldScroll = root.querySelector(".sn-scroll");
@@ -106,7 +107,7 @@ export function renderBoard(resetScroll = false) {
   if (board.target && !graph.has(board.target)) board.target = null;
   if (board.tagView && !board.filter.tags.includes(board.tagView)) board.tagView = null;
   const model = boardModel();
-  root.className = "sn-board" + (board.layout === "list" ? " is-list" : "") + (board.selectMode ? " is-select-mode" : "");
+  root.className = "sn-board" + (board.layout === "list" ? " is-list" : board.layout === "notes" ? " is-notes" : "") + (board.selectMode ? " is-select-mode" : "");
   root.replaceChildren();
   masonries.length = 0;
   sentinelObs?.disconnect();
@@ -120,57 +121,15 @@ export function renderBoard(resetScroll = false) {
   boardResize.disconnect();
   boardResize.observe(scroll);
 
-  page.append(renderHero(model));
+  const notes = board.layout === "notes";
   const composer = renderComposer();
-  const mainBlock = model.blocks[0];
-  const main = new Masonry(page);
-  masonries.push(main);
-  main.add(composer.el);
-  const cards = [];
-  const addCards = (m, list) => { for (const c of list) { const el = renderCard(c.path, c.via, c.depth); m.add(el); cards.push(el); } };
-  const grouped = model.blocks.length > 1;
-  if (grouped) {
-    addCards(main, mainBlock.cards);
-    for (const b of model.blocks.slice(1)) {
-      const g = h("div", { cls: "sn-group" });
-      const headEl = h("div", { cls: "sn-group-head" });
-      const title = h("a", { cls: "sn-group-title", href: "#" }, ic("sn-group-icon", cardIcon(b.head) || "layers", "layers"), h("span", { text: baseName(b.head) }));
-      title.addEventListener("click", (e) => { e.preventDefault(); setTarget(b.head); });
-      headEl.append(title, h("span", { cls: "sn-group-count", text: String(b.cards.length - 1) }));
-      dnd.dropTarget(headEl, () => ({ path: b.head, parent: null, zones: ["inside"] }));
-      g.append(headEl);
-      page.append(g);
-      const m = new Masonry(g);
-      masonries.push(m);
-      addCards(m, b.cards);
-    }
-  } else {
-    const list = mainBlock.cards;
-    const first = Math.min(list.length, Math.max(60, board.rendered));
-    addCards(main, list.slice(0, first));
-    let done = first;
-    if (done < list.length) {
-      const sentinel = h("div", { cls: "sn-sentinel" });
-      page.append(sentinel);
-      sentinelObs = new IntersectionObserver((entries) => {
-        if (!entries.some((e) => e.isIntersecting)) return;
-        const next = list.slice(done, done + 40);
-        const start = cards.length;
-        addCards(main, next);
-        cards.slice(start).forEach(setupClamp);
-        done += next.length;
-        board.rendered = done;
-        if (done >= list.length) { sentinelObs.disconnect(); sentinel.remove(); }
-      }, { root: scroll, rootMargin: "600px" });
-      sentinelObs.observe(sentinel);
-    }
-  }
-  cards.forEach(setupClamp);
+  const cards = notes ? renderRows(page, scroll, model, composer) : renderCards(page, scroll, model, composer);
+  if (!notes) cards.forEach(setupClamp);
   if (!model.shown.length) page.append(h("div", { cls: "sn-empty", text: model.active ? t("noMatches") : t("noCards") }));
-  const notes = [];
-  if (model.all.skippedRepeats && !model.active) notes.push(t("repeatsSkipped", { n: model.all.skippedRepeats }));
-  if (model.truncated) notes.push(t("truncatedNote", { n: S.maxCards }));
-  if (notes.length) page.append(h("div", { cls: "sn-footnote", text: notes.join(" · ") }));
+  const footnotes = [];
+  if (model.all.skippedRepeats && !model.active) footnotes.push(t("repeatsSkipped", { n: model.all.skippedRepeats }));
+  if (model.truncated) footnotes.push(t("truncatedNote", { n: S.maxCards }));
+  if (footnotes.length) page.append(h("div", { cls: "sn-footnote", text: footnotes.join(" · ") }));
   root.append(h("div", { id: "selbar-host" }));
   board.lastModel = model;
   renderSelbar();
@@ -187,6 +146,105 @@ export function renderBoard(resetScroll = false) {
   if (focusComposer) { composer.input.value = focusComposer.value; composer.input.focus(); composer.grow(); }
   else if (focusSearch) { const si = $(".sn-search-input", root); si?.focus(); si?.setSelectionRange(focusSearch.pos, focusSearch.pos); }
   else if (focusCard) $(`.sn-card[data-path="${CSS.escape(focusCard)}"]`, root)?.focus({ preventScroll: true });
+  if (notes && resetScroll) openFirstNote(model);
+}
+/** The board as a list of notes with the open note beside it (not the agenda or the files, which have their own lists). */
+export const isNotesLayout = () => board.layout === "notes" && !board.view;
+/** In the list of notes, a move to another list opens its first note beside it, as a mail app does,
+   unless the note already open is in the new list. On a phone the note would cover the list, so nothing opens there. */
+function openFirstNote(model) {
+  if (innerWidth <= 820) return;
+  const inList = (p) => p === board.target || model.shown.some((c) => c.path === p);
+  const keep = editor.path && inList(editor.path) ? editor.path : null;
+  const path = keep || model.shown[0]?.path || (board.target && !board.tagView ? board.target : null);
+  if (!path) { if (editor.path && editor.wide) closeEditor(); return; }
+  if (path === editor.path && !editor.wide) return;
+  openEditor(path, { focus: false, wide: false });
+}
+/** Lay out a long list a part at a time: the first part now, the rest as the page scrolls near its end. */
+function lazyAdd(page, scroll, list, add) {
+  const first = Math.min(list.length, Math.max(60, board.rendered));
+  add(list.slice(0, first));
+  let done = first;
+  if (done >= list.length) return;
+  const sentinel = h("div", { cls: "sn-sentinel" });
+  page.append(sentinel);
+  sentinelObs = new IntersectionObserver((entries) => {
+    if (!entries.some((e) => e.isIntersecting)) return;
+    const next = list.slice(done, done + 40);
+    add(next, true);
+    done += next.length;
+    board.rendered = done;
+    if (done >= list.length) { sentinelObs.disconnect(); sentinel.remove(); }
+  }, { root: scroll, rootMargin: "600px" });
+  sentinelObs.observe(sentinel);
+}
+function groupHead(b, n) {
+  const headEl = h("div", { cls: "sn-group-head" });
+  const title = h("a", { cls: "sn-group-title", href: "#" }, ic("sn-group-icon", cardIcon(b.head) || "layers", "layers"), h("span", { text: baseName(b.head) }));
+  title.addEventListener("click", (e) => { e.preventDefault(); setTarget(b.head); });
+  headEl.append(title, h("span", { cls: "sn-group-count", text: String(n) }));
+  dnd.dropTarget(headEl, () => ({ path: b.head, parent: null, zones: ["inside"] }));
+  return headEl;
+}
+/** Cards in masonry columns (or one column, for the list layout), under the board's hero. */
+function renderCards(page, scroll, model, composer) {
+  page.append(renderHero(model));
+  const mainBlock = model.blocks[0];
+  const main = new Masonry(page);
+  masonries.push(main);
+  main.add(composer.el);
+  const cards = [];
+  const addCards = (m, list) => { const start = cards.length; for (const c of list) { const el = renderCard(c.path, c.via, c.depth); m.add(el); cards.push(el); } return cards.slice(start); };
+  if (model.blocks.length > 1) {
+    addCards(main, mainBlock.cards);
+    for (const b of model.blocks.slice(1)) {
+      const g = h("div", { cls: "sn-group" });
+      g.append(groupHead(b, b.cards.length - 1));
+      page.append(g);
+      const m = new Masonry(g);
+      masonries.push(m);
+      addCards(m, b.cards);
+    }
+  } else lazyAdd(page, scroll, mainBlock.cards, (list, later) => { const added = addCards(main, list); if (later) added.forEach(setupClamp); });
+  return cards;
+}
+/** Notes as rows of a list: the card's own note first, then its children; each one opens beside the list. */
+function renderRows(page, scroll, model, composer) {
+  page.append(renderListHead(model), composer.el);
+  const rows = [];
+  const box = h("div", { cls: "sn-rows" });
+  page.append(box);
+  const addRows = (into, list) => { for (const c of list) { const el = renderRow(c.path, c.via, c.depth); into.append(el); rows.push(el); } };
+  if (board.target && !board.tagView) addRows(box, [{ path: board.target, via: null, depth: 0 }]);
+  const mainBlock = model.blocks[0];
+  if (model.blocks.length > 1) {
+    addRows(box, mainBlock.cards);
+    for (const b of model.blocks.slice(1)) {
+      const g = h("div", { cls: "sn-group" }, groupHead(b, b.cards.length - 1));
+      const gbox = h("div", { cls: "sn-rows" });
+      g.append(gbox);
+      page.append(g);
+      addRows(gbox, b.cards);
+    }
+  } else lazyAdd(page, scroll, mainBlock.cards, (list) => addRows(box, list));
+  return rows;
+}
+/** The top of the list of notes: the card (or tag) it lists and how many notes it shows. */
+function renderListHead(model) {
+  const target = board.target, tv = board.tagView;
+  const head = h("div", { cls: "sn-list-head" });
+  head.append(h("h1", { cls: "sn-list-title" }, ic("sn-list-badge", tv ? "hash" : target ? cardIcon(target) || "layers" : "home", "layers"),
+    h("span", { text: tv ? "#" + tv : target ? baseName(target) : t("allCards") })));
+  head.append(h("span", { cls: "sn-list-count", text: countText(model) }));
+  return head;
+}
+function countText(model) {
+  const shown = model.shown.length, total = model.total;
+  const count = total === shown && !model.active ? t("cardsCount", { n: total }) : t("cardsOf", { shown, n: total });
+  const tv = board.tagView;
+  const onlyTag = tv && !board.filter.query.trim() && board.filter.tags.length === 1;
+  return onlyTag ? t("cardsCount", { n: shown }) : model.active ? t("filteredSuffix", { count }) : count;
 }
 
 function boardSig(model) {
@@ -213,10 +271,10 @@ export function patchBoard() {
     const p = el.dataset.path;
     const sig = cardSig(p);
     if (board.cardSigs.get(p) === sig) continue;
-    const fresh = renderCard(p, el.dataset.via || null, Number(el.dataset.depth) || 1);
+    const fresh = (el.classList.contains("sn-row") ? renderRow : renderCard)(p, el.dataset.via || null, Number(el.dataset.depth) || 1);
     for (const m of masonries) { const i = m.items.indexOf(el); if (i >= 0) m.items[i] = fresh; }
     el.replaceWith(fresh);
-    setupClamp(fresh);
+    if (!fresh.classList.contains("sn-row")) setupClamp(fresh);
     board.cardSigs.set(p, sig);
     if (focused === p) fresh.focus({ preventScroll: true });
   }
@@ -290,14 +348,24 @@ function renderToolbar() {
   opts.append(gb);
   tools.append(opts);
   const lay = h("div", { cls: "sn-seg" });
-  for (const [v, icn, label] of [["columns", "layout-grid", t("layoutColumns")], ["list", "rows-3", t("layoutList")]]) {
-    const b = iconBtn(icn, label, () => { board.layout = v; persistBoard(); renderBoard(); });
+  for (const [v, icn, label] of LAYOUTS()) {
+    const b = iconBtn(icn, label, () => setLayout(v));
     if (v === board.layout) b.classList.add("is-active");
     lay.append(b);
   }
   tools.append(lay);
   bar.append(tools);
   return bar;
+}
+export const LAYOUTS = () => [["columns", "layout-grid", t("layoutColumns")], ["list", "rows-3", t("layoutList")], ["notes", "panel-left", t("layoutNotes")]];
+export function setLayout(v) {
+  if (board.layout === v) return;
+  const was = board.layout;
+  board.layout = v;
+  persistBoard();
+  // a note beside the list goes back to being a page when the list goes away
+  if (was === "notes" && editor.path && !editor.wide) closeEditor();
+  renderBoard(v === "notes");
 }
 export function toggleSearch(open) {
   board.searchOpen = open ?? !board.searchOpen;
@@ -313,7 +381,7 @@ function renderFilterBar(model) {
   input.addEventListener("input", () => { board.filter.query = input.value; applyQuery(); });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (input.value) { input.value = ""; board.filter.query = ""; applyQuery(); } else toggleSearch(false); }
-    if (e.key === "Enter") { e.preventDefault(); $(".sn-board .sn-masonry .sn-card")?.focus(); }
+    if (e.key === "Enter") { e.preventDefault(); $(".sn-board :is(.sn-masonry, .sn-rows) .sn-card")?.focus(); }
   });
   bar.append(h("div", { cls: "sn-search" }, ic("sn-search-icon", "search"), input));
   const scope = h("div", { cls: "sn-seg sn-scope" });
@@ -365,10 +433,7 @@ function renderHero(model) {
   }
   hero.append(tools);
   const foot = h("div", { cls: "sn-hero-foot" });
-  const shown = model.shown.length, total = model.total;
-  const count = total === shown && !model.active ? t("cardsCount", { n: total }) : t("cardsOf", { shown, n: total });
-  const onlyTag = tv && !board.filter.query.trim() && board.filter.tags.length === 1;
-  foot.append(h("span", { cls: "sn-hero-count", text: onlyTag ? t("cardsCount", { n: shown }) : model.active ? t("filteredSuffix", { count }) : count }));
+  foot.append(h("span", { cls: "sn-hero-count", text: countText(model) }));
   if (target && cardBodyText(target).trim()) {
     const tg = iconBtn(board.heroCollapsed ? "chevron-down" : "chevron-up", board.heroCollapsed ? t("expandDescription") : t("collapseDescription"), () => {
       board.heroCollapsed = !board.heroCollapsed;
