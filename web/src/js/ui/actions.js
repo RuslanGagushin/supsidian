@@ -5,7 +5,7 @@ import { t } from "../core/i18n.js";
 import { baseName, dirName } from "../core/util.js";
 import { composeBody, dumpYaml, extractLinkpath, fillTemplate, parentLinkpaths, TEMPLATE_SKIP_KEYS, toStringList } from "../core/frontmatter.js";
 import { reorderBlock } from "../core/graph.js";
-import { board, editor, graph, S, tree, vault } from "../services/state.js";
+import { board, editor, graph, PARENTS_FIELD, S, tree, vault } from "../services/state.js";
 import { CARDS, inFolder, vaultFolder } from "../services/folders.js";
 import { cardColor, cardIcon, indexNames, linkText, manualCmp, parseNote, persistBoard, resolveLink, saveSettings } from "../services/vault.js";
 import { removeNote, txn, updateFM, writeRaw } from "../services/save.js";
@@ -29,7 +29,7 @@ export function templateFor(path) {
   return lp ? resolveLink(lp, path) : null;
 }
 export async function createCard(title, parentPath, body = "", templatePath = undefined, { open = false, tags = [] } = {}) {
-  const field = S.parentsField || "parents";
+  const field = PARENTS_FIELD;
   const clean = sanitizeTitle(title) || t("untitled");
   // in cards/, next to its parent when the parent is there too
   const folder = parentPath && inFolder(parentPath, CARDS) ? dirName(parentPath) : vaultFolder(CARDS);
@@ -57,7 +57,7 @@ export async function addParent(child, parent) {
   if (child === parent) return notice(t("selfParent"));
   if (graph.isDescendant(child, parent)) return notice(t("cannotNest", { child: baseName(child), parent: baseName(parent) }));
   if (graph.parentsOf(child).includes(parent)) return notice(t("alreadyParent", { parent: baseName(parent) }));
-  const field = S.parentsField;
+  const field = PARENTS_FIELD;
   await txn(t("parentAdded", { name: baseName(parent) }), () => updateFM(child, (fm) => {
     const list = toStringList(fm[field]);
     list.push(`[[${linkText(parent)}]]`);
@@ -73,7 +73,7 @@ function withoutParent(list, child, parentPath) {
   });
 }
 export async function removeParent(child, parentPathOrLinkpath) {
-  const field = S.parentsField;
+  const field = PARENTS_FIELD;
   await txn(t("parentRemoved", { name: baseName(parentPathOrLinkpath) }), () => updateFM(child, (fm) => {
     const list = withoutParent(toStringList(fm[field]), child, parentPathOrLinkpath);
     if (list.length) fm[field] = list; else delete fm[field];
@@ -81,7 +81,7 @@ export async function removeParent(child, parentPathOrLinkpath) {
 }
 /** Drop or bulk move: items [{child, from}], to (null — root), move (true) or add a parent, anchor before/after a sibling. */
 export async function dropCards(items, toParent, move, anchor) {
-  const field = S.parentsField;
+  const field = PARENTS_FIELD;
   const seen = new Set();
   const ok = [];
   for (const it of items) {
@@ -285,7 +285,7 @@ export async function promptIcon(paths) {
   await setIconFor(paths, pick);
 }
 export async function promptTemplate(parent) {
-  const pool = [...vault.notes.keys()].filter((p) => p !== parent && (!S.templatesFolder || p.startsWith(S.templatesFolder + "/")));
+  const pool = [...vault.notes.keys()].filter((p) => p !== parent);
   const pick = await suggestModal({ placeholder: t("pickTemplate"), items: pool.map((p) => ({ value: p, title: baseName(p), icon: "layout-template", note: dirName(p) })) });
   if (pick) await setChildTemplate(parent, pick.value);
 }

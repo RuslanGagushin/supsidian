@@ -66,7 +66,6 @@ describe("board", () => {
     const t = await titles();
     assert.deepEqual(t.slice(0, 4), ["This week", "History", "Architecture", "Knowledge"]);
     assert.ok(!t.includes("Roman Empire"), "children are not on the top level at depth 1");
-    assert.ok(!t.includes("Book"), "templates are not cards");
     noErrors();
   });
 
@@ -558,8 +557,8 @@ describe("palettes, settings, language and themes", () => {
   });
 
   test("settings and keyboard shortcuts open without errors", async () => {
-    await ev(() => settingsModal("cards"));
-    assert.match(await page().textContent(".modal"), /Parents field/);
+    await ev(() => settingsModal("board"));
+    assert.match(await page().textContent(".modal"), /Default depth/);
     await page().keyboard.press("Escape");
     await ev(() => hotkeysModal());
     assert.match(await page().textContent(".modal"), /All files in the vault/);
@@ -569,7 +568,7 @@ describe("palettes, settings, language and themes", () => {
   test("settings have a tab per group, arrow keys move between them and the last tab is remembered", async () => {
     await ev(() => settingsModal("appearance"));
     const tabs = () => page().$$eval(".sn-set-tab", (b) => b.map((x) => [x.textContent, x.getAttribute("aria-selected")]));
-    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Cards", "Board", "Agenda", "About"], "no Git tab outside the app");
+    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Board", "Agenda", "About"], "no Git tab outside the app");
     assert.match(await page().textContent(".sn-set-body"), /Theme/);
     assert.doesNotMatch(await page().textContent(".sn-set-body"), /Parents field/, "one group at a time");
     const height = await page().$eval(".modal", (m) => m.offsetHeight);

@@ -7,7 +7,7 @@ import { t, wt } from "../core/i18n.js";
 import { baseName, dirName, norm } from "../core/util.js";
 import { formatMoment } from "../core/dates.js";
 import { CODE_RE, extractLinkpath, fillTemplate, splitNote, stripCode } from "../core/frontmatter.js";
-import { board, editor, graph, S, saveUI, UI, vault } from "../services/state.js";
+import { board, editor, graph, saveUI, UI, vault } from "../services/state.js";
 import { DAILY_FORMAT } from "../services/folders.js";
 import { cardColor, cardIcon, cardTags, linkText, resolveLink } from "../services/vault.js";
 import { IMG_EXT, saveAttachment } from "../services/attachments.js";
@@ -210,7 +210,7 @@ async function runSlash(id, ta) {
   }
 }
 async function insertTemplate(ta) {
-  const pool = [...vault.notes.keys()].filter((p) => p !== editor.path && (!S.templatesFolder || p.startsWith(S.templatesFolder + "/")));
+  const pool = [...vault.notes.keys()].filter((p) => p !== editor.path);
   if (!pool.length) { notice(wt("noTemplates")); return; }
   const caret = ta.selectionStart;
   const pick = await suggestModal({ placeholder: wt("pickTemplateInsert"), items: pool.map((p) => ({ value: p, title: baseName(p), icon: "layout-template", note: dirName(p) })) });

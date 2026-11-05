@@ -161,8 +161,9 @@ describe("hierarchy", () => {
     assert.deepEqual(r, { ps: ["cards/Projects/Shop.md"], un: ["Nowhere"], back: ["cards/Projects/Home.md"] });
   });
 
-  test("the templates folder holds no cards", async () => {
-    assert.deepEqual(await ev(() => { S.templatesFolder = "cards/Projects"; const r = [isCard("cards/Projects/Home.md"), isCard("cards/Other Note.md"), isCard("Att/pic.png")]; S.templatesFolder = "Templates"; return r; }), [false, true, false]);
+  test("cards are the notes in cards/ and daily notes/", async () => {
+    assert.deepEqual(await ev(() => ["cards/Projects/Home.md", "Cards/Old.md", "daily notes/2026-11-05.md", "attachments/a.md", "Elsewhere/x.md", "cards/pic.png"].map(isCard)),
+      [true, true, true, false, false, false]);
   });
 
   test("manual order: child_order first, then order, then name", async () => {

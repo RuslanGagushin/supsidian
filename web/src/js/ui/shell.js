@@ -215,11 +215,6 @@ export function settingsModal(tab) {
       item(t("setTheme"), null, select(UI.theme, [["auto", t("themeAuto")], ["light", t("themeLight")], ["dark", t("themeDark")]], (v) => { UI.theme = v; saveUI(); applyTheme(); })),
       item(wt("setWriteFont"), wt("setWriteFontDesc"), select(UI.writeFont || "mono", [["mono", wt("wfMono")], ["serif", wt("wfSerif")], ["sans", wt("wfSans")], ["inter", wt("wfInter")]], (v) => { UI.writeFont = v; saveUI(); applyTheme(); })),
     ]],
-    ["cards", t("sectionCards"), "layers", () => [
-      item(t("setParentsField"), t("setParentsFieldDesc"), text(S.parentsField, "parents", (v) => { S.parentsField = v.trim() || "parents"; save(); })),
-      item(t("setTemplatesFolder"), t("setTemplatesFolderDesc"), text(S.templatesFolder, "Templates", (v) => { S.templatesFolder = v.trim().replace(/\/+$/, ""); save(); })),
-      storedIn(),
-    ]],
     ["board", t("sectionBoard"), "layout-grid", () => [
       item(t("setDefaultDepth"), null, select(S.defaultDepth, [[1, "1"], [2, "2"], [3, "3"], [0, "∞"]], (v) => { S.defaultDepth = Number(v); save(); })),
       item(t("setDefaultLayout"), null, select(S.defaultLayout, [["columns", t("layoutColumns")], ["list", t("layoutList")]], (v) => { S.defaultLayout = v; save(); })),

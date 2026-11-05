@@ -18,7 +18,7 @@ This repository wraps the Supstack page into native apps with [Tauri 2](https://
 
 ### Cards and the board
 - **Every note is a card.** A card shows its title, its parents and a preview of its text. The preview length and card height are adjustable.
-- **Cards nest, and a card can have several parents.** Parents are listed in a frontmatter property (you choose its name), so one note can sit under *Personal* and under *Documents* at the same time. The breadcrumb, **↑ Go to parent** and the side tree let you move around.
+- **Cards nest, and a card can have several parents.** Parents are listed in the `parents` frontmatter property, so one note can sit under *Personal* and under *Documents* at the same time. The breadcrumb, **↑ Go to parent** and the side tree let you move around.
 - **Depth control:** show 1, 2 or 3 levels of children, or all of them (`∞`).
 - **Board or list layout**, grouping by parent, sorting (manual, or recently modified first), and **saved views** so a board you like is one tap away.
 - **Quick capture:** type into *Start typing a new card…* at the top of a board to create a child card there. You can choose a **template note** for a card's children.
@@ -82,7 +82,7 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 | Notes (cards) | plain `.md` files in the vault's `cards/` folder |
 | Daily notes (also cards) | `daily notes/YYYY-MM-DD.md` |
 | Pasted, dropped and uploaded files | `attachments/` |
-| Card parents | a frontmatter property in each note |
+| Card parents | the `parents` frontmatter property in each note |
 | Vault settings: pins, saved views, card and board options | `.supstack/settings.json` in the vault (versions up to 0.15 kept them in `.obsidian/plugins/supsidian/data.json`; they move on first open) |
 | App settings, fold state, agenda view | stored per installation, not in the vault |
 
