@@ -21,6 +21,7 @@ import "./services/events.js";
 import "./services/fs.js";
 import "./services/native.js";
 import "./services/state.js";
+import "./services/folders.js";
 import "./services/vault.js";
 import "./services/attachments.js";
 import "./services/save.js";

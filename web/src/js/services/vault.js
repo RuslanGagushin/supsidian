@@ -9,14 +9,15 @@ import { computeModel } from "../core/board-model.js";
 import { lsGet, lsSet } from "./storage.js";
 import { emit } from "./events.js";
 import { board, DEFAULTS, graph, resetSettings, S, setGraph, tree, undoStack, vault } from "./state.js";
+import { ATTACHMENTS, CARDS, DAILY, inFolder, vaultFolder } from "./folders.js";
 import { dropAttachment } from "./attachments.js";
 import { stopSync, syncHook } from "./sync.js";
 
 export function isMd(p) { return /\.md$/i.test(p); }
 export function isCard(path) {
   if (!isMd(path)) return false;
+  if (!inFolder(path, CARDS) && !inFolder(path, DAILY)) return false;
   if (S.templatesFolder && (path === S.templatesFolder || path.startsWith(S.templatesFolder + "/"))) return false;
-  if (S.onlyCardsFolder && S.cardsFolder && !path.startsWith(S.cardsFolder + "/")) return false;
   return true;
 }
 export function parseNote(path, raw, mtime) {
@@ -158,6 +159,7 @@ export async function readVault(fs) {
   await Promise.all(Array.from({ length: 8 }, worker));
   indexNames();
   await loadSettings();
+  const moved = await gatherNotes();
   const saved = lsGet(boardKey(), null);
   Object.assign(board, {
     target: null, depth: S.defaultDepth, layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
@@ -169,6 +171,7 @@ export async function readVault(fs) {
     board.searchOpen = !!(board.filter.query || board.filter.colors.length || board.filter.tags.length);
     tree.expanded = new Set(saved.treeExpanded || []);
   } else tree.expanded = new Set();
+  if (moved.size) followMoves(moved);
   undoStack.length = 0;
   setGraph(buildGraph());
 }
@@ -179,12 +182,45 @@ export function persistBoard() {
     heroCollapsed: board.heroCollapsed, filter: board.filter, tagView: board.tagView || null, view: board.view || null, treeExpanded: [...tree.expanded],
   });
 }
+/** Notes outside cards/ and daily notes/ (attachments/ aside) move into cards/, keeping their subfolders, so links
+ *  by name or by path (cards/Folder/Note ends with Folder/Note) still resolve. Returns old path → new path. */
+async function gatherNotes() {
+  const moved = new Map();
+  const cards = vaultFolder(CARDS);
+  for (const [p, n] of [...vault.notes]) {
+    if (inFolder(p, CARDS) || inFolder(p, DAILY) || inFolder(p, ATTACHMENTS)) continue;
+    let to = cards + "/" + p, i = 1;
+    while (vault.allPaths.has(to)) to = `${cards}/${p.replace(/\.md$/i, "")} ${i++}.md`;
+    try {
+      const mtime = await vault.fs.write(to, n.raw);
+      await vault.fs.remove(p);
+      vault.notes.delete(p); vault.allPaths.delete(p);
+      vault.notes.set(to, parseNote(to, n.raw, mtime || n.mtime)); vault.allPaths.add(to);
+      vault.sizes.set(to, vault.sizes.get(p) ?? n.raw.length); vault.sizes.delete(p);
+      moved.set(p, to);
+    } catch (e) { console.warn("could not move into " + cards, p, e); }
+  }
+  if (moved.size) indexNames();
+  return moved;
+}
+/** Pins, saved views, the templates folder, the board and the tree follow notes that moved. */
+function followMoves(moved) {
+  const m = (p) => moved.get(p) ?? p;
+  S.pinned = S.pinned.map(m);
+  S.savedViews = S.savedViews.map((v) => (v.target ? { ...v, target: m(v.target) } : v));
+  if (S.templatesFolder && !inFolder(S.templatesFolder + "/", CARDS) && !inFolder(S.templatesFolder + "/", DAILY)) S.templatesFolder = vaultFolder(CARDS) + "/" + S.templatesFolder;
+  board.target = board.target && m(board.target);
+  board.history = board.history.map((p) => p && m(p));
+  tree.expanded = new Set([...tree.expanded].map((k) => k.split("\u0000").map(m).join("\u0000")));
+  saveSettings();
+  persistBoard();
+}
 /** The vault's settings travel with it (Git sync included): pins, saved views, card, board and note options. */
 export const SETTINGS_PATH = ".supstack/settings.json";
 export const OLD_SETTINGS_PATH = ".obsidian/plugins/supsidian/data.json"; // where versions up to 0.15 kept them; moved on first open
 async function loadSettings() {
   resetSettings(lsGet("sn-settings:" + vault.fs.name, {}));
-  if (vault.fs.kind === "demo") { S.templatesFolder = S.templatesFolder || "Templates"; return; }
+  if (vault.fs.kind === "demo") { S.templatesFolder = S.templatesFolder || CARDS + "/Templates"; return; }
   let saved = null, moved = false;
   try { saved = JSON.parse(await vault.fs.read(SETTINGS_PATH)); } catch {
     try { saved = JSON.parse(await vault.fs.read(OLD_SETTINGS_PATH)); moved = true; } catch { /* none yet */ }

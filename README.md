@@ -21,7 +21,7 @@ This repository wraps the Supstack page into native apps with [Tauri 2](https://
 - **Cards nest, and a card can have several parents.** Parents are listed in a frontmatter property (you choose its name), so one note can sit under *Personal* and under *Documents* at the same time. The breadcrumb, **↑ Go to parent** and the side tree let you move around.
 - **Depth control:** show 1, 2 or 3 levels of children, or all of them (`∞`).
 - **Board or list layout**, grouping by parent, sorting (manual, or recently modified first), and **saved views** so a board you like is one tap away.
-- **Quick capture:** type into *Start typing a new card…* at the top of a board to create a child card there. You can choose a folder for new cards and a **template note** for a card's children.
+- **Quick capture:** type into *Start typing a new card…* at the top of a board to create a child card there. You can choose a **template note** for a card's children.
 - **Select mode:** select several cards to move, re-parent or delete them together. **Undo** reverts the last card action.
 
 ### Editor
@@ -79,10 +79,14 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 
 | What | Where |
 |---|---|
-| Notes (cards) | plain `.md` files in your vault |
+| Notes (cards) | plain `.md` files in the vault's `cards/` folder |
+| Daily notes (also cards) | `daily notes/YYYY-MM-DD.md` |
+| Pasted, dropped and uploaded files | `attachments/` |
 | Card parents | a frontmatter property in each note |
-| Vault settings: pins, saved views, card, board and note options (daily notes, attachments folder) | `.supstack/settings.json` in the vault (versions up to 0.15 kept them in `.obsidian/plugins/supsidian/data.json`; they move on first open) |
+| Vault settings: pins, saved views, card and board options | `.supstack/settings.json` in the vault (versions up to 0.15 kept them in `.obsidian/plugins/supsidian/data.json`; they move on first open) |
 | App settings, fold state, agenda view | stored per installation, not in the vault |
+
+**The three folders are the same in every vault**, so there is nothing to set up: Supstack creates them as needed, and a folder that already exists with other letter case (`Cards/`) is used as it is. Each time a vault is opened, notes outside them are moved into `cards/`, keeping their subfolders, so links to them keep working; files that are not notes stay where they are.
 
 **Changes made outside the app**, in another editor or by a sync tool such as Syncthing, are picked up every few seconds while the app is in front, and whenever you switch back to it. Desktop writes go through a temporary file and a rename, so other apps never see a half-written note.
 

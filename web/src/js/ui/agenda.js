@@ -3,14 +3,12 @@
    ========================================================= */
 import { LANG, t, tt } from "../core/i18n.js";
 import { baseName, debounce, norm } from "../core/util.js";
-import { formatMoment } from "../core/dates.js";
-import { fillTemplate } from "../core/frontmatter.js";
 import { oFmt, ohm, oisoWeek, onow, opad, orgCache, orgDayEntries, orgNowTs, orgPriRank, orgReadDate, orgShift, orgSkip, orgStats, orgTsStr, orgWithGrid, oymd } from "../core/org.js";
 import { lsGet, lsSet } from "../services/storage.js";
 import { board, vault } from "../services/state.js";
-import { cardColor, persistBoard, resolveLink } from "../services/vault.js";
+import { cardColor, persistBoard } from "../services/vault.js";
 import { txn, writeRaw } from "../services/save.js";
-import { dailyConfig } from "../services/daily-notes.js";
+import { dailyNotePath } from "../services/daily-notes.js";
 import { orgAll, todoSet } from "../services/tasks.js";
 import { $, $$, h, ic, iconBtn, isMod } from "./dom.js";
 import { echo, Menu, minibufRead, openLayer } from "./ui.js";
@@ -393,14 +391,8 @@ let orgAgPrefix = false;
 /* ---------- capture */
 const CAP = Object.assign({ tpl: "t", to: "daily" }, lsGet("sn-capture", {}));
 async function orgDailyPath() {
-  const cfg = dailyConfig();
-  const name = formatMoment(new Date(), cfg.format);
-  const path = (cfg.folder ? cfg.folder + "/" : "") + name + ".md";
-  if (!vault.notes.has(path)) {
-    let body = "";
-    if (cfg.template) { const tp = resolveLink(cfg.template.replace(/\.md$/i, ""), ""); if (tp && vault.notes.has(tp)) body = fillTemplate(vault.notes.get(tp).raw, name.split("/").pop(), new Date()); }
-    await writeRaw(path, body);
-  }
+  const path = dailyNotePath();
+  if (!vault.notes.has(path)) await writeRaw(path, "");
   return path;
 }
 export function orgCapture(pre = {}) {

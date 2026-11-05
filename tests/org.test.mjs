@@ -32,7 +32,7 @@ DEADLINE: <2026-11-05 Thu -10d>
 `;
 const day = (y, m, d) => ev(([y, m, d]) => odn(y, m, d), [y, m, d]);
 
-before(() => openVault({ demo: false, time: NOW, notes: { "Work.md": NOTE, "Gym.md": "## TODO Run\nSCHEDULED: <2026-10-22 Thu +1w>\n" } }));
+before(() => openVault({ demo: false, time: NOW, notes: { "cards/Work.md": NOTE, "cards/Gym.md": "## TODO Run\nSCHEDULED: <2026-10-22 Thu +1w>\n" } }));
 
 describe("timestamps", () => {
   test("parse and print round-trip with time ranges, repeaters and warnings", async () => {
@@ -111,7 +111,7 @@ describe("keywords and states", () => {
 });
 
 describe("parsing a note", () => {
-  const entries = () => ev(() => orgEntries(vault.notes.get("Work.md")).map((e) => ({ kind: e.kind, kw: e.kw, pri: e.pri, title: e.title, tags: e.alltags, inh: e.inherited, cb: [e.cbDone, e.cbTotal], sched: e.sched?.dn ?? null, dead: e.dead?.dn ?? null, closed: !!e.closed, outline: e.outline })));
+  const entries = () => ev(() => orgEntries(vault.notes.get("cards/Work.md")).map((e) => ({ kind: e.kind, kw: e.kw, pri: e.pri, title: e.title, tags: e.alltags, inh: e.inherited, cb: [e.cbDone, e.cbTotal], sched: e.sched?.dn ?? null, dead: e.dead?.dn ?? null, closed: !!e.closed, outline: e.outline })));
 
   test("headings, items, checkboxes, events; nothing from code blocks", async () => {
     const es = await entries();
@@ -175,7 +175,7 @@ describe("agenda", () => {
     assert.match(await page.getAttribute("#tasks-btn", "title"), /2 overdue|overdue/i);
     await ev(() => { const i = AGROWS.findIndex((x) => x.e.title === "Call Bob"); orgSelect(i); $(".ag-body").focus(); });
     await page.keyboard.press("t");
-    await page.waitForFunction(() => vault.notes.get("Work.md").raw.includes("## WAIT Call Bob"));
+    await page.waitForFunction(() => vault.notes.get("cards/Work.md").raw.includes("## WAIT Call Bob"));
     await page.keyboard.press("q");
     assert.equal(await ev(() => board.view), null);
     assert.equal(H.errors.length, 0, H.errors.join("\n"));

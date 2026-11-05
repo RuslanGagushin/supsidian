@@ -6,6 +6,7 @@ import { baseName, dirName } from "../core/util.js";
 import { composeBody, dumpYaml, extractLinkpath, fillTemplate, parentLinkpaths, TEMPLATE_SKIP_KEYS, toStringList } from "../core/frontmatter.js";
 import { reorderBlock } from "../core/graph.js";
 import { board, editor, graph, S, tree, vault } from "../services/state.js";
+import { CARDS, inFolder, vaultFolder } from "../services/folders.js";
 import { cardColor, cardIcon, indexNames, linkText, manualCmp, parseNote, persistBoard, resolveLink, saveSettings } from "../services/vault.js";
 import { removeNote, txn, updateFM, writeRaw } from "../services/save.js";
 import { syncHook } from "../services/sync.js";
@@ -30,7 +31,8 @@ export function templateFor(path) {
 export async function createCard(title, parentPath, body = "", templatePath = undefined, { open = false, tags = [] } = {}) {
   const field = S.parentsField || "parents";
   const clean = sanitizeTitle(title) || t("untitled");
-  const folder = S.cardsFolder || (parentPath ? dirName(parentPath) : "");
+  // in cards/, next to its parent when the parent is there too
+  const folder = parentPath && inFolder(parentPath, CARDS) ? dirName(parentPath) : vaultFolder(CARDS);
   const path = uniquePath(folder, clean);
   let fm = {}, tplBody = "";
   const tpl = templatePath === undefined ? (parentPath ? templateFor(parentPath) : null) : templatePath;

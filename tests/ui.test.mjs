@@ -9,7 +9,7 @@ const page = () => H.page;
 const titles = () => ev(() => {
   const shown = boardModel().shown.map((c) => c.path);
   const onPage = new Set([...document.querySelectorAll("#board .sn-masonry .sn-card")].map((c) => c.dataset.path));
-  return shown.filter((p) => onPage.has(p)).map((p) => p.replace(/^Cards\/|\.md$/g, ""));
+  return shown.filter((p) => onPage.has(p)).map((p) => p.replace(/^cards\/|\.md$/g, ""));
 });
 const noErrors = () => assert.equal(H.errors.length, 0, H.errors.map((e) => e.stack || e).join("\n"));
 
@@ -18,12 +18,12 @@ describe("tables and fonts", () => {
 
   test("a table fills the note width, keeps its column alignment and scrolls when too wide", async () => {
     const r = await ev(() => {
-      const el = renderMarkdown("| Month | Km |\n| :--- | :-: |\n| Oct | 980 |\n", "x.md");
+      const el = renderMarkdown("| Month | Km |\n| :--- | :-: |\n| Oct | 980 |\n", "cards/x.md");
       el.classList.add("markdown-rendered");
       el.style.width = "500px";
       document.body.append(el);
       const wrap = el.querySelector(".sn-table-wrap"), css = (s) => getComputedStyle(el.querySelector(s)).textAlign;
-      const wide = renderMarkdown(`| ${"word ".repeat(0)}${Array(40).fill("Longheaderword").join(" | ")} |\n|${" --- |".repeat(40)}\n`, "x.md");
+      const wide = renderMarkdown(`| ${"word ".repeat(0)}${Array(40).fill("Longheaderword").join(" | ")} |\n|${" --- |".repeat(40)}\n`, "cards/x.md");
       wide.classList.add("markdown-rendered");
       wide.style.width = "500px";
       document.body.append(wide);
@@ -71,18 +71,18 @@ describe("board", () => {
   });
 
   test("open a card as the board, breadcrumbs, back and up", async () => {
-    await ev(() => setTarget("Cards/Roman Empire.md"));
+    await ev(() => setTarget("cards/Roman Empire.md"));
     assert.deepEqual(await titles(), ["Colosseum", "Aqueducts"], "child_order");
     assert.match(await page().textContent(".sn-crumbs"), /All cards.*History.*Roman Empire/);
     await page().keyboard.press("Alt+ArrowUp");
-    assert.equal(await ev(() => board.target), "Cards/History.md");
+    assert.equal(await ev(() => board.target), "cards/History.md");
     await page().keyboard.press("Alt+ArrowLeft");
-    assert.equal(await ev(() => board.target), "Cards/Roman Empire.md");
+    assert.equal(await ev(() => board.target), "cards/Roman Empire.md");
     noErrors();
   });
 
   test("depth ∞ over a parent cycle finishes", async () => {
-    await ev(() => { board.depth = 0; setTarget("Cards/Cycle A.md"); });
+    await ev(() => { board.depth = 0; setTarget("cards/Cycle A.md"); });
     assert.deepEqual(await titles(), ["Cycle B"]);
     await ev(() => { setTarget(null); });
     assert.ok((await titles()).length > 10);
@@ -112,24 +112,24 @@ describe("board", () => {
     await page().keyboard.type("Fresh idea");
     await page().waitForFunction(() => $(".sn-composer textarea")?.value === "Fresh idea");
     await page().keyboard.press("Enter");
-    await page().waitForFunction(() => vault.notes.has("Fresh idea.md"));
+    await page().waitForFunction(() => vault.notes.has("cards/Fresh idea.md"));
     noErrors();
   });
 
   test("select mode and Delete with several cards selected", async () => {
-    await ev(() => { board.selection = new Set(["Cards/Knowledge.md", "Cards/Draft thoughts.md"]); renderBoard(); });
+    await ev(() => { board.selection = new Set(["cards/Knowledge.md", "cards/Draft thoughts.md"]); renderBoard(); });
     assert.match(await page().textContent(".sn-selbar"), /2 selected/);
-    await page().focus('#board .sn-card[data-path="Cards/Knowledge.md"]');
+    await page().focus('#board .sn-card[data-path="cards/Knowledge.md"]');
     await page().keyboard.press("Delete");
     await page().click(".modal .mod-warning");
-    await page().waitForFunction(() => !vault.notes.has("Cards/Knowledge.md") && !vault.notes.has("Cards/Draft thoughts.md"));
+    await page().waitForFunction(() => !vault.notes.has("cards/Knowledge.md") && !vault.notes.has("cards/Draft thoughts.md"));
     await page().keyboard.press("Control+z");
-    await page().waitForFunction(() => vault.notes.has("Cards/Knowledge.md") && vault.notes.has("Cards/Draft thoughts.md"));
+    await page().waitForFunction(() => vault.notes.has("cards/Knowledge.md") && vault.notes.has("cards/Draft thoughts.md"));
   });
 });
 
 describe("editor", () => {
-  beforeEach(async () => { await openVault({ demo: false, notes: { "Note.md": "---\ncolor: red\n---\nHello\n", "Colosseum.md": "", "Cola.md": "", "pic.md": "" } }); await ev(() => openEditor("Note.md", { focus: true })); });
+  beforeEach(async () => { await openVault({ demo: false, notes: { "cards/Note.md": "---\ncolor: red\n---\nHello\n", "cards/Colosseum.md": "", "cards/Cola.md": "", "cards/pic.md": "" } }); await ev(() => openEditor("cards/Note.md", { focus: true })); });
   const ta = ".sn-editor-text";
   const value = () => ev((sel) => $(sel).value, ta);
   const setValue = (v, s = v.length, e = s) => ev(([v, s, e]) => { const t = $(".sn-editor-text"); t.value = v; t.setSelectionRange(s, e); t.focus(); }, [v, s, e]);
@@ -140,8 +140,8 @@ describe("editor", () => {
     await ev(() => { const t = $(".sn-editor-text"); t.setSelectionRange(t.value.length, t.value.length); });
     await page().keyboard.type("World");
     await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("Note.md").raw.includes("World"));
-    assert.equal(await raw("Note.md"), "---\ncolor: red\n---\nHello\nWorld");
+    await page().waitForFunction(() => vault.notes.get("cards/Note.md").raw.includes("World"));
+    assert.equal(await raw("cards/Note.md"), "---\ncolor: red\n---\nHello\nWorld");
     noErrors();
   });
 
@@ -238,8 +238,8 @@ describe("editor", () => {
   test("the title renames the note", async () => {
     await page().fill(".sn-inline-title", "Renamed note");
     await page().press(".sn-inline-title", "Enter");
-    await page().waitForFunction(() => vault.notes.has("Renamed note.md"));
-    assert.equal(await ev(() => editor.path), "Renamed note.md");
+    await page().waitForFunction(() => vault.notes.has("cards/Renamed note.md"));
+    assert.equal(await ev(() => editor.path), "cards/Renamed note.md");
   });
 
   test("Escape closes the editor and Ctrl+E toggles reading view", async () => {
@@ -257,7 +257,7 @@ describe("editor", () => {
 
 describe("live preview", () => {
   const body = "# Title\n\nPara **bold** text\n\n- [ ] one\n- [ ] two\n\nLast";
-  beforeEach(async () => { await openVault({ demo: false, notes: { "L.md": "---\ncolor: red\n---\n" + body, "Other.md": "" } }); await ev(() => openEditor("L.md", { focus: true })); });
+  beforeEach(async () => { await openVault({ demo: false, notes: { "cards/L.md": "---\ncolor: red\n---\n" + body, "cards/Other.md": "" } }); await ev(() => openEditor("cards/L.md", { focus: true })); });
   const ta = ".sn-editor-text.is-live";
   const value = () => ev((sel) => $(sel).value, ta);
   const lines = () => ev(() => $$("#editor .cm-line").map((l) => l.textContent));
@@ -293,15 +293,15 @@ describe("live preview", () => {
     await page().keyboard.press("Enter");
     await page().keyboard.type("After");
     await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("After"));
-    assert.match(await raw("L.md"), /- \[ \] two\n- \[ \] three\n\nAfter\n\nLast$/);
+    await page().waitForFunction(() => vault.notes.get("cards/L.md").raw.includes("After"));
+    assert.match(await raw("cards/L.md"), /- \[ \] two\n- \[ \] three\n\nAfter\n\nLast$/);
   });
 
   test("a rendered checkbox ticks its own task", async () => {
     await page().click("#editor .lp-task >> nth=1");
     assert.match(await value(), /- \[ \] one\n- \[x\] two/);
     await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("L.md").raw.includes("- [x] two"));
+    await page().waitForFunction(() => vault.notes.get("cards/L.md").raw.includes("- [x] two"));
     noErrors();
   });
 
@@ -325,7 +325,7 @@ describe("live preview", () => {
     await page().keyboard.type("See [[Other]] ");
     await caretAt(await ev(() => $(".sn-editor-text.is-live").value.length));
     await page().click("#editor .cm-sn-wikilink", { modifiers: ["ControlOrMeta"] });
-    assert.equal(await ev(() => editor.path), "Other.md");
+    assert.equal(await ev(() => editor.path), "cards/Other.md");
   });
 
   test("a callout renders as a block and opens into its Markdown when clicked", async () => {
@@ -341,7 +341,7 @@ describe("live preview", () => {
 
 describe("table editing", () => {
   const body = "Intro\n\n| a | b |\n|---|:-:|\n| 1 | 22 |\n| 3 |  |";
-  beforeEach(async () => { await openVault({ demo: false, notes: { "T.md": body } }); await ev(() => openEditor("T.md", { focus: true })); });
+  beforeEach(async () => { await openVault({ demo: false, notes: { "cards/T.md": body } }); await ev(() => openEditor("cards/T.md", { focus: true })); });
   const ta = ".sn-editor-text.is-live";
   const value = () => ev((sel) => $(sel).value, ta);
   const sel = () => ev(() => { const t = $(".sn-editor-text.is-live"); return t.value.slice(t.selectionStart, t.selectionEnd); });
@@ -393,8 +393,8 @@ describe("table editing", () => {
     await page().keyboard.press("Enter");
     await page().keyboard.type("After");
     await page().keyboard.press("Control+s");
-    await page().waitForFunction(() => vault.notes.get("T.md").raw.includes("After"));
-    assert.equal(await raw("T.md"), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 223 |\n| 3   | 4   |\n| 5   |     |\n\nAfter");
+    await page().waitForFunction(() => vault.notes.get("cards/T.md").raw.includes("After"));
+    assert.equal(await raw("cards/T.md"), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 223 |\n| 3   | 4   |\n| 5   |     |\n\nAfter");
     noErrors();
   });
 
@@ -404,7 +404,7 @@ describe("table editing", () => {
     await page().keyboard.press("Escape");
     assert.equal(await ev(() => !!$(".sn-cell-edit")), false);
     assert.equal(await page().textContent("#editor .sn-live tbody tr:last-child td:nth-child(2)"), "x|y");
-    await page().waitForFunction(() => vault.notes.get("T.md").raw.includes("x\\|y"));
+    await page().waitForFunction(() => vault.notes.get("cards/T.md").raw.includes("x\\|y"));
     await page().click("#editor .sn-live thead th:first-child");
     await page().keyboard.press("ArrowUp");
     assert.deepEqual(await ev(() => { const t = $(".sn-editor-text.is-live"); return [document.activeElement === t, t.selectionStart]; }), [true, 5], "up from the header goes to the end of the line above");
@@ -447,8 +447,8 @@ describe("table editing", () => {
 });
 
 describe("rendering", () => {
-  beforeEach(() => openVault({ demo: false, notes: { "Target.md": "x", "A.md": "" }, files: { "img/p.svg": H.SVG } }));
-  const render = (md) => ev((md) => { const el = renderMarkdown(md, "A.md"); document.body.append(el); return el.innerHTML; }, md);
+  beforeEach(() => openVault({ demo: false, notes: { "cards/Target.md": "x", "cards/A.md": "" }, files: { "img/p.svg": H.SVG } }));
+  const render = (md) => ev((md) => { const el = renderMarkdown(md, "cards/A.md"); document.body.append(el); return el.innerHTML; }, md);
 
   test("wiki links, tags, highlights, callouts, tasks and embeds", async () => {
     const html = await render("[[Target|go]] [[Missing]] #tag ==hi==\n\n> [!warning] Careful\n> body\n\n- [ ] task\n\n![[p.svg]]");
@@ -488,7 +488,7 @@ describe("rendering", () => {
     await render("> [!info]- Folded\n> hidden\n\n> [!tip]+ Open\n> shown\n\n> [!note] Plain\n> x\n\n> [!todo]- Bare");
     const state = () => ev(() => [...document.querySelectorAll(".callout")].map((c) => [c.dataset.callout, c.classList.contains("is-collapsible"), c.classList.contains("is-collapsed"), !!c.querySelector(".callout-fold")]));
     assert.deepEqual(await state(), [["info", true, true, true], ["tip", true, false, true], ["note", false, false, false], ["todo", false, false, false]]);
-    await ev(() => { const el = document.querySelector(".callout").closest("div:not(.callout)"); wireRendered(el, "A.md"); document.querySelector(".callout-title").click(); });
+    await ev(() => { const el = document.querySelector(".callout").closest("div:not(.callout)"); wireRendered(el, "cards/A.md"); document.querySelector(".callout-title").click(); });
     assert.equal((await state())[0][2], false);
     // the reader's fold is kept for the note while the page is open
     await render("> [!info]- Folded\n> hidden");
@@ -502,36 +502,35 @@ describe("rendering", () => {
   });
 
   test("clicking a rendered checkbox ticks the task in the file", async () => {
-    await ev(async () => { await writeRaw("A.md", "- [ ] one\n- [ ] two\n"); openEditor("A.md"); editor.mode = "read"; renderEditor(); });
+    await ev(async () => { await writeRaw("cards/A.md", "- [ ] one\n- [ ] two\n"); openEditor("cards/A.md"); editor.mode = "read"; renderEditor(); });
     // a native click in the page fires the same change event (Playwright's actionability wait is flaky here)
     await H.page.waitForFunction(() => document.querySelectorAll(".sn-reading input[type=checkbox]").length === 2);
     await ev(() => document.querySelectorAll(".sn-reading input[type=checkbox]")[1].click());
-    await H.page.waitForFunction(() => vault.notes.get("A.md").raw === "- [ ] one\n- [x] two\n");
+    await H.page.waitForFunction(() => vault.notes.get("cards/A.md").raw === "- [ ] one\n- [x] two\n");
   });
 });
 
 describe("pasted and dropped files", () => {
-  const saveIn = (setting, note = "Notes/A.md", name = "photo.png", pasted = false) => ev(async ([setting, note, name, pasted]) => {
-    if (setting != null) S.attachmentFolder = setting;
-    return saveAttachment(new File(["png"], name, { type: "image/png" }), note, pasted);
-  }, [setting, note, name, pasted]);
-  beforeEach(() => openVault({ demo: false, time: "2026-10-29T10:11:12", notes: { "Notes/A.md": "text" } }));
+  const saveIn = (note = "cards/Notes/A.md", name = "photo.png", pasted = false) => ev(([note, name, pasted]) =>
+    saveAttachment(new File(["png"], name, { type: "image/png" }), note, pasted), [note, name, pasted]);
+  beforeEach(() => openVault({ demo: false, time: "2026-10-29T10:11:12", notes: { "cards/Notes/A.md": "text" } }));
 
-  test("the attachments folder setting decides where files go", async () => {
-    assert.equal(await saveIn(null), "Notes/photo.png", "default: next to the note");
-    assert.equal(await saveIn("/"), "photo.png");
-    assert.equal(await saveIn("./"), "Notes/photo 1.png", "no overwrite");
-    assert.equal(await saveIn("./assets"), "Notes/assets/photo.png");
-    assert.equal(await saveIn("Files/"), "Files/photo.png");
-    assert.equal(await saveIn("Files/"), "Files/photo 1.png", "no overwrite");
+  test("every file goes into attachments/, without overwriting", async () => {
+    assert.equal(await saveIn(), "attachments/photo.png");
+    assert.equal(await saveIn("daily notes/2026-10-29.md"), "attachments/photo 1.png", "no overwrite");
+  });
+
+  test("an attachments folder with other letter case is used as it is", async () => {
+    await ev(() => vault.fs.write("Attachments/old.png", "x").then(() => vault.allPaths.add("Attachments/old.png")));
+    assert.equal(await saveIn(), "Attachments/photo.png");
   });
 
   test("pasted images get a timestamp name", async () => {
-    assert.equal(await saveIn("/", "Notes/A.md", "image.png", true), "Pasted image 20261029101112.png");
+    assert.equal(await saveIn("cards/Notes/A.md", "image.png", true), "attachments/Pasted image 20261029101112.png");
   });
 
   test("attachFiles saves and inserts embeds at the cursor", async () => {
-    await ev(() => openEditor("Notes/A.md", { focus: true }));
+    await ev(() => openEditor("cards/Notes/A.md", { focus: true }));
     const v = await ev(async () => {
       const ta = $(".sn-editor-text"); ta.setSelectionRange(4, 4);
       await attachFiles(ta, [new File(["png"], "a.png", { type: "image/png" }), new File(["zip"], "b.zip")]);
@@ -548,7 +547,7 @@ describe("palettes, settings, language and themes", () => {
     await page().keyboard.press("Control+o");
     await page().keyboard.type("pont");
     await page().keyboard.press("Enter");
-    assert.equal(await ev(() => board.target), "Cards/Pont du Gard.md");
+    assert.equal(await ev(() => board.target), "cards/Pont du Gard.md");
   });
 
   test("the command palette runs a command", async () => {
@@ -570,7 +569,7 @@ describe("palettes, settings, language and themes", () => {
   test("settings have a tab per group, arrow keys move between them and the last tab is remembered", async () => {
     await ev(() => settingsModal("appearance"));
     const tabs = () => page().$$eval(".sn-set-tab", (b) => b.map((x) => [x.textContent, x.getAttribute("aria-selected")]));
-    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Cards", "Board", "Notes", "Agenda", "About"], "no Git tab outside the app");
+    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Cards", "Board", "Agenda", "About"], "no Git tab outside the app");
     assert.match(await page().textContent(".sn-set-body"), /Theme/);
     assert.doesNotMatch(await page().textContent(".sn-set-body"), /Parents field/, "one group at a time");
     const height = await page().$eval(".modal", (m) => m.offsetHeight);
@@ -579,11 +578,10 @@ describe("palettes, settings, language and themes", () => {
     assert.equal(await page().$eval(".modal", (m) => m.offsetHeight), height, "the dialog keeps its size between tabs");
     await page().focus(".sn-set-tab.is-active");
     await page().keyboard.press("ArrowRight");
-    assert.equal((await tabs()).find((x) => x[1] === "true")[0], "Notes");
-    assert.match(await page().textContent(".sn-set-body"), /Daily notes folder.*Attachments folder/s);
+    assert.equal((await tabs()).find((x) => x[1] === "true")[0], "Agenda");
     await page().keyboard.press("Escape");
     await ev(() => settingsModal());
-    assert.equal(await page().textContent(".sn-set-tab.is-active"), "Notes");
+    assert.equal(await page().textContent(".sn-set-tab.is-active"), "Agenda");
     await ev(() => settingsModal("about")); // already open: switches tabs instead of stacking a second dialog
     assert.equal(await page().$$eval(".modal", (m) => m.length), 1);
     noErrors();
@@ -675,14 +673,14 @@ describe("phone layout", () => {
 
   test("the sidebar starts closed and the editor fills the screen", async () => {
     assert.equal(await ev(() => $("#app").classList.contains("side-closed")), true);
-    await ev(() => openEditor("Cards/History.md"));
+    await ev(() => openEditor("cards/History.md"));
     const box = await page().locator("#editor").boundingBox();
     assert.ok(box.width >= 370, `editor width ${box.width}`);
     noErrors();
   });
 
   test("the note's text uses the editor's width, not the desktop margins", async () => {
-    await ev(() => openEditor("Cards/History.md"));
+    await ev(() => openEditor("cards/History.md"));
     const pad = await ev(() => { const s = getComputedStyle($(".sn-editor-page")); return [parseFloat(s.paddingLeft), parseFloat(s.paddingRight)]; });
     assert.ok(pad.every((p) => p <= 16), `side padding ${pad}`);
     const box = await page().locator(".sn-editor-page .cm-content").boundingBox();
@@ -692,7 +690,7 @@ describe("phone layout", () => {
   test("the sidebar opens as a drawer and closes on navigation", async () => {
     await ev(() => setSide(true));
     assert.equal(await ev(() => $("#app").classList.contains("side-closed")), false);
-    await ev(() => setTarget("Cards/History.md"));
+    await ev(() => setTarget("cards/History.md"));
     assert.equal(await ev(() => $("#app").classList.contains("side-closed")), true);
   });
 });

@@ -8,10 +8,11 @@ import { baseName, dirName, norm } from "../core/util.js";
 import { formatMoment } from "../core/dates.js";
 import { CODE_RE, extractLinkpath, fillTemplate, splitNote, stripCode } from "../core/frontmatter.js";
 import { board, editor, graph, S, saveUI, UI, vault } from "../services/state.js";
+import { DAILY_FORMAT } from "../services/folders.js";
 import { cardColor, cardIcon, cardTags, linkText, resolveLink } from "../services/vault.js";
 import { IMG_EXT, saveAttachment } from "../services/attachments.js";
 import { txn, writeRaw } from "../services/save.js";
-import { dailyConfig } from "../services/daily-notes.js";
+import { dailyNotePath } from "../services/daily-notes.js";
 import { $, $$, h, ic } from "./dom.js";
 import { fuzzyScore, Menu, notice, openMenuEl, suggestModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
@@ -202,7 +203,7 @@ async function runSlash(id, ta) {
     case "table": { const tbl = `| ${t("untitled")} | |\n| --- | --- |\n|  |  |\n`; return insertBlock(tbl, 2); }
     case "divider": return insertBlock("---\n", 4);
     case "link": edInsert(ta, s, s, "[["); return acUpdate(ta);
-    case "today": return edInsert(ta, s, s, formatMoment(new Date(), dailyConfig().format || "YYYY-MM-DD"));
+    case "today": return edInsert(ta, s, s, formatMoment(new Date(), DAILY_FORMAT));
     case "now": return edInsert(ta, s, s, formatMoment(new Date(), "HH:mm"));
     case "image": return pickAndAttach(ta);
     case "template": return insertTemplate(ta);
@@ -219,7 +220,7 @@ async function insertTemplate(ta) {
   edInsert(ta, caret, caret, body);
 }
 
-/* ---------- pasted and dropped files are saved as attachments (the attachments folder setting) */
+/* ---------- pasted and dropped files are saved in attachments/ */
 export async function attachFiles(ta, files, pasted = false) {
   if (!editor.path || !files.length) return;
   let pos = ta.selectionStart, end = ta.selectionEnd;
@@ -268,21 +269,11 @@ export function wireEditorFiles(ta) {
   });
 }
 
-/* ---------- daily notes (the Notes tab of the settings) */
+/* ---------- today's daily note (services/daily-notes.js) */
 export async function openToday() {
   if (!vault.fs) return;
-  const cfg = dailyConfig();
-  const now = new Date();
-  const name = formatMoment(now, cfg.format);
-  const path = (cfg.folder ? cfg.folder + "/" : "") + name + ".md";
-  if (!vault.notes.has(path)) {
-    let body = "";
-    if (cfg.template) {
-      const tp = resolveLink(cfg.template.replace(/\.md$/i, ""), "");
-      if (tp && vault.notes.has(tp)) body = fillTemplate(vault.notes.get(tp).raw, name.split("/").pop(), now);
-    }
-    await txn(null, async () => { await writeRaw(path, body); return t("cardCreated", { name: name.split("/").pop() }); });
-  }
+  const path = dailyNotePath();
+  if (!vault.notes.has(path)) await txn(null, async () => { await writeRaw(path, ""); return t("cardCreated", { name: baseName(path) }); });
   openEditor(path, { focus: true });
 }
 

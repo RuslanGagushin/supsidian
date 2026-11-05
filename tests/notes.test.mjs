@@ -6,11 +6,11 @@ import { openVault, ev } from "./harness.mjs";
 before(() => openVault({
   demo: false,
   notes: {
-    "Projects/Home.md": "---\ntags: [house, \"#garden\"]\n---\nBody with #inline/sub and `#notatag` and #123\n%%#hidden%%\n```\n#code\n```\n[[Shop]] [[Projects/Plans|plans]] ![[Shop#Section]] [md](Other%20Note.md) [web](https://x.com/a.md)\n",
-    "Projects/Shop.md": "shop in projects\n",
-    "Archive/Shop.md": "shop in archive\n",
-    "Projects/Plans.md": "",
-    "Other Note.md": "---\nbroken: [\n---\ntext\n",
+    "cards/Projects/Home.md": "---\ntags: [house, \"#garden\"]\n---\nBody with #inline/sub and `#notatag` and #123\n%%#hidden%%\n```\n#code\n```\n[[Shop]] [[Projects/Plans|plans]] ![[Shop#Section]] [md](Other%20Note.md) [web](https://x.com/a.md)\n",
+    "cards/Projects/Shop.md": "shop in projects\n",
+    "cards/Archive/Shop.md": "shop in archive\n",
+    "cards/Projects/Plans.md": "",
+    "cards/Other Note.md": "---\nbroken: [\n---\ntext\n",
     "Att/pic.png": "png",
   },
 }));
@@ -33,17 +33,17 @@ describe("frontmatter and body", () => {
   });
 
   test("a broken frontmatter is reported, not thrown", async () => {
-    const n = await ev(() => { const n = vault.notes.get("Other Note.md"); return { err: !!n.fmError, fm: n.fm, body: n.body }; });
+    const n = await ev(() => { const n = vault.notes.get("cards/Other Note.md"); return { err: !!n.fmError, fm: n.fm, body: n.body }; });
     assert.deepEqual(n, { err: true, fm: {}, body: "text\n" });
   });
 
   test("tags from the frontmatter and the text, not from code, comments or numbers", async () => {
-    assert.deepEqual(await ev(() => vault.notes.get("Projects/Home.md").tags), ["#house", "#garden", "#inline/sub"]);
+    assert.deepEqual(await ev(() => vault.notes.get("cards/Projects/Home.md").tags), ["#house", "#garden", "#inline/sub"]);
     assert.deepEqual(await ev(() => noteTags({ tag: "a, b c" }, "")), ["#a", "#b", "#c"]);
   });
 
   test("links: wiki links and .md markdown links, not web addresses or code", async () => {
-    assert.deepEqual(await ev(() => vault.notes.get("Projects/Home.md").links), ["Shop", "Projects/Plans", "Shop", "Other Note.md"]);
+    assert.deepEqual(await ev(() => vault.notes.get("cards/Projects/Home.md").links), ["Shop", "Projects/Plans", "Shop", "Other Note.md"]);
   });
 
   test("extractLinkpath strips embeds, aliases, headings and decodes markdown links", async () => {
@@ -63,23 +63,23 @@ describe("frontmatter and body", () => {
 
 describe("link resolution", () => {
   test("a name resolves in the same folder first, then the shortest path", async () => {
-    assert.equal(await ev(() => resolveLink("Shop", "Projects/Home.md")), "Projects/Shop.md");
-    assert.equal(await ev(() => resolveLink("Shop", "Archive/x.md")), "Archive/Shop.md");
-    assert.equal(await ev(() => resolveLink("archive/shop", "Projects/Home.md")), "Archive/Shop.md");
-    assert.equal(await ev(() => resolveLink("SHOP.md", "Archive/x.md")), "Archive/Shop.md");
+    assert.equal(await ev(() => resolveLink("Shop", "cards/Projects/Home.md")), "cards/Projects/Shop.md");
+    assert.equal(await ev(() => resolveLink("Shop", "cards/Archive/x.md")), "cards/Archive/Shop.md");
+    assert.equal(await ev(() => resolveLink("archive/shop", "cards/Projects/Home.md")), "cards/Archive/Shop.md");
+    assert.equal(await ev(() => resolveLink("cards/SHOP.md", "cards/Archive/x.md")), "cards/Archive/Shop.md");
     assert.equal(await ev(() => resolveLink("Missing", "")), null);
   });
 
   test("attachments resolve by exact path, relative path or name", async () => {
     assert.equal(await ev(() => resolveAttachment("Att/pic.png", "")), "Att/pic.png");
-    assert.equal(await ev(() => resolveAttachment("pic.png", "Projects/Home.md")), "Att/pic.png");
+    assert.equal(await ev(() => resolveAttachment("pic.png", "cards/Projects/Home.md")), "Att/pic.png");
     assert.equal(await ev(() => resolveAttachment("PIC.PNG", "")), "Att/pic.png");
     assert.equal(await ev(() => resolveFileLink("Shop", "")), null, "a note name is not a file link");
   });
 
   test("linkText uses the full path only when the name is ambiguous", async () => {
-    assert.equal(await ev(() => linkText("Projects/Shop.md")), "Projects/Shop");
-    assert.equal(await ev(() => linkText("Projects/Plans.md")), "Plans");
+    assert.equal(await ev(() => linkText("cards/Projects/Shop.md")), "cards/Projects/Shop");
+    assert.equal(await ev(() => linkText("cards/Projects/Plans.md")), "Plans");
   });
 });
 
@@ -154,23 +154,23 @@ describe("hierarchy", () => {
 
   test("the vault graph resolves parents and keeps unresolved ones", async () => {
     const r = await ev(async () => {
-      await writeRaw("Kid.md", '---\nparents:\n  - "[[Projects/Shop]]"\n  - "[[Nowhere]]"\n---\n');
+      await writeRaw("cards/Kid.md", '---\nparents:\n  - "[[Projects/Shop]]"\n  - "[[Nowhere]]"\n---\n');
       setGraph(buildGraph());
-      return { ps: graph.parentsOf("Kid.md"), un: graph.unresolvedParentsOf("Kid.md"), back: graph.backlinksOf("Projects/Shop.md") };
+      return { ps: graph.parentsOf("cards/Kid.md"), un: graph.unresolvedParentsOf("cards/Kid.md"), back: graph.backlinksOf("cards/Projects/Shop.md") };
     });
-    assert.deepEqual(r, { ps: ["Projects/Shop.md"], un: ["Nowhere"], back: ["Projects/Home.md"] });
+    assert.deepEqual(r, { ps: ["cards/Projects/Shop.md"], un: ["Nowhere"], back: ["cards/Projects/Home.md"] });
   });
 
   test("the templates folder holds no cards", async () => {
-    assert.deepEqual(await ev(() => { S.templatesFolder = "Projects"; const r = [isCard("Projects/Home.md"), isCard("Other Note.md"), isCard("Att/pic.png")]; S.templatesFolder = "Templates"; return r; }), [false, true, false]);
+    assert.deepEqual(await ev(() => { S.templatesFolder = "cards/Projects"; const r = [isCard("cards/Projects/Home.md"), isCard("cards/Other Note.md"), isCard("Att/pic.png")]; S.templatesFolder = "Templates"; return r; }), [false, true, false]);
   });
 
   test("manual order: child_order first, then order, then name", async () => {
     const r = await ev(async () => {
-      await writeRaw("P.md", '---\nchild_order:\n  - "[[c3]]"\n  - "[[c1]]"\n---\n');
-      for (const [n, o] of [["c1", ""], ["c2", "order: 1\n"], ["c3", ""], ["c4", "order: 2\n"], ["c10", ""]]) await writeRaw(n + ".md", `---\nparents: ["[[P]]"]\n${o}---\n`);
+      await writeRaw("cards/P.md", '---\nchild_order:\n  - "[[c3]]"\n  - "[[c1]]"\n---\n');
+      for (const [n, o] of [["c1", ""], ["c2", "order: 1\n"], ["c3", ""], ["c4", "order: 2\n"], ["c10", ""]]) await writeRaw("cards/" + n + ".md", `---\nparents: ["[[P]]"]\n${o}---\n`);
       setGraph(buildGraph());
-      const kids = (mode) => graph.sortedChildren("P.md", makeComparator(mode)).map(baseName);
+      const kids = (mode) => graph.sortedChildren("cards/P.md", makeComparator(mode)).map(baseName);
       return { manual: kids("manual"), name: kids("name") };
     });
     assert.deepEqual(r.manual, ["c3", "c1", "c2", "c4", "c10"]);
