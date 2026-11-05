@@ -6,10 +6,9 @@ import { HierarchyGraph } from "../core/graph.js";
 import { lsGet, lsSet } from "./storage.js";
 
 export const DEFAULTS = {
-  pinned: [], savedViews: [], language: "auto", parentsField: "parents", cardsFolder: "", onlyCardsFolder: false,
+  pinned: [], savedViews: [], language: "auto", parentsField: "parents",
   templatesFolder: "", defaultDepth: 1, defaultLayout: "columns", defaultSort: "manual", defaultGrouped: false,
   outlineSort: "manual", previewLength: 600, cardMaxHeight: 360, maxCards: 1000,
-  dailyFolder: "", dailyFormat: "YYYY-MM-DD", dailyTemplate: "", attachmentFolder: "./",
 };
 export const UI = Object.assign({ theme: "auto", sideW: 280, editorW: 560, sideOpen: true, lang: "auto" }, lsGet("sn-ui", {}));
 delete UI.style; delete UI.font; // retired settings

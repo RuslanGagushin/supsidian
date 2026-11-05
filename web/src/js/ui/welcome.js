@@ -46,7 +46,7 @@ export function demoVault() {
   const fs = new MemoryFS("Demo vault", "demo");
   const now = Date.now();
   const d = (days) => now - days * 86400000;
-  const note = (name, fm, body, days = 3) => fs.add(`Cards/${name}.md`, (fm ? `---\n${fm.trim()}\n---\n` : "") + body.trim() + "\n", d(days));
+  const note = (name, fm, body, days = 3) => fs.add(`cards/${name}.md`, (fm ? `---\n${fm.trim()}\n---\n` : "") + body.trim() + "\n", d(days));
   note("History", `icon: landmark\ncolor: orange\norder: 1`, `Everything about the past.\n\nSee also [[Knowledge]].`, 20);
   note("Roman Empire", `parents:\n  - "[[History]]"\nicon: crown\nchild_order:\n  - "[[Colosseum]]"\n  - "[[Aqueducts]]"`, `The state that existed from 27 BC.\n\nSee also [[Colosseum]].`, 12);
   note("Architecture", `icon: building-2\ncolor: blue\norder: 2`, `Buildings, bridges and the people who built them.`, 18);
@@ -66,7 +66,7 @@ export function demoVault() {
   note("Cycle B", `parents:\n  - "[[Cycle A]]"\nicon: refresh-ccw`, `The other half of the cycle.`, 10);
   note("Orphan", `parents:\n  - "[[A note that doesn't exist]]"\ncolor: grey`, `Its parent is missing — the chip is shown dashed.`, 15);
   note("Draft thoughts", `order: 4\nicon: pencil-line`, `Ideas that don't belong anywhere yet.\n\n1. A board per project\n2. Weekly review card\n\n\`\`\`js\n// code is rendered too\nconst cards = vault.filter(isCard);\n\`\`\``, 0.3);
-  fs.add("Templates/Book.md", `---\nicon: book\ncolor: purple\ntags: [book]\n---\n**Author:** \n**Read:** {{date}}\n\n## Notes\n`, d(40));
+  fs.add("cards/Templates/Book.md", `---\nicon: book\ncolor: purple\ntags: [book]\n---\n**Author:** \n**Read:** {{date}}\n\n## Notes\n`, d(40));
   return fs;
 }
 export async function showWelcome() {

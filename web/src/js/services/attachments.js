@@ -2,10 +2,10 @@
    Attachments: the vault's non-note files — their URLs for display, where pasted files are saved,
    and which notes link to a file.
    ========================================================= */
-import { dirName } from "../core/util.js";
 import { formatMoment } from "../core/dates.js";
 import { stripCode } from "../core/frontmatter.js";
-import { S, vault } from "./state.js";
+import { vault } from "./state.js";
+import { ATTACHMENTS, vaultFolder } from "./folders.js";
 import { addAttachment, isMd, resolveAttachment } from "./vault.js";
 import { syncHook } from "./sync.js";
 
@@ -56,17 +56,10 @@ export async function moveVaultFile(from, to) {
   } else { await vault.fs.write(to, file); await vault.fs.remove(from); }
   return file.size;
 }
-/** The folder for a file attached to notePath, from the attachments folder setting. */
-function attachmentFolderFor(notePath) {
-  const setting = (S.attachmentFolder ?? "./").trim();
-  const here = dirName(notePath);
-  if (setting === "/" || setting === "") return "";
-  if (setting === "./" || setting === ".") return here;
-  if (setting.startsWith("./")) return [here, setting.slice(2)].filter(Boolean).join("/").replace(/\/+$/, "");
-  return setting.replace(/^\/+|\/+$/g, "");
-}
+/** Every attachment goes into attachments/ (services/folders.js). */
+const attachmentFolderFor = () => vaultFolder(ATTACHMENTS);
 export async function saveAttachment(file, notePath, pasted) {
-  const folder = attachmentFolderFor(notePath);
+  const folder = attachmentFolderFor();
   const ext = (file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".") + 1) : (file.type.split("/")[1] || "png").replace("jpeg", "jpg")).toLowerCase();
   const stem = pasted || !file.name ? `Pasted image ${formatMoment(new Date(), "YYYYMMDDHHmmss")}` : file.name.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|#^[\]]/g, " ").trim() || "file";
   let path = (folder ? folder + "/" : "") + `${stem}.${ext}`, i = 1;

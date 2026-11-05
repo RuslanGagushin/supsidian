@@ -1,8 +1,8 @@
 /* =========================================================
-   Daily notes: where today's note goes, its name and its template (the Notes tab of the settings).
+   Daily notes: one per day in daily notes/, named YYYY-MM-DD (services/folders.js).
    ========================================================= */
-import { S } from "./state.js";
+import { formatMoment } from "../core/dates.js";
+import { DAILY, DAILY_FORMAT, vaultFolder } from "./folders.js";
 
-export function dailyConfig() {
-  return { folder: (S.dailyFolder || "").replace(/^\/+|\/+$/g, ""), format: S.dailyFormat || "YYYY-MM-DD", template: S.dailyTemplate || "" };
-}
+/** The path of the daily note for `date` (today by default). */
+export const dailyNotePath = (date = new Date()) => vaultFolder(DAILY) + "/" + formatMoment(date, DAILY_FORMAT) + ".md";

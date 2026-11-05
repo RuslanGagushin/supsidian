@@ -217,8 +217,6 @@ export function settingsModal(tab) {
     ]],
     ["cards", t("sectionCards"), "layers", () => [
       item(t("setParentsField"), t("setParentsFieldDesc"), text(S.parentsField, "parents", (v) => { S.parentsField = v.trim() || "parents"; save(); })),
-      item(t("setCardsFolder"), t("setCardsFolderDesc"), text(S.cardsFolder, "Cards", (v) => { S.cardsFolder = v.trim().replace(/\/+$/, ""); save(); })),
-      item(t("setOnlyFolder"), t("setOnlyFolderDesc"), toggle(S.onlyCardsFolder, (v) => { S.onlyCardsFolder = v; save(); })),
       item(t("setTemplatesFolder"), t("setTemplatesFolderDesc"), text(S.templatesFolder, "Templates", (v) => { S.templatesFolder = v.trim().replace(/\/+$/, ""); save(); })),
       storedIn(),
     ]],
@@ -229,13 +227,6 @@ export function settingsModal(tab) {
       item(t("setPreview"), t("setPreviewDesc"), text(S.previewLength, "600", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.previewLength = Math.floor(n); save(); } }, "number")),
       item(t("setCardHeight"), t("setCardHeightDesc"), text(S.cardMaxHeight, "360", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.cardMaxHeight = Math.floor(n); save(); } }, "number")),
       item(t("setMaxCards"), null, text(S.maxCards, "1000", (v) => { const n = Number(v); if (Number.isFinite(n) && n > 0) { S.maxCards = Math.floor(n); save(); } }, "number")),
-      storedIn(),
-    ]],
-    ["notes", wt("sectionNotes"), "notebook-pen", () => [
-      item(wt("setDailyFolder"), wt("setDailyFolderDesc"), text(S.dailyFolder, "Journal", (v) => { S.dailyFolder = v.trim().replace(/^\/+|\/+$/g, ""); save(); })),
-      item(wt("setDailyFormat"), wt("setDailyFormatDesc"), text(S.dailyFormat, "YYYY-MM-DD", (v) => { S.dailyFormat = v.trim() || "YYYY-MM-DD"; save(); })),
-      item(wt("setDailyTemplate"), wt("setDailyTemplateDesc"), text(S.dailyTemplate, "Templates/Daily", (v) => { S.dailyTemplate = v.trim(); save(); })),
-      item(wt("setAttachments"), wt("setAttachmentsDesc"), text(S.attachmentFolder, "./", (v) => { S.attachmentFolder = v.trim() || "./"; save(); })),
       storedIn(),
     ]],
     ["agenda", tt("sectionAgenda"), "calendar-check", () => [

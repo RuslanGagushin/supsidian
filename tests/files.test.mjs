@@ -13,16 +13,16 @@ describe("references", () => {
   beforeEach(() => openVault({
     files: { "Att/car.svg": SVG, "Att/contract.pdf": { data: "%PDF" }, "Att/sub/car.svg": SVG, "Att/my file.txt": { data: "t" }, "orphan.zip": {} },
     notes: {
-      "Cards/A.md": "![[car.svg|300]]\n[[contract.pdf#page=2]]\n[txt](Att/my%20file.txt)\n",
-      "Cards/B.md": "```\n![[contract.pdf]]\n```\n[site](https://example.com/contract.pdf) ![[Att/sub/car.svg]]\n",
+      "cards/A.md": "![[car.svg|300]]\n[[contract.pdf#page=2]]\n[txt](Att/my%20file.txt)\n",
+      "cards/B.md": "```\n![[contract.pdf]]\n```\n[site](https://example.com/contract.pdf) ![[Att/sub/car.svg]]\n",
     },
   }));
 
   test("wiki embeds, wiki links and markdown links count; code and URLs don't", async () => {
-    assert.deepEqual(await refsOf("Att/car.svg"), ["Cards/A.md"]);
-    assert.deepEqual(await refsOf("Att/contract.pdf"), ["Cards/A.md"]);
-    assert.deepEqual(await refsOf("Att/my file.txt"), ["Cards/A.md"]);
-    assert.deepEqual(await refsOf("Att/sub/car.svg"), ["Cards/B.md"]);
+    assert.deepEqual(await refsOf("Att/car.svg"), ["cards/A.md"]);
+    assert.deepEqual(await refsOf("Att/contract.pdf"), ["cards/A.md"]);
+    assert.deepEqual(await refsOf("Att/my file.txt"), ["cards/A.md"]);
+    assert.deepEqual(await refsOf("Att/sub/car.svg"), ["cards/B.md"]);
     assert.deepEqual(await refsOf("orphan.zip"), []);
   });
 });
@@ -31,8 +31,8 @@ describe("rename", () => {
   beforeEach(() => openVault({
     files: { "Att/car photo.svg": SVG, "Att/contract.pdf": { data: "%PDF" }, "Other/car.svg": SVG, "Att/taken.pdf": {} },
     notes: {
-      "Cards/A.md": "![[car photo.svg|300]] and [[contract.pdf#page=2|the contract]]\n![x](Att/car%20photo.svg)\n![y](<Att/car photo.svg>)\n",
-      "Cards/B.md": "unrelated [[car photo]] note link stays\n",
+      "cards/A.md": "![[car photo.svg|300]] and [[contract.pdf#page=2|the contract]]\n![x](Att/car%20photo.svg)\n![y](<Att/car photo.svg>)\n",
+      "cards/B.md": "unrelated [[car photo]] note link stays\n",
     },
   }));
 
@@ -40,28 +40,28 @@ describe("rename", () => {
     const np = await ev(() => renameAttachment("Att/car photo.svg", "Mazda CX5"));
     assert.equal(np, "Att/Mazda CX5.svg", "the extension is kept");
     await ev(() => renameAttachment("Att/contract.pdf", "Signed.pdf"));
-    assert.equal(await raw("Cards/A.md"),
+    assert.equal(await raw("cards/A.md"),
       "![[Mazda CX5.svg|300]] and [[Signed.pdf#page=2|the contract]]\n![x](Att/Mazda%20CX5.svg)\n![y](<Att/Mazda CX5.svg>)\n");
-    assert.equal(await raw("Cards/B.md"), "unrelated [[car photo]] note link stays\n");
+    assert.equal(await raw("cards/B.md"), "unrelated [[car photo]] note link stays\n");
     const st = await ev(() => ({ all: allAttachments().sort(), old: vault.files.has("car photo.svg"), exists: vault.fs.files.has("Att/car photo.svg"), data: vault.fs.files.has("Att/Mazda CX5.svg") }));
     assert.deepEqual(st.all, ["Att/Mazda CX5.svg", "Att/Signed.pdf", "Att/taken.pdf", "Other/car.svg"]);
     assert.equal(st.old, false, "the old name leaves the name index");
     assert.equal(st.exists, false);
     assert.equal(st.data, true);
-    assert.deepEqual(await refsOf("Att/Mazda CX5.svg"), ["Cards/A.md"]);
+    assert.deepEqual(await refsOf("Att/Mazda CX5.svg"), ["cards/A.md"]);
   });
 
   test("a name used elsewhere in the vault is linked by its full path", async () => {
     await ev(() => renameAttachment("Att/car photo.svg", "car.svg"));
-    assert.match(await raw("Cards/A.md"), /^!\[\[Att\/car\.svg\|300\]\]/);
-    assert.deepEqual(await refsOf("Att/car.svg"), ["Cards/A.md"]);
+    assert.match(await raw("cards/A.md"), /^!\[\[Att\/car\.svg\|300\]\]/);
+    assert.deepEqual(await refsOf("Att/car.svg"), ["cards/A.md"]);
     assert.deepEqual(await refsOf("Other/car.svg"), []);
   });
 
   test("refuses a name that already exists in the folder", async () => {
-    const before = await raw("Cards/A.md");
+    const before = await raw("cards/A.md");
     assert.equal(await ev(() => renameAttachment("Att/contract.pdf", "TAKEN.pdf")), "Att/contract.pdf");
-    assert.equal(await raw("Cards/A.md"), before);
+    assert.equal(await raw("cards/A.md"), before);
     assert.equal(await ev(() => vault.allPaths.has("Att/contract.pdf")), true);
   });
 
@@ -69,7 +69,7 @@ describe("rename", () => {
     assert.equal(await ev(() => renameAttachment("Att/contract.pdf", "Contract")), "Att/Contract.pdf");
     assert.equal(await ev(() => renameAttachment("Att/Contract.pdf", "a/b:c")), "Att/a b c.pdf");
     assert.equal(await ev(() => vault.fs.files.has("Att/Contract.pdf") || vault.fs.files.has("Att/contract.pdf")), false);
-    assert.match(await raw("Cards/A.md"), /\[\[a b c\.pdf#page=2\|the contract\]\]/);
+    assert.match(await raw("cards/A.md"), /\[\[a b c\.pdf#page=2\|the contract\]\]/);
   });
 
   test("the renamed image still shows", async () => {
@@ -81,7 +81,7 @@ describe("rename", () => {
 });
 
 describe("delete", () => {
-  beforeEach(() => openVault({ files: { "Att/used.svg": SVG, "Att/free.zip": { data: "zip" } }, notes: { "Cards/A.md": "![[used.svg]]\n" } }));
+  beforeEach(() => openVault({ files: { "Att/used.svg": SVG, "Att/free.zip": { data: "zip" } }, notes: { "cards/A.md": "![[used.svg]]\n" } }));
 
   test("asks first, warns about links, cancel keeps the file", async () => {
     const done = ev(() => deleteAttachment("Att/used.svg"));
@@ -105,7 +105,7 @@ describe("delete", () => {
 describe("list", () => {
   beforeEach(() => openVault({
     files: { "a.png": { data: "1234567890" }, "b.pdf": { data: "12" }, "c.mp3": { data: "123456" }, "d.zip": { data: "1" } },
-    notes: { "Cards/Holiday.md": "![[a.png]] [[b.pdf]]\n" },
+    notes: { "cards/Holiday.md": "![[a.png]] [[b.pdf]]\n" },
   }));
   const rows = () => page.$$eval(".fv-row", (r) => r.map((x) => x.dataset.path));
 
@@ -137,7 +137,7 @@ describe("list", () => {
     assert.equal(await ev(() => FV.sel), "a.png");
     assert.equal(await page.isDisabled(".fv-goto"), false);
     await page.click(".fv-goto");
-    assert.equal(await ev(() => editor.path), "Cards/Holiday.md");
+    assert.equal(await ev(() => editor.path), "cards/Holiday.md");
     await page.focus(".fv-list");
     await page.keyboard.press("End");
     assert.equal(await ev(() => FV.sel), "d.zip");
