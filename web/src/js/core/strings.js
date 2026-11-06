@@ -5,7 +5,7 @@ export const STR = {
   en: {
     allCards: "All cards", edit: "Edit", more: "More", back: "Back", toParent: "To parent", depth: "Depth",
     searchAndFilters: "Search and filters (Ctrl+F)", selectMode: "Select mode", selectModeOff: "Exit select mode",
-    saveView: "Save board as a view", sorting: "Sort", groupByParent: "Group by parent", groupByParentDisabled: "Grouping needs depth above 1",
+    saveView: "Save board as a view", sorting: "Sort", groupByParent: "Group by parent",
     layoutColumns: "Columns", layoutList: "List", layoutNotes: "Notes beside the list",
     rowOwnNote: "This card", rowHint: "{name} — ↑↓ next note · → inside · ← back out · Enter edit · Space select · Delete delete", rowEnter: "Open its cards ({n})",
     sortManual: "Manually (order field)", sortName: "By name", sortModified: "Recently modified first", sortCreated: "Newest first",
@@ -83,7 +83,7 @@ export const STR = {
   ru: {
     allCards: "Все карточки", edit: "Редактировать", more: "Ещё", back: "Назад", toParent: "К родителю", depth: "Глубина",
     searchAndFilters: "Поиск и фильтры (Ctrl+F)", selectMode: "Режим выбора", selectModeOff: "Выйти из режима выбора",
-    saveView: "Сохранить доску как вид", sorting: "Сортировка", groupByParent: "Группировать по родителю", groupByParentDisabled: "Группировка доступна при глубине больше 1",
+    saveView: "Сохранить доску как вид", sorting: "Сортировка", groupByParent: "Группировать по родителю",
     layoutColumns: "Колонки", layoutList: "Список", layoutNotes: "Заметки рядом со списком",
     rowOwnNote: "Сама карточка", rowHint: "{name} — ↑↓ следующая заметка · → внутрь · ← назад · Enter правка · Пробел выбрать · Delete удалить", rowEnter: "Открыть вложенные карточки ({n})",
     sortManual: "Вручную (поле order)", sortName: "По имени", sortModified: "Недавно изменённые", sortCreated: "Сначала новые",

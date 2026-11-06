@@ -9,7 +9,7 @@
 .wb-top.fit-1 .wb-sync { max-width: 130px; }
 .wb-top.fit-2 .wb-btn .wb-label { display: none; }
 .wb-top.fit-3 { gap: 4px; }
-.wb-top.fit-3 .wb-theme { display: none; }
+.wb-top .wb-sync[hidden] { display: none; }
 .wb-brand { font-family: var(--font-display); font-size: 21px; font-weight: 500; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 0; white-space: nowrap; min-width: 0; color: var(--fg); margin: 0 4px 0 2px; }
 .wb-brand i { font-style: italic; color: var(--l1); }
 .wb-brand small { font-family: var(--font-mono); font-size: 11px; color: var(--faint); font-weight: 400; letter-spacing: 0; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; }
@@ -91,7 +91,6 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .sn-board .sn-topbar .sn-seg .clickable-icon { height: 24px; min-width: 26px; padding: 0 7px; border: 0; border-radius: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--muted); }
 .sn-board .sn-topbar .sn-seg .clickable-icon:hover { background: transparent; color: var(--fg); }
 .sn-board .sn-topbar .sn-seg .clickable-icon.is-active { background: var(--win); color: var(--fg); border: 0; box-shadow: 0 0 0 1px var(--line); }
-.sn-seg-icon { padding: 0 3px 0 5px; }
 .sn-page { padding: 22px 22px 60px; }
 .sn-hero-badge { color: var(--l1); margin-bottom: 6px; }
 .sn-board .sn-hero-title { font-family: var(--font-display); font-weight: 500; font-size: 30px; line-height: 1.15; letter-spacing: -.01em; text-wrap: balance; }

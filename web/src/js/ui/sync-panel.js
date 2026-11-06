@@ -12,9 +12,11 @@ function renderSyncButton() {
   const b = $("#sync-btn");
   if (!b) return;
   const s = syncStatus();
+  // nothing to show where sync can't run; words only when it is busy or needs attention, else a quiet icon
+  b.hidden = !syncAvailable();
   b.className = `wb-btn wb-sync is-${s.state}` + (s.spin ? " is-spin" : "");
   b.title = s.text;
-  b.replaceChildren(ic("wb-sync-icon", s.icon, "refresh-cw"), h("span", { cls: "wb-label", text: s.short }));
+  b.replaceChildren(ic("wb-sync-icon", s.icon, "refresh-cw"), ...(s.state === "busy" || s.state === "warn" ? [h("span", { cls: "wb-label", text: s.short })] : []));
 }
 export function syncButton() {
   const b = h("button", { id: "sync-btn", type: "button", cls: "wb-btn wb-sync" });

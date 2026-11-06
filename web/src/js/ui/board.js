@@ -297,9 +297,10 @@ function renderToolbar() {
     for (const p of parents) m.add(baseName(p), cardIcon(p) || "layers", () => setTarget(p));
     m.showBelow(e.currentTarget);
   });
-  upBtn.disabled = !target;
-  nav.append(backBtn, upBtn);
-  bar.append(nav);
+  // only the moves that can be made: at the top with no history the bar starts with the tools
+  if (board.history.length) nav.append(backBtn);
+  if (target) nav.append(upBtn);
+  if (nav.childElementCount) bar.append(nav);
 
   const crumbs = h("div", { cls: "sn-crumbs" });
   const crumb = (path, current) => {
@@ -308,7 +309,8 @@ function renderToolbar() {
     if (!current) dnd.dropTarget(a, () => ({ path, parent: null, zones: ["inside"], root: !path }));
     crumbs.append(a);
   };
-  crumb(null, !target && !board.tagView);
+  // at the top the hero already says "All cards": the crumbs stay empty and only hold the tools to the right
+  if (target || board.tagView) crumb(null, false);
   if (board.tagView) {
     crumbs.append(h("span", { cls: "sn-crumb-sep", text: "/" }));
     crumbs.append(h("span", { cls: "sn-crumb is-current is-tag" }, ic("sn-crumb-icon", "hash"), h("span", { text: board.tagView })));
@@ -321,7 +323,7 @@ function renderToolbar() {
   bar.append(crumbs);
 
   const tools = h("div", { cls: "sn-tools" });
-  const seg = h("div", { cls: "sn-seg", title: t("depth") }, ic("sn-seg-icon", "list-tree"));
+  const seg = h("div", { cls: "sn-seg", title: t("depth") });
   for (const [v, label] of DEPTHS.map((d) => [d, d ? String(d) : "∞"])) {
     const b = h("button", { cls: "clickable-icon" + (v === board.depth ? " is-active" : ""), type: "button", text: label, title: `${t("depth")}: ${label}` });
     b.addEventListener("click", () => { board.depth = v; board.rendered = 60; persistBoard(); renderBoard(); });
@@ -335,18 +337,19 @@ function renderToolbar() {
   if (board.selectMode) sel.classList.add("is-active");
   tools.append(sel);
   tools.append(iconBtn("bookmark-plus", t("saveView"), () => saveCurrentView(), "sn-hide-narrow"));
-  const opts = h("div", { cls: "sn-seg" });
+  // sort and grouping are plain icons, not another grey pill; grouping shows only where it can work
+  const opts = tools;
   const sortOpts = [["manual", t("sortManual"), "list-ordered"], ["name", t("sortName"), "arrow-down-a-z"], ["modified", t("sortModified"), "clock"], ["created", t("sortCreated"), "calendar-plus"]];
   opts.append(iconBtn(sortOpts.find(([v]) => v === board.sort)?.[2] || "arrow-up-down", t("sorting"), (e) => {
     const m = new Menu();
     for (const [v, label, icn] of sortOpts) m.add(label, icn, () => { board.sort = v; persistBoard(); renderBoard(); }, { checked: v === board.sort });
     m.showBelow(e.currentTarget);
   }));
-  const gb = iconBtn("group", board.depth === 1 ? t("groupByParentDisabled") : t("groupByParent"), () => { board.grouped = !board.grouped; persistBoard(); renderBoard(); });
-  if (board.grouped && board.depth !== 1) gb.classList.add("is-active");
-  gb.disabled = board.depth === 1;
-  opts.append(gb);
-  tools.append(opts);
+  if (board.depth !== 1) {
+    const gb = iconBtn("group", t("groupByParent"), () => { board.grouped = !board.grouped; persistBoard(); renderBoard(); });
+    if (board.grouped) gb.classList.add("is-active");
+    opts.append(gb);
+  }
   const lay = h("div", { cls: "sn-seg" });
   for (const [v, icn, label] of LAYOUTS()) {
     const b = iconBtn(icn, label, () => setLayout(v));

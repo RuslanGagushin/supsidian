@@ -735,7 +735,7 @@ describe("palettes, settings, language and themes", () => {
 
   test("the Russian interface", async () => {
     await openVault({ lang: "ru" });
-    assert.match(await page().textContent(".sn-crumbs"), /Все карточки/);
+    assert.match(await page().textContent(".sn-hero-title"), /Все карточки/);
     assert.match(await page().textContent("#files-btn"), /Файлы/);
     noErrors();
   });
@@ -762,7 +762,7 @@ describe("top bar", () => {
   test("refits when a button's text changes", async () => {
     await openVault({ viewport: { width: 1250, height: 800 } });
     const before = (await state()).step;
-    await ev(() => { $("#files-btn .wb-label").textContent = "A very long label ".repeat(6); });
+    await ev(() => { $("#files-btn .wb-label").textContent = "A very long label ".repeat(12); });
     assert.ok((await state()).step > before);
   });
 });

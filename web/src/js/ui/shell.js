@@ -162,7 +162,6 @@ function renderAll() {
     syncButton(),
     tasksButton(),
     filesButton(),
-    iconBtn("sun-moon", t("toggleTheme"), () => { const dark = document.body.classList.contains("theme-dark"); UI.theme = dark ? "light" : "dark"; saveUI(); applyTheme(); }, "wb-icon wb-theme"),
     iconBtn("settings", t("settings"), () => settingsModal(), "wb-icon"));
   // search, the new-card button and the vault live in the sidebar
   const search = h("button", { cls: "sb-search", type: "button", title: t("openShort") + " · Ctrl+O" }, ic("", "search"), h("span", { text: t("searchShort") }));
