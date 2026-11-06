@@ -10,6 +10,7 @@ import { deleteCards, quickOpen } from "./actions.js";
 import { goBack, lastFocused, renderBoard, setTarget, toggleSearch, toggleSelect } from "./board.js";
 import { closeEditor, openEditor } from "./editor.js";
 import { toggleReading } from "./editor-toolbar.js";
+import { enterRow, leaveRow } from "./cards.js";
 import { commandPalette, hotkeysModal, setSide } from "./shell.js";
 import { openToday, setFocusMode } from "./completion.js";
 import { openTasksView } from "./agenda.js";
@@ -67,6 +68,13 @@ document.addEventListener("keydown", (e) => {
   if (e.key.startsWith("Arrow")) {
     if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); goBack(); return; }
     if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); if (board.target) { const ps = graph.parentsOf(board.target).filter((p) => graph.has(p)).sort(manualCmp); setTarget(ps[0] ?? null); } return; }
+    // in the list of notes → goes into a note with children and ← back out to the parent's list
+    if (board.layout === "notes" && !board.view && !e.altKey && !isMod(e) && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      e.preventDefault();
+      if (e.key === "ArrowLeft") leaveRow();
+      else if (card?.classList.contains("has-kids")) enterRow(card.dataset.path);
+      return;
+    }
     const next = spatialNext(card || (lastFocused && $(`.sn-board .sn-card[data-path="${CSS.escape(lastFocused)}"]`)), e.key);
     if (next) {
       e.preventDefault(); next.focus(); next.scrollIntoView({ block: "nearest" });

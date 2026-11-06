@@ -826,4 +826,19 @@ describe("list of notes", () => {
     assert.equal(await ev(() => editor.path), "cards/Roman Empire.md");
     noErrors();
   });
+
+  test("a note with children goes inside with its button or →, and ← comes back out on it", async () => {
+    await ev(() => { setLayout("notes"); setTarget("cards/History.md"); });
+    const r = await ev(() => ({ gap: getComputedStyle(document.querySelector(".sn-rows")).rowGap, enter: [...document.querySelectorAll(".sn-row.has-kids")].map((x) => x.dataset.path) }));
+    assert.equal(r.gap, "6px");
+    assert.deepEqual(r.enter, ["cards/Roman Empire.md"]);
+    await page().click('.sn-row[data-path="cards/Roman Empire.md"] .sn-row-enter');
+    assert.equal(await ev(() => board.target), "cards/Roman Empire.md");
+    await page().keyboard.press("ArrowLeft");
+    assert.deepEqual(await ev(() => [board.target, editor.path, document.activeElement.dataset.path]), ["cards/History.md", "cards/Roman Empire.md", "cards/Roman Empire.md"]);
+    await page().keyboard.press("ArrowRight");
+    assert.equal(await ev(() => board.target), "cards/Roman Empire.md");
+    assert.ok(await ev(() => document.activeElement.classList.contains("sn-row")), "a row of the new list has the focus, so the arrows go on");
+    noErrors();
+  });
 });
