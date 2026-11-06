@@ -353,7 +353,6 @@ button.sn-set-tab:focus-visible { outline: 2px solid var(--accent); outline-offs
 .sn-board .sn-filterbar .sn-scope .clickable-icon { height: 22px; padding: 0 8px; border: 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
 .sn-board .sn-filterbar .sn-scope .clickable-icon.is-active { background: var(--win); color: var(--fg); box-shadow: 0 0 0 1px var(--line); }
 .sn-tree-row.is-recent .sn-tree-label { color: var(--fg); }
-.sn-tree-row.is-recent.is-editing { box-shadow: inset 2px 0 0 var(--accent); }
 .sn-ed-toolbar { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; min-height: 40px; padding: 0 8px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
 .sn-ed-toolbar::-webkit-scrollbar { display: none; }
 .sn-tb-group { display: flex; align-items: center; gap: 2px; flex: none; }
