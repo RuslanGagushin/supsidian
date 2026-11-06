@@ -4,22 +4,12 @@
    Inter everywhere but code; white notes on grey; neutral ink instead of outline-level colours.
    ========================================================== */
 body.sn-app {
-  --bg:#f6f5f4; --win:#ffffff; --panel:#e7e6e5; --fg:#212121; --muted:#696564; --faint:#9c9897; --line:#e6e4e2;
-  --accent:#4d64ff; --accent-soft:#ebeeff; --sel:#ebeae9; --flash:#fff1a8; --code-bg:#f4f3f2;
-  --ink:#141414; --cta:#4d64ff; --cta-hover:#3245bb; --hover-bg:#edeceb; --sb-avatar:#7c5cdb;
-  --tbl-head:#f4f3f2; --tbl-head-line:#e6e4e2; --tag:#3e3e3e;
+  /* colours live in base.css */
   --font-code: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --font-mono: var(--font-inter); --font-ui: var(--font-inter); --font-display: var(--font-inter);
   --font-interface: var(--font-inter); --font-text: var(--font-inter); --font-monospace: var(--font-code);
-  --text-on-accent: #fff;
   --shadow-s: 0 2px 8px rgba(0,0,0,.06);
   font-size: 13px;
-}
-body.sn-app.theme-dark {
-  --bg:#1b1b1b; --win:#262626; --panel:#333333; --fg:#e8e8e8; --muted:#a8a4a3; --faint:#7d7978; --line:#353535;
-  --accent:#7c8eff; --accent-soft:#1f2547; --sel:#383838; --flash:#4a3f12; --code-bg:#2e2e2e;
-  --ink:#f2f2f2; --cta:#4d64ff; --cta-hover:#7c8eff; --hover-bg:#2c2c2c;
-  --tbl-head:#2e2e2e; --tbl-head-line:#3a3a3a; --tag:#d6d6d6;
 }
 
 /* Layout: the sidebar runs full height; the top bar sits over the board, not over the sidebar */

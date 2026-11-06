@@ -2,11 +2,14 @@ html, body { margin: 0; height: 100%; }
 * { box-sizing: border-box; }
 body {
   --shade: var(--fg); /* dims and shadows; black in dark themes, where --fg is light and would glow */
-  /* Base palette (paper + ink, level colours like an org outline); body.sn-app below refines it */
-  --bg:#f3f4ef; --win:#fbfbf8; --panel:#e9ebe4; --fg:#1b221f; --muted:#56625c; --faint:#66716b; --line:#d4d8cf;
-  --accent:#2f4fb5; --accent-soft:#e2e7f7; --sel:#dfe6fb; --flash:#fff0b3; --code-bg:#eef0e9;
+  /* The palette, the one source of colour: white notes on warm grey, neutral ink, one blue accent.
+     --l1..--l8 and --todo/--next/--done are the semantic colours (callouts, task states, levels). */
+  --bg:#f6f5f4; --win:#ffffff; --panel:#e7e6e5; --fg:#212121; --muted:#696564; --faint:#9c9897; --line:#e6e4e2;
+  --accent:#4d64ff; --accent-soft:#ebeeff; --sel:#ebeae9; --flash:#fff1a8; --code-bg:#f4f3f2;
+  --ink:#141414; --cta:#4d64ff; --cta-hover:#3245bb; --hover-bg:#edeceb; --sb-avatar:#7c5cdb;
+  --tag:#3e3e3e; --tbl-head:#f4f3f2; --tbl-head-line:#e6e4e2;
   --l1:#2f4fb5; --l2:#9a5524; --l3:#7a3fb0; --l4:#b02b2b; --l5:#2d7a3a; --l6:#9a4f93; --l7:#946500; --l8:#1d7385;
-  --todo:#c42f27; --next:#b25f06; --done:#2d7a3a; --tag:#5b6761; --tbl-head:#cfe6fb; --tbl-head-line:#93c5f0;
+  --todo:#c42f27; --next:#b25f06; --done:#2d7a3a;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --font-inter: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-ui: var(--font-inter);
@@ -14,10 +17,12 @@ body {
 }
 body.theme-dark {
   --shade: #000;
-  --bg:#141917; --win:#1a201d; --panel:#212825; --fg:#dde3dc; --muted:#a3aea7; --faint:#8a958e; --line:#2e3632;
-  --accent:#8fa6ff; --accent-soft:#25304f; --sel:#26314f; --flash:#4a3f12; --code-bg:#202724;
+  --bg:#1b1b1b; --win:#262626; --panel:#333333; --fg:#e8e8e8; --muted:#a8a4a3; --faint:#7d7978; --line:#353535;
+  --accent:#7c8eff; --accent-soft:#1f2547; --sel:#383838; --flash:#4a3f12; --code-bg:#2e2e2e;
+  --ink:#f2f2f2; --cta:#4d64ff; --cta-hover:#7c8eff; --hover-bg:#2c2c2c;
+  --tag:#d6d6d6; --tbl-head:#2e2e2e; --tbl-head-line:#3a3a3a;
   --l1:#8fa6ff; --l2:#e3a46f; --l3:#c39cf0; --l4:#f07f78; --l5:#8ccb90; --l6:#dca2df; --l7:#e2c162; --l8:#78c6d4;
-  --todo:#ff7c70; --next:#f0a650; --done:#8ccb90; --tag:#94a098; --tbl-head:#1e3a52; --tbl-head-line:#2f5878;
+  --todo:#ff7c70; --next:#f0a650; --done:#8ccb90;
   color-scheme: dark;
 }
 body {
@@ -47,7 +52,7 @@ body {
   --inline-title-font: var(--font-display); --inline-title-color: var(--fg);
   --color-accent: var(--accent); --interactive-accent: var(--accent);
   --interactive-accent-hover: color-mix(in srgb, var(--accent) 85%, var(--fg));
-  --text-accent: var(--accent); --text-accent-hover: var(--accent); --text-on-accent: var(--win);
+  --text-accent: var(--accent); --text-accent-hover: var(--accent); --text-on-accent: #fff;
   --text-selection: var(--sel);
   --background-modifier-active-hover: var(--accent-soft);
   --pill-color: var(--muted); --pill-color-hover: var(--fg);
