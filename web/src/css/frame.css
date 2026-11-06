@@ -195,6 +195,10 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .markdown-rendered .sn-table-wrap.is-wide { overflow-x: auto; }
 .markdown-rendered table { width: 100%; margin: 0; font-variant-numeric: tabular-nums; }
 .markdown-rendered th, .markdown-rendered td { border: 1px solid var(--line); border-width: 0 1px 1px 0; padding: .65em .85em; line-height: 1.45; vertical-align: top; }
+/* cells wrap between words only (the editor's lines break anywhere, and the cells would inherit it), so a table too wide
+   for a narrow pane scrolls sideways in its frame instead of cutting words into letters */
+.markdown-rendered :is(th, td) { overflow-wrap: normal; word-break: normal; }
+.markdown-rendered :is(th, td) > .sn-cell-edit { overflow-wrap: normal; }
 .markdown-rendered th { background: var(--tbl-head); border-color: var(--tbl-head-line); font-weight: var(--font-medium); text-align: center; vertical-align: middle; }
 .markdown-rendered :is(th, td)[align="center"] { text-align: center; }
 .markdown-rendered :is(th, td)[align="right"] { text-align: end; }

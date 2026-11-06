@@ -233,7 +233,15 @@ export function liveTableButtons(el) {
   for (const wrap of $$(".sn-table-wrap", el)) {
     if (wrap.closest("blockquote, .callout")) continue;
     const host = h("div", { cls: "sn-table-host" });
-    const add = (cls, title, fn) => { const b = h("button", { type: "button", cls, title, "aria-label": title }, ic("", "plus")); b.addEventListener("click", (e) => { e.stopPropagation(); fn(b); }); return b; };
+    // the button acts on mousedown and keeps the focus where it is: a click would come after the focus left the cell being edited
+    // (or the editor), which redraws the table, and in WebKit the button pressed is gone by then, so it took a second click.
+    // A click from the keyboard (detail 0) still works.
+    const add = (cls, title, fn) => {
+      const b = h("button", { type: "button", cls, title, "aria-label": title }, ic("", "plus"));
+      b.addEventListener("mousedown", (e) => { if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); fn(b); });
+      b.addEventListener("click", (e) => { e.stopPropagation(); if (e.detail === 0) fn(b); });
+      return b;
+    };
     wrap.replaceWith(host);
     host.append(wrap,
       add("sn-table-add-row", wt("tblRowBelow"), (b) => liveTableOp(b, "rowBelow", { row: host.querySelector("table").rows.length - 1, col: 0, edit: true })),

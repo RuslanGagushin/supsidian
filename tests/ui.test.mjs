@@ -468,6 +468,34 @@ describe("table editing", () => {
     assert.equal(await cell(), "3", "the cell moves with its row and column");
   });
 
+  test("in a narrow note a wide table keeps its words whole and scrolls sideways", async () => {
+    const r = await ev(async () => {
+      await writeRaw("cards/T.md", "| Name | Type | Rating | Status | My rating | Comment |\n| --- | --- | --- | --- | --- | --- |\n| Resident Evil 2026 | Movie | 7.2 | Watched | 5 | Seen it in the cinema |\n");
+      openEditor("cards/T.md", { focus: false });
+      $("#editor .sn-editor-page").style.width = "380px";
+      await new Promise((res) => setTimeout(res, 100));
+      const wrap = $("#editor .sn-live .sn-table-wrap"), th = $$("#editor .sn-live th");
+      const lines = (el) => { const rg = document.createRange(); rg.selectNodeContents(el); return new Set([...rg.getClientRects()].map((q) => Math.round(q.top))).size; };
+      return { wide: wrap.classList.contains("is-wide"), scrolls: wrap.scrollWidth > wrap.clientWidth, lines: th.map(lines) };
+    });
+    assert.ok(r.wide && r.scrolls, "the frame scrolls");
+    assert.deepEqual(r.lines.slice(1, 4), [1, 1, 1], "one-word headers are not cut into letters");
+    noErrors();
+  });
+
+  test("a + button works on the first real click, from a cell being edited or from outside the table", async () => {
+    await page().click("#editor .sn-live tbody tr:first-child td:first-child");
+    assert.ok(await ev(() => !!$(".sn-cell-edit")), "a cell is being edited");
+    await page().hover("#editor .sn-table-host");
+    await page().click("#editor .sn-table-add-row");
+    assert.equal(await ev(() => $$("#editor .sn-live tbody tr").length), 3);
+    await page().click("#editor .sn-inline-title");
+    await page().hover("#editor .sn-table-host");
+    await page().click("#editor .sn-table-add-col");
+    assert.equal(await ev(() => $("#editor .sn-live thead tr").cells.length), 3);
+    noErrors();
+  });
+
   test("the + buttons and the menu of a rendered table", async () => {
     await ev(() => $("#editor .sn-table-add-row").click());
     assert.equal(await text(), "Intro\n\n| a   | b   |\n| --- | :-: |\n| 1   | 22  |\n| 3   |     |\n|     |     |");
