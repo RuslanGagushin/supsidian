@@ -363,6 +363,8 @@ export function openEditorAtLine(path, lineIndex) {
 }
 
 /* ---------- reading view: show keywords, priorities and dates like Org does */
+/** A timestamp as its pill shows it: without the < > or [ ] around it, a range as "from – to". */
+export const orgTsLabel = (s) => s.replace(/>--</, " – ").replace(/^[<[]|[>\]]$/g, "");
 export const ORG_DECOR_RE = /(SCHEDULED:|DEADLINE:|CLOSED:)|(<\d{4}-\d{2}-\d{2}[^>\n]*>(?:--<\d{4}-\d{2}-\d{2}[^>\n]*>)?)|(\[\d{4}-\d{2}-\d{2}[^\]\n]*\])/g;
 export function orgDecorate(el, path) {
   const set = todoSet(vault.notes.get(path));
@@ -405,8 +407,8 @@ export function orgDecorate(el, path) {
     const re = new RegExp(ORG_DECOR_RE.source, "g");
     while ((m = re.exec(n.data))) {
       frag.append(n.data.slice(last, m.index));
-      if (m[1]) frag.append(h("span", { cls: "org-plan k-" + m[1].slice(0, -1).toLowerCase(), text: m[1] }));
-      else frag.append(h("span", { cls: "org-ts" + (m[3] ? " is-inactive" : ""), text: m[0] }));
+      if (m[1]) frag.append(h("span", { cls: "org-plan k-" + m[1].slice(0, -1).toLowerCase(), text: m[1].slice(0, -1) }));
+      else frag.append(h("span", { cls: "org-ts" + (m[3] ? " is-inactive" : ""), title: m[0], text: orgTsLabel(m[0]) }));
       last = m.index + m[0].length;
     }
     frag.append(n.data.slice(last));

@@ -262,9 +262,17 @@ function lpInline(view) {
         const b = l.to, a = b - (text.length - text.lastIndexOf(":" + tm[2]));
         if (!inSkip(a, b)) { if (lpNearLine(state, a)) mark(a, b, "cm-sn-fmt"); else add(a, b, CM.Decoration.replace({ widget: new LpTags(tm[2].split(":").filter(Boolean)) })); }
       }
+      // SCHEDULED: / DEADLINE: / CLOSED: read as pills like the TODO keywords, and dates as pills without their < > or [ ]
+      // (the colon and the brackets come back where the caret is, so the text stays plain Org)
       for (const m of text.matchAll(new RegExp(ORG_DECOR_RE.source, "g"))) {
         const a = at(m.index), b = a + m[0].length;
-        if (!inSkip(a, b)) mark(a, b, m[1] ? "org-plan k-" + m[1].slice(0, -1).toLowerCase() : "org-ts" + (m[3] ? " is-inactive" : ""));
+        if (inSkip(a, b)) continue;
+        const nr = lpNear(state, a, b);
+        if (m[1]) { mark(a, b - 1, "org-plan k-" + m[1].slice(0, -1).toLowerCase()); fmt(b - 1, b, nr); continue; }
+        mark(a, b, "org-ts" + (m[3] ? " is-inactive" : ""));
+        fmt(a, a + 1, nr); fmt(b - 1, b, nr);
+        const mid = m[0].indexOf(">--<");
+        if (mid > 0) { fmt(a + mid, a + mid + 1, nr); fmt(a + mid + 3, a + mid + 4, nr); }
       }
     }
   }

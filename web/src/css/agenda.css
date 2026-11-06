@@ -100,11 +100,15 @@ button.fchip.exc { background: color-mix(in srgb, var(--todo) 12%, transparent);
 .markdown-rendered h1.org-done, .markdown-rendered h2.org-done, .markdown-rendered h3.org-done, .markdown-rendered h4.org-done { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--faint) 60%, transparent); }
 .markdown-rendered .pri { font-size: .8em; margin-right: .3em; }
 .markdown-rendered .org-tags { margin-left: .4em; font-size: .9rem; }
-.markdown-rendered .org-plan { font-family: var(--font-ui); font-size: .72em; font-weight: 700; letter-spacing: .05em; color: var(--muted); }
+.markdown-rendered .org-plan {
+  font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; line-height: 1.5; white-space: nowrap;
+  padding: 1px 7px; border-radius: 48px; background: color-mix(in srgb, currentColor 13%, transparent); color: var(--muted);
+}
 .markdown-rendered .org-plan.k-deadline { color: var(--todo); }
 .markdown-rendered .org-plan.k-scheduled { color: var(--next); }
 .markdown-rendered .org-plan.k-closed { color: var(--done); }
-.markdown-rendered .org-ts { font-family: var(--font-ui); font-size: .82em; font-weight: 500; font-variant-numeric: tabular-nums; padding: 1px 8px; border-radius: 48px; background: var(--panel); color: var(--fg); white-space: nowrap; }
+.markdown-rendered .org-ts { font-family: var(--font-ui); font-size: 12px; font-weight: 500; line-height: 1.5; font-variant-numeric: tabular-nums; padding: 1px 8px; border-radius: 48px; background: var(--panel); color: var(--tag, var(--fg)); white-space: nowrap; }
+.markdown-rendered .org-ts .cm-sn-fmt { color: var(--faint); }
 .markdown-rendered .org-ts.is-inactive { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
 .minibuf .preview.is-bad { color: var(--todo); }
 /* capture */

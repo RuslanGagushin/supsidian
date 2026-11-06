@@ -376,6 +376,39 @@ describe("live preview", () => {
   });
 });
 
+describe("planning lines", () => {
+  const NOTE = "## TODO Book the tour\nDEADLINE: <2026-11-07 Sat> SCHEDULED: <2026-11-05 Thu>\n\nIntro\n\n- DONE Set up\n  CLOSED: [2026-11-03 Tue 18:20]\n";
+  beforeEach(async () => { await openVault({ demo: false, notes: { "cards/P.md": NOTE } }); await ev(() => openEditor("cards/P.md", { focus: false })); });
+  const shown = (sel) => ev((s) => [...document.querySelectorAll(s)].map((x) => x.innerText.trim()), sel);
+
+  test("SCHEDULED, DEADLINE and CLOSED are pills without their colon, dates pills without their brackets", async () => {
+    assert.deepEqual(await shown("#editor .sn-live .org-plan"), ["DEADLINE", "SCHEDULED", "CLOSED"]);
+    assert.deepEqual(await shown("#editor .sn-live .org-ts"), ["2026-11-07 Sat", "2026-11-05 Thu", "2026-11-03 Tue 18:20"]);
+    await ev(() => { editor.mode = "read"; renderEditor(); });
+    assert.deepEqual(await shown("#editor .sn-reading .org-plan"), ["DEADLINE", "SCHEDULED", "CLOSED"]);
+    assert.deepEqual(await shown("#editor .sn-reading .org-ts"), ["2026-11-07 Sat", "2026-11-05 Thu", "2026-11-03 Tue 18:20"]);
+    assert.equal(await ev(() => document.querySelector("#editor .sn-reading .org-ts").title), "<2026-11-07 Sat>", "the full timestamp in the tooltip");
+    assert.equal(await raw("cards/P.md"), NOTE, "the note's text is unchanged");
+    noErrors();
+  });
+
+  test("the caret in a date shows its brackets, the caret in a label its colon, as for the rest of the Markdown", async () => {
+    const caret = (find, off) => ev(([f, o]) => { const ta = $(".sn-editor-text"); ta.focus(); ta.setSelectionRange(ta.value.indexOf(f) + o); }, [find, off]);
+    await caret("2026-11-07", 3);
+    await page().waitForTimeout(50);
+    assert.deepEqual((await shown("#editor .sn-live .org-ts")).slice(0, 2), ["<2026-11-07 Sat>", "2026-11-05 Thu"]);
+    await caret("DEADLINE", 3);
+    await page().waitForTimeout(50);
+    assert.ok((await ev(() => document.querySelector("#editor .sn-live .cm-line:nth-child(2)").innerText)).includes("DEADLINE:"));
+    assert.deepEqual((await shown("#editor .sn-live .org-ts")).slice(0, 1), ["2026-11-07 Sat"]);
+    noErrors();
+  });
+
+  test("orgTsLabel drops the brackets and joins a range with a dash", async () => {
+    assert.deepEqual(await ev(() => ["<2026-11-05 Thu 10:00>", "[2026-11-03 Tue]", "<2026-11-05 Thu>--<2026-11-07 Sat>"].map(orgTsLabel)), ["2026-11-05 Thu 10:00", "2026-11-03 Tue", "2026-11-05 Thu – 2026-11-07 Sat"]);
+  });
+});
+
 describe("table editing", () => {
   const body = "Intro\n\n| a | b |\n|---|:-:|\n| 1 | 22 |\n| 3 |  |";
   beforeEach(async () => { await openVault({ demo: false, notes: { "cards/T.md": body } }); await ev(() => openEditor("cards/T.md", { focus: true })); });
