@@ -38,21 +38,17 @@ describe("tables and fonts", () => {
     noErrors();
   });
 
-  test("Inter is the interface font and a writing font, and is embedded for Cyrillic too", async () => {
+  test("Inter is the interface font and the writing font, and is embedded for Cyrillic too", async () => {
     const r = await ev(async () => {
       const family = (s) => getComputedStyle(document.body).getPropertyValue(s).trim();
-      UI.writeFont = "sans"; applyTheme();
       const ui = getComputedStyle(document.body).fontFamily;
       const reading = h("div", { cls: "sn-reading" });
       document.body.append(reading);
-      const plexText = getComputedStyle(reading).fontFamily;
-      UI.writeFont = "inter"; applyTheme();
       const interText = getComputedStyle(reading).fontFamily;
       const faces = [...document.fonts].filter((f) => f.family.replace(/"/g, "") === "Inter").length;
-      return { ui, plexText, interText, faces, family: family("--font-inter") };
+      return { ui, interText, faces, family: family("--font-inter") };
     });
     assert.match(r.ui, /^"?Inter/);
-    assert.match(r.plexText, /^"?IBM Plex Sans/, "IBM Plex Sans for writing stays Plex under the Inter interface");
     assert.match(r.interText, /^"?Inter/);
     assert.equal(r.faces, 2);
     noErrors();
@@ -753,16 +749,79 @@ describe("sidebar", () => {
   test("the sidebar search opens the card picker", async () => {
     await openVault();
     await page().click(".sb-search");
-    assert.equal(await ev(() => !!document.activeElement?.closest("#minibuf") && document.activeElement.getAttribute("aria-label") === t("pickCard")), true);
+    assert.equal(await ev(() => !!document.activeElement?.closest(".prompt") && document.activeElement.getAttribute("aria-label") === t("pickCard")), true);
     noErrors();
   });
 
-  test("Settings has no style or interface font choice, and old saved choices are dropped", async () => {
+  test("Settings has no style or font choice, and old saved choices are dropped", async () => {
     await openVault();
-    await H.page.addInitScript(() => { try { localStorage.setItem("sn-ui", JSON.stringify({ lang: "en", style: "workbench", font: "plex" })); } catch { /* file:// storage */ } });
+    await H.page.addInitScript(() => { try { localStorage.setItem("sn-ui", JSON.stringify({ lang: "en", style: "workbench", font: "plex", writeFont: "serif" })); } catch { /* file:// storage */ } });
     await H.page.reload();
-    assert.deepEqual(await ev(() => [UI.style, UI.font, document.body.className.includes("font-")]), [undefined, undefined, false]);
+    assert.deepEqual(await ev(() => [UI.style, UI.font, UI.writeFont, /\b(font|write)-/.test(document.body.className)]), [undefined, undefined, undefined, false]);
     assert.equal(await ev(() => document.body.classList.contains("sn-app")), true);
+    await ev(() => settingsModal("appearance"));
+    assert.equal(await page().$$eval(".sn-set-body select", (s) => s.length), 2, "language and theme only");
+    assert.doesNotMatch(await page().textContent(".sn-set-body"), /font/i);
+  });
+
+  test("the command palette is a popup with keys written out, not a minibuffer prompt", async () => {
+    await openVault();
+    await page().keyboard.press("Control+p");
+    await page().waitForSelector(".prompt .prompt-input");
+    assert.equal(await page().$eval(".prompt-input", (i) => i.placeholder), "Type a command…");
+    const keys = await page().$$eval(".prompt .suggestion-keys", (r) => r.map((x) => [...x.querySelectorAll("kbd")].map((k) => k.textContent).join("+")));
+    const want = await ev(() => [["Ctrl", "O"], ["Ctrl", "Shift", "D"]].map((k) => k.map(keyName).join("+")));
+    assert.ok(want.every((k) => keys.includes(k)), keys.join(", "));
+    assert.ok(!keys.some((k) => /\b[CMS]-|RET|SPC/.test(k)), "no Emacs-style key names");
+    await page().fill(".prompt-input", "keyboard shortcuts");
+    await page().keyboard.press("Enter");
+    assert.equal(await page().textContent(".modal .modal-title"), "Keyboard shortcuts");
+    assert.equal(await page().$$eval(".sn-kbd-table .suggestion-keys kbd", (k) => k.length > 20), true, "the shortcuts list uses the same key chips");
+    noErrors();
+  });
+
+  test("keys are written ⌘ ⌥ ⇧ on a Mac and Ctrl Alt Shift elsewhere", async () => {
+    await openVault();
+    const r = await ev(() => ({ mac: IS_MAC, name: keyName("Ctrl"), text: keyText("Ctrl+Shift+D · Alt+↑") }));
+    assert.deepEqual([r.name, r.text], r.mac ? ["⌘", "⌘⇧D · ⌥↑"] : ["Ctrl", "Ctrl+Shift+D · Alt+↑"]);
+  });
+
+  test("the palette puts the last commands run first and ticks the settings that are on", async () => {
+    await openVault();
+    const open = async () => { await page().keyboard.press("Control+p"); await page().waitForSelector(".prompt .prompt-input"); };
+    await open();
+    assert.equal(await page().$$eval(".suggestion-group", (g) => g.length), 0, "no Recent group before any command was run");
+    const ticked = await page().$$eval(".prompt .suggestion-item", (r) => r.filter((x) => x.querySelector(".suggestion-check")).map((x) => x.querySelector(".suggestion-title").textContent));
+    assert.ok(ticked.includes("Depth: 1") && ticked.includes("Sidebar"), ticked.join(", "));
+    assert.ok(!ticked.includes("Group by parent"));
+    await page().fill(".prompt-input", "group by parent");
+    await page().keyboard.press("Enter");
+    await open();
+    const r = await page().$$eval(".prompt-results > *", (els) => els.slice(0, 3).map((e) => [e.className, e.textContent]));
+    assert.match(r[0][0], /suggestion-group/); assert.equal(r[0][1], "Recent");
+    assert.equal(r[1][1], "Group by parent");
+    assert.ok(await page().$eval(".prompt .suggestion-item", (x) => !!x.querySelector(".suggestion-check")), "now ticked");
+    await page().fill(".prompt-input", "dep");
+    assert.equal(await page().$$eval(".suggestion-group", (g) => g.length), 0, "no groups while typing");
+    noErrors();
+  });
+
+  test("text and date prompts are popups too, and the date popup shows its calendar", async () => {
+    await openVault();
+    const name = ev(() => promptModal("Name"));
+    await page().waitForSelector(".prompt.mod-ask .prompt-input");
+    assert.equal(await page().textContent(".prompt.mod-ask .prompt-title"), "Name");
+    await page().keyboard.type("Hello");
+    await page().keyboard.press("Enter");
+    assert.equal(await name, "Hello");
+    const date = ev(() => orgAskDate("Schedule", null).then((r) => r && r.dn));
+    await page().waitForSelector(".prompt.mod-ask .org-cal");
+    await page().keyboard.type("+1");
+    assert.match(await page().textContent(".prompt-preview"), /^→ <\d{4}-\d\d-\d\d/);
+    await page().keyboard.press("Enter");
+    assert.equal(await date, await ev(() => onow().dn + 1));
+    assert.equal(await page().$(".prompt"), null);
+    noErrors();
   });
 });
 

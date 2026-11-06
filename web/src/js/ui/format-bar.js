@@ -3,7 +3,7 @@ import { baseName, dirName } from "../core/util.js";
 import { editor, vault } from "../services/state.js";
 import { cardIcon, linkText } from "../services/vault.js";
 import { $, h, setIcon } from "./dom.js";
-import { minibufPick } from "./ui.js";
+import { suggestModal } from "./ui.js";
 import { sanitizeTitle } from "./actions.js";
 import { edHeading, edInsert, edLines, edLineState, edLinkStart, edPrefix, edWrap, updateEdToolbar } from "./editor-toolbar.js";
 import { ac, caretRect } from "./completion.js";
@@ -55,7 +55,7 @@ async function linkPicker(ta, typedOpen) {
   const caret = ta.selectionStart, end = ta.selectionEnd;
   const sel = ta.value.slice(caret, end);
   const items = [...vault.notes.keys()].sort((a, b) => (vault.notes.get(b).mtime - vault.notes.get(a).mtime)).map((p) => ({ value: p, title: baseName(p), icon: cardIcon(p) || "file-text", note: dirName(p) }));
-  const pick = await minibufPick({ placeholder: t("insertLink"), items, allowCreate: true });
+  const pick = await suggestModal({ placeholder: t("insertLink"), items, allowCreate: true });
   ta.focus();
   if (!pick) { ta.setSelectionRange(caret, end); return; }
   const target = pick.create ? sanitizeTitle(pick.create) : linkText(pick.value);

@@ -175,7 +175,7 @@ export function openFilesView(push = true) {
 export function filesButton() {
   const b = wbBtn("paperclip", fvt("files"), () => (board.view === "files" ? goBack() : openFilesView()), "wb-files");
   b.id = "files-btn";
-  b.title = fvt("filesHint") + " · Ctrl+Shift+E";
+  b.title = keyText(fvt("filesHint") + " · Ctrl+Shift+E");
   b.classList.toggle("is-active", board.view === "files");
   return b;
 }

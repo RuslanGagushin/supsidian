@@ -3,6 +3,12 @@
    ========================================================= */
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+export const IS_MAC = /Mac|iP(hone|ad|od)/.test(navigator.platform || navigator.userAgent || "");
+const MAC_KEYS = { Ctrl: "⌘", Alt: "⌥", Shift: "⇧" };
+/** A key's name as this system writes it: ⌘ ⌥ ⇧ on a Mac (the shortcuts take Cmd there, see isMod). */
+export const keyName = (k) => (IS_MAC && MAC_KEYS[k]) || k;
+/** Shortcuts inside a text ("Ctrl+Shift+D") as this system writes them: "⌘⇧D" on a Mac. */
+export const keyText = (s) => (IS_MAC && s ? String(s).replace(/\b(Ctrl|Alt|Shift)\+/g, (_, k) => MAC_KEYS[k]).replace(/\b(Ctrl|Alt|Shift)\b/g, (k) => MAC_KEYS[k]) : s);
 export function h(tag, props, ...children) {
   const e = document.createElement(tag);
   if (props) {
@@ -12,6 +18,7 @@ export function h(tag, props, ...children) {
       else if (k === "text") e.textContent = v;
       else if (k === "html") e.innerHTML = v;
       else if (k === "style") e.style.cssText = v;
+      else if (k === "title") e.title = keyText(String(v));
       else if (k === "dataset") Object.assign(e.dataset, v);
       else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2).toLowerCase(), v);
       else e.setAttribute(k, v === true ? "" : v);

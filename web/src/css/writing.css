@@ -5,10 +5,6 @@
 .sn-editor-page { max-width: 74ch; }
 .sn-editor-text { font-size: 14px; line-height: 1.7; }
 .sn-reading { font-size: 14px; line-height: 1.7; }
-body.write-serif .sn-editor-text:not(.is-source), body.write-serif .sn-reading, body.write-serif .hp-body { font-family: var(--font-display); font-size: 17px; line-height: 1.65; letter-spacing: 0; }
-body.write-sans .sn-editor-text:not(.is-source), body.write-sans .sn-reading, body.write-sans .hp-body { font-family: var(--font-plex); font-size: 15px; line-height: 1.7; }
-body.write-inter .sn-editor-text:not(.is-source), body.write-inter .sn-reading, body.write-inter .hp-body { font-family: var(--font-inter); font-size: 15px; line-height: 1.7; }
-body.write-serif .sn-editor-page, body.write-sans .sn-editor-page, body.write-inter .sn-editor-page { max-width: 68ch; }
 .sn-editor-text.is-file-over { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 4px; }
 .sn-editor-text::placeholder { color: var(--faint); }
 .sn-live { min-height: 40vh; cursor: text; }

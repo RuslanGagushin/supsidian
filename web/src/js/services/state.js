@@ -10,7 +10,7 @@ export const DEFAULTS = {
   outlineSort: "manual", previewLength: 600, cardMaxHeight: 360, maxCards: 1000,
 };
 export const UI = Object.assign({ theme: "auto", sideW: 280, editorW: 560, listW: 380, sideOpen: true, lang: "auto" }, lsGet("sn-ui", {}));
-delete UI.style; delete UI.font; // retired settings
+delete UI.style; delete UI.font; delete UI.writeFont; // retired settings
 export const saveUI = () => lsSet("sn-ui", UI);
 
 export const vault = {

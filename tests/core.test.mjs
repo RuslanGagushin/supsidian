@@ -8,7 +8,7 @@ import { runInThisContext } from "node:vm";
 // core/frontmatter.js reads YAML with the page's js-yaml (a global, as on the page)
 runInThisContext(readFileSync(new URL("../web/src/vendor/js-yaml.js", import.meta.url), "utf8"));
 
-const { t, pluralIndex, setLang, LANG } = await import("../web/src/js/core/i18n.js");
+const { t, ct, pluralIndex, setLang, LANG } = await import("../web/src/js/core/i18n.js");
 const { baseName, dirName, norm, esc, plainText } = await import("../web/src/js/core/util.js");
 const { formatMoment } = await import("../web/src/js/core/dates.js");
 const fm = await import("../web/src/js/core/frontmatter.js");
@@ -20,6 +20,9 @@ const tables = await import("../web/src/js/core/tables.js");
 const withLang = (l, fn) => { const was = LANG; setLang(l); try { return fn(); } finally { setLang(was); } };
 
 describe("i18n and helpers", () => {
+  test("a table of names comes back as it is (the date picker's repeat units)", () => {
+    assert.equal(ct("every").w, "weekly");
+  });
   test("t: language, English fallback, the key itself, {vars} and plural forms", () => {
     assert.equal(t("back"), "Back");
     assert.equal(withLang("ru", () => t("back")), "Назад");

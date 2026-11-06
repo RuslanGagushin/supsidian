@@ -140,9 +140,22 @@
 .suggestion-icon svg { width: var(--icon-m); height: var(--icon-m); }
 .suggestion-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .suggestion-note { font-size: var(--font-ui-smaller); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+/* text and date prompts: the same popup with a title, a field, and for dates a preview and the calendar */
+.prompt.mod-ask { width: min(460px, calc(100vw - 32px)); }
+.prompt-preview { padding: var(--size-4-2) var(--size-4-4) 0; min-height: 1.4em; font-size: var(--font-ui-small); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prompt-preview.is-bad { color: var(--todo, var(--text-error)); }
+.prompt-cal { padding: var(--size-4-2) var(--size-4-4) var(--size-4-3); }
+.prompt-cal .org-cal { width: 100%; max-width: none; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.suggestion-group { padding: var(--size-4-2) var(--size-4-3) var(--size-2-2); font-size: var(--font-ui-smaller); font-weight: var(--font-semibold); color: var(--text-faint); }
+.suggestion-group:not(:first-child) { margin-top: var(--size-2-3); border-top: var(--border-width) solid var(--background-modifier-border); }
+.suggestion-check { display: inline-flex; flex: 0 0 auto; color: var(--text-accent); }
+.suggestion-check svg { width: var(--icon-s, 16px); height: var(--icon-s, 16px); }
+.suggestion-keys { display: inline-flex; gap: 3px; flex: 0 0 auto; }
+.suggestion-keys kbd, .prompt-instructions kbd { min-width: 18px; padding: 0 5px; border: 1px solid var(--background-modifier-border); border-radius: 5px; font-family: inherit; font-size: 11px; line-height: 15px; text-align: center; color: var(--text-muted); background: var(--background-secondary); }
+.prompt-instructions kbd { margin-inline-end: 5px; }
 .suggestion-empty { padding: var(--size-4-3) var(--size-4-4); color: var(--text-faint); font-size: var(--font-ui-small); }
 .prompt-instructions { display: flex; flex-wrap: wrap; gap: var(--size-4-3); padding: var(--size-4-2) var(--size-4-4); border-top: var(--border-width) solid var(--background-modifier-border); font-size: var(--font-ui-smaller); color: var(--text-faint); }
-.prompt-instructions kbd { font-family: inherit; font-weight: var(--font-semibold); color: var(--text-muted); margin-inline-end: 4px; }
+
 .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: var(--size-2-2); }
 .icon-grid .suggestion-item { flex-direction: column; gap: var(--size-2-3); padding: var(--size-4-3) var(--size-2-3); font-size: var(--font-ui-smaller); color: var(--text-muted); text-align: center; }
 .icon-grid .suggestion-item .suggestion-title { width: 100%; }
@@ -175,7 +188,6 @@
 .sn-kbd-table { width: 100%; border-collapse: collapse; font-size: var(--font-ui-small); }
 .sn-kbd-table td { padding: var(--size-2-3) 0; border-top: 1px solid var(--background-modifier-border); vertical-align: top; color: var(--text-muted); }
 .sn-kbd-table td:first-child { width: 42%; color: var(--text-normal); white-space: nowrap; padding-inline-end: var(--size-4-3); }
-kbd.sn-k { display: inline-block; padding: 1px 6px; border-radius: var(--radius-s); border: 1px solid var(--background-modifier-border); background: var(--background-secondary); font-family: inherit; font-size: var(--font-ui-smaller); }
 
 /* ---------- Notices (top right) */
 .notice-container { position: fixed; top: var(--size-4-4); right: var(--size-4-4); z-index: 80; display: flex; flex-direction: column; align-items: flex-end; gap: var(--size-4-2); pointer-events: none; }

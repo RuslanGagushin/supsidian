@@ -11,7 +11,7 @@ import { txn, writeRaw } from "../services/save.js";
 import { dailyNotePath } from "../services/daily-notes.js";
 import { orgAll, todoSet } from "../services/tasks.js";
 import { $, $$, h, ic, iconBtn, isMod } from "./dom.js";
-import { echo, Menu, minibufRead, openLayer } from "./ui.js";
+import { echo, Menu, openLayer, promptModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
 import { masonries } from "./masonry.js";
 import { goBack, leaveTagView, navEntry, renderBoard, setTarget } from "./board.js";
@@ -48,7 +48,7 @@ export function renderTasksButton() {
   if (!b) return;
   const st = orgStats(orgAll());
   b.classList.toggle("is-active", board.view === "tasks");
-  b.title = tt("stats", st) + " · Ctrl+Shift+K";
+  b.title = keyText(tt("stats", st) + " · Ctrl+Shift+K");
   const n = st.overdue + st.today;
   b.replaceChildren(...[ic("", "calendar-check"), h("span", { cls: "wb-label", text: tt("tasks") }),
     n ? h("span", { cls: "wb-count" + (st.overdue ? " is-overdue" : " is-today"), text: String(n) }) : null].filter(Boolean));
@@ -146,7 +146,7 @@ export function renderTasksView(root) {
     const run = () => { if (isM) { AG.match = inp.value; saveAG(); } else AG.search = inp.value; renderBoard(); };
     inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); run(); } else if (e.key === "ArrowDown") { e.preventDefault(); $(".ag-body")?.focus(); orgSelect(0, true); } else if (e.key === "Escape" && inp.value) { e.stopPropagation(); inp.value = ""; run(); } });
     if (!isM) inp.addEventListener("input", debounce(run, 200));
-    agbar.append(inp, btn(tt(isM ? "vMatch" : "vSearch"), "RET", run));
+    agbar.append(inp, btn(tt(isM ? "vMatch" : "vSearch"), "Enter", run));
   }
   const tagCount = new Map();
   for (const e of all) if (!e.done && !orgSkip(e)) for (const x of e.alltags) tagCount.set(x.toLowerCase(), (tagCount.get(x.toLowerCase()) || 0) + 1);
@@ -262,8 +262,8 @@ function orgRow(x) {
   if (shown.length) main.append(h("span", { cls: "tags" }, shown.map((tg) => h("span", { cls: "tag" + (e.inherited.includes(tg) ? " inh" : ""), text: tg }))));
   const act = h("span", { cls: "ag-act" });
   if (e.kind !== "event") act.append(h("button", { type: "button", dataset: { act: "todo" }, text: tt("actState"), title: "t" }));
-  if (x.kind === "sched" || x.kind === "dead" || x.kind === "ts") act.append(h("button", { type: "button", dataset: { act: "later" }, text: tt("actLater"), title: "S-→" }));
-  act.append(h("button", { type: "button", dataset: { act: "goto" }, text: tt("actOpen"), title: "RET" }));
+  if (x.kind === "sched" || x.kind === "dead" || x.kind === "ts") act.append(h("button", { type: "button", dataset: { act: "later" }, text: tt("actLater"), title: "Shift+→" }));
+  act.append(h("button", { type: "button", dataset: { act: "goto" }, text: tt("actOpen"), title: "Enter" }));
   row.append(h("span", { cls: "ag-meta" }, cat, h("span", { cls: "ag-time", text: time }), h("span", { cls: "ag-lab", text: label })), main, act);
   return row;
 }
@@ -318,7 +318,7 @@ async function orgNav(d) {
   setTimeout(() => { $(".ag-body")?.focus({ preventScroll: true }); if (d === 0) $(".ag-day.today")?.scrollIntoView({ block: "start" }); }, 0);
 }
 async function orgAskFilter() {
-  const v = await minibufRead(tt("filterTag"), "");
+  const v = await promptModal(tt("filterTag"), "");
   orgRefocus();
   if (v == null) { AG.filter = {}; renderBoard(); return; }
   for (const tk of v.split(/\s+/).filter(Boolean)) { const neg = tk[0] === "-"; AG.filter[tk.replace(/^[+-]/, "").replace(/^#/, "").toLowerCase()] = neg ? -1 : 1; }
@@ -338,10 +338,10 @@ function orgAgendaKey(ev) {
     else if (row && lk === "d") orgPlanEntry(row.e, "DEADLINE");
     else if (row && lk === "t") orgPickState(row.e);
     else if (row && lk === "q") orgTagsEntry(row.e);
-    else echo(tt("unknownKey", { k: "C-" + k }));
+    else echo(tt("unknownKey", { k: "Ctrl+" + k.toUpperCase() }));
     return;
   }
-  if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === "c") { stop(); orgAgPrefix = true; echo("C-c-", { keep: true }); return; }
+  if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === "c") { stop(); orgAgPrefix = true; echo("Ctrl+C …", { keep: true }); return; }
   const go = (d) => { stop(); if (!AGROWS.length) return; const i = cur < 0 ? (d > 0 ? 0 : AGROWS.length - 1) : Math.max(0, Math.min(AGROWS.length - 1, cur + d)); orgSelect(i); };
   if (ev.shiftKey && (k === "ArrowRight" || k === "ArrowLeft")) { stop(); if (row) orgAct(row, k === "ArrowRight" ? "later" : "earlier"); return; }
   if (ev.shiftKey && (k === "ArrowUp" || k === "ArrowDown")) { stop(); if (row) orgPri(row.e, k === "ArrowUp" ? 1 : -1); return; }

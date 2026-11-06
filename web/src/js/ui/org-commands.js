@@ -8,7 +8,7 @@ import { board, editor, vault } from "../services/state.js";
 import { txn, writeRaw } from "../services/save.js";
 import { todoSet } from "../services/tasks.js";
 import { $ } from "./dom.js";
-import { echo, minibufPick, minibufRead } from "./ui.js";
+import { echo, promptModal, suggestModal } from "./ui.js";
 import { saveEditor } from "./editor.js";
 import { orgAskDate } from "./org-editing.js";
 
@@ -42,12 +42,12 @@ export const orgRefocus = () => { if (board.view === "tasks" && !document.active
 export async function orgPickState(e) {
   if (e.kind === "event") return;
   if (e.kind === "box") return orgCycle(e);
-  const it = await minibufPick({ placeholder: tt("pickState"), items: [...e.set.all.map((k) => ({ title: k, kw: k, icon: e.set.done.includes(k) ? "check" : "circle" })), { title: "—", kw: null, icon: "x" }] });
+  const it = await suggestModal({ placeholder: tt("pickState"), items: [...e.set.all.map((k) => ({ title: k, kw: k, icon: e.set.done.includes(k) ? "check" : "circle" })), { title: "—", kw: null, icon: "x" }] });
   if (it) await orgEdit(e, (L, li, set) => orgSetState(L, li, it.kw, set));
   orgRefocus();
 }
 export async function orgPickPriority(cur) {
-  const it = await minibufPick({ placeholder: tt("priority"), items: [["A", "chevrons-up"], ["B", "chevron-up"], ["C", "chevron-down"], ["—", "minus"]].map(([p, icon]) => ({ title: p, icon, p: p === "—" ? null : p, note: cur === p ? "●" : "" })) });
+  const it = await suggestModal({ placeholder: tt("priority"), items: [["A", "chevrons-up"], ["B", "chevron-up"], ["C", "chevron-down"], ["—", "minus"]].map(([p, icon]) => ({ title: p, icon, p: p === "—" ? null : p, note: cur === p ? "●" : "" })) });
   return it ? it.p : undefined;
 }
 export async function orgPlanEntry(e, key) {
@@ -64,7 +64,7 @@ export async function orgPlanEntry(e, key) {
 }
 export async function orgTagsEntry(e) {
   if (e.kind === "event") return;
-  const v = await minibufRead(tt("tags"), e.tags.length ? ":" + e.tags.join(":") + ":" : "");
+  const v = await promptModal(tt("tags"), e.tags.length ? ":" + e.tags.join(":") + ":" : "");
   orgRefocus();
   if (v == null && !e.tags.length) return;
   const tags = String(v || "").split(/[:\s,]+/).map((x) => x.replace(/^#/, "")).filter(Boolean);

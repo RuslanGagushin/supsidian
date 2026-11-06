@@ -21,6 +21,7 @@ function scoped(table) {
   return (key, vars = {}) => {
     let s = table[LANG]?.[key] ?? table.en[key] ?? key;
     if (Array.isArray(s)) s = s[Math.min(pluralIndex(vars.n ?? 0), s.length - 1)];
+    if (typeof s !== "string") return s; // a table of names, such as the date picker's "every"
     return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
   };
 }

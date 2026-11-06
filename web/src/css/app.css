@@ -174,8 +174,7 @@ body.sn-app .sn-selbar { border-radius: 12px; }
 body.sn-app :is(.sn-selbar-count, .sn-board .sn-selbar-btn) { font-family: var(--font-inter); }
 
 /* ---------- Minibuffer: light, a quiet footer */
-body.sn-app .minibuf, body.sn-app .minibuf input { font-family: var(--font-inter); font-size: 12.5px; }
-body.sn-app .minibuf .mb-prompt { color: var(--accent); font-weight: 600; }
+body.sn-app .minibuf { font-family: var(--font-inter); font-size: 12.5px; }
 body.sn-app .minibuf .echo.is-hint { color: var(--faint); }
 
 /* ---------- Note editor: a white sheet with a big bold title */
@@ -231,9 +230,7 @@ body.sn-app .checkbox-container.is-enabled { background: var(--cta); }
 body.sn-app .sn-about-name { font-family: var(--font-inter); font-weight: 700; }
 body.sn-app .prompt { border-radius: 14px; font-family: var(--font-inter); }
 body.sn-app .prompt-input { font-family: var(--font-inter) !important; font-size: 15px !important; }
-body.sn-app .comp { border-radius: 10px; }
-body.sn-app .comp li.on { background: var(--hover-bg); }
-body.sn-app :is(.sn-kbd-table, kbd.sn-k, .wb-btn kbd, button.sn-tb-insert kbd) { font-family: var(--font-code); }
+body.sn-app :is(.wb-btn kbd, button.sn-tb-insert kbd) { font-family: var(--font-code); }
 
 /* ---------- List of notes (layout "notes"): rows on the grey, the open note on a white sheet beside them */
 @media (min-width: 821px) {

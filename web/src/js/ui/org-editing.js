@@ -1,4 +1,4 @@
-import { ct, ft, LANG, tt } from "../core/i18n.js";
+import { ct, ft, LANG, t, tt } from "../core/i18n.js";
 import { debounce } from "../core/util.js";
 import { splitNote } from "../core/frontmatter.js";
 import { oaddMonths, odn, oFmt, ohm, oIndentW, oisoWeek, onow, opad, OPLAN_RE, orgHead, orgKwClass, orgLine, orgNextKw, orgPlanMap, orgReadDate, orgSetBox, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgSkip, orgTsParse, orgTsStr, oymd } from "../core/org.js";
@@ -6,7 +6,7 @@ import { lsGet, lsSet } from "../services/storage.js";
 import { editor, vault } from "../services/state.js";
 import { orgAll, todoSet } from "../services/tasks.js";
 import { $, $$, h, ic, isMod, setIcon } from "./dom.js";
-import { echo, mbBegin, mbEnd, minibufRead, promptModal } from "./ui.js";
+import { defaultEcho, echo, promptPanel, promptModal } from "./ui.js";
 import { openEditor } from "./editor.js";
 import { liveActivate, liveText } from "./live-preview.js";
 import { edInsert, updateEdToolbar } from "./editor-toolbar.js";
@@ -110,33 +110,27 @@ export function orgCalendar(opts) {
   };
 }
 
-/** Minibuffer date prompt with a live preview and the calendar popup. undefined = cancelled, null = remove ("-"). */
+/** Date prompt: a popup with a live preview and the calendar under the field. undefined = cancelled, null = remove ("-"). */
 export function orgAskDate(label, cur, o = {}) {
   return new Promise((resolve) => {
-    const mb = $("#minibuf");
-    if (!mb) { promptModal(label).then((v) => resolve(v == null ? undefined : v.trim() === "-" ? null : orgReadDate(v, cur?.dn) || undefined)); return; }
-    mbBegin();
-    const input = h("input", { type: "text", spellcheck: "false", autocomplete: "off", "aria-label": label, placeholder: tt("dateHelp") });
-    const prev = h("span", { cls: "preview" });
-    let done = false;
-    const finish = (v) => { if (done) return; done = true; document.removeEventListener("mousedown", outside, true); removeEventListener("resize", place); mbEnd(); resolve(v); };
+    const prev = h("div", { cls: "prompt-preview" });
     const merge = (r) => (r ? { ...r, rep: r.rep || (o.dateOnly ? null : cur?.rep) || null, warn: r.warn || cur?.warn || null } : r);
+    let input;
     const cal = orgCalendar({
       value: cur ? { dn: cur.dn, time: cur.time, end: cur.end, rep: cur.rep, warn: cur.warn } : null, base: cur?.dn, dateOnly: o.dateOnly,
       onChange: (r) => { input.value = orgDateText(r); show(); },
       onAccept: (r) => finish(r),
       onClear: cur && !o.dateOnly ? () => finish(null) : null,
     });
-    cal.el.classList.add("is-popup");
-    cal.el.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(undefined); }
-      else if (e.key === "Enter" && e.target.tagName !== "BUTTON") { e.preventDefault(); const r = cal.value(); if (r) finish(r); }
+    const p = promptPanel(label, {
+      placeholder: tt("dateHelp"), extra: [prev, h("div", { cls: "prompt-cal" }, cal.el)], onClose: (v) => resolve(v),
+      keys: [["↵", t("confirm")], ["Shift+←→↑↓", tt("calMove")], ["PgUp/PgDn", tt("calMonth")], ["esc", t("dismiss")]],
     });
-    mb.replaceChildren(h("span", { cls: "mb-prompt", text: label + ":" }), input, prev, cal.el);
-    const place = () => {
-      const w = cal.el.offsetWidth, max = mb.clientWidth - w;
-      cal.el.style.left = Math.max(0, Math.min(input.offsetLeft - 8, max)) + "px";
-    };
+    input = p.input;
+    const finish = (v) => p.close(v);
+    cal.el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target.tagName !== "BUTTON") { e.preventDefault(); const r = cal.value(); if (r) finish(r); }
+    });
     function show() {
       const v = input.value.trim();
       if (v === "-") { prev.textContent = "→ —"; prev.classList.remove("is-bad"); return; }
@@ -144,9 +138,6 @@ export function orgAskDate(label, cur, o = {}) {
       prev.textContent = r ? "→ " + orgTsStr({ active: true, ...r }) : tt("cantRead");
       prev.classList.toggle("is-bad", !r);
     }
-    const outside = (e) => { if (!mb.contains(e.target)) finish(undefined); };
-    document.addEventListener("mousedown", outside, true);
-    addEventListener("resize", place);
     input.addEventListener("input", () => { const r = orgReadDate(input.value, cur?.dn); if (r && input.value.trim()) cal.set(merge(r)); show(); });
     input.addEventListener("keydown", (e) => {
       if (e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && /^Arrow(Left|Right|Up|Down)$/.test(e.key)) {
@@ -161,13 +152,12 @@ export function orgAskDate(label, cur, o = {}) {
         if (v === "-") return finish(null);
         const r = orgReadDate(v, cur?.dn);
         if (r) finish(merge(r));
-      } else if (e.key === "Escape" || (e.ctrlKey && e.key === "g")) { e.preventDefault(); e.stopPropagation(); finish(undefined); }
+      }
     });
     if (cur) input.value = orgDateText({ dn: cur.dn, time: cur.time, end: cur.end, rep: o.dateOnly ? null : cur.rep, warn: o.dateOnly ? null : cur.warn });
     show();
-    place();
     input.focus(); input.select();
-    setTimeout(() => { place(); if (document.activeElement !== input) input.focus(); }, 0);
+    setTimeout(() => { if (document.activeElement !== input) input.focus(); }, 0);
   });
 }
 
@@ -215,7 +205,7 @@ function orgEd(ta, fn) {
   if (r.msg) echo(r.msg);
   updateEdToolbar?.();
 }
-/** Ctrl+Enter / C-c C-t: tick a checkbox, otherwise cycle the TODO keyword (a plain line becomes "- TODO …"). */
+/** Ctrl+Enter / Ctrl+C Ctrl+T: tick a checkbox, otherwise cycle the TODO keyword (a plain line becomes "- TODO …"). */
 function edToggleTask(ta, dir = 1) {
   orgEd(ta, (lines, cl, set) => {
     const empty = !lines[cl].trim();
@@ -255,7 +245,7 @@ async function edOrgAsk(ta, kind) {
     const info = orgLine(lines0[orgHeadAt(lines0, cl0, false)]);
     if (!info) { echo(tt("noEntry")); return; }
     const o = orgHead(info.rest, todoSet(vault.notes.get(editor.path)));
-    value = await minibufRead(tt("tags"), o.tags.length ? ":" + o.tags.join(":") + ":" : "");
+    value = await promptModal(tt("tags"), o.tags.length ? ":" + o.tags.join(":") + ":" : "");
     if (value == null && !o.tags.length) return;
   } else if (kind === "priority") {
     value = await orgPickPriority();
@@ -290,7 +280,7 @@ async function edOrgAsk(ta, kind) {
     return { msg: tt("planSet", { key: kind, ts }), anchor: li };
   });
 }
-/** Emacs C-c prefix in the editor (only with no selection, so Ctrl+C still copies). Returns true when handled. */
+/** The Ctrl+C prefix in the editor (only with no selection, so Ctrl+C still copies). Returns true when handled. */
 let orgPrefix = false;
 export function orgEditorKey(e, ta) {
   if (orgPrefix) {
@@ -308,14 +298,14 @@ export function orgEditorKey(e, ta) {
     else if (c && k === "c") edToggleTask(ta);
     else if (k === "a") openTasksView();
     else if (k === "c") orgCapture();
-    else if (e.key === "Escape" || (c && k === "g")) echo("Quit");
-    else echo(tt("unknownKey", { k: (c ? "C-" : "") + e.key }));
+    else if (e.key === "Escape" || (c && k === "g")) echo(defaultEcho(), { keep: true });
+    else echo(tt("unknownKey", { k: (c ? "Ctrl+" + e.key.toUpperCase() : e.key) }));
     return true;
   }
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "c" && ta.selectionStart === ta.selectionEnd) {
     e.preventDefault();
     orgPrefix = true;
-    echo("C-c-", { keep: true });
+    echo("Ctrl+C …", { keep: true });
     return true;
   }
   if (isMod(e) && e.key === "Enter") { e.preventDefault(); edToggleTask(ta, e.shiftKey ? -1 : 1); return true; }
@@ -323,11 +313,11 @@ export function orgEditorKey(e, ta) {
 }
 /** Toolbar buttons for the editor (called from renderEdToolbar). */
 export function orgToolbar(btn, g) {
-  btn(g, "list-todo", tt("cycle"), (el) => edToggleTask(el), "C-c C-t · Ctrl+Enter");
-  btn(g, "flag", tt("priority"), (el) => edOrgAsk(el, "priority"), "C-c ,");
-  btn(g, "calendar-clock", tt("schedule"), (el) => edOrgAsk(el, "SCHEDULED"), "C-c C-s");
-  btn(g, "alarm-clock", tt("deadline"), (el) => edOrgAsk(el, "DEADLINE"), "C-c C-d");
-  btn(g, "calendar-plus", tt("timestamp"), (el) => edOrgAsk(el, "active"), "C-c .");
+  btn(g, "list-todo", tt("cycle"), (el) => edToggleTask(el), "Ctrl+C Ctrl+T · Ctrl+Enter");
+  btn(g, "flag", tt("priority"), (el) => edOrgAsk(el, "priority"), "Ctrl+C ,");
+  btn(g, "calendar-clock", tt("schedule"), (el) => edOrgAsk(el, "SCHEDULED"), "Ctrl+C Ctrl+S");
+  btn(g, "alarm-clock", tt("deadline"), (el) => edOrgAsk(el, "DEADLINE"), "Ctrl+C Ctrl+D");
+  btn(g, "calendar-plus", tt("timestamp"), (el) => edOrgAsk(el, "active"), "Ctrl+C .");
 }
 export const orgLineIsEntry = (ta) => {
   const v = ta.value, s = ta.selectionStart;

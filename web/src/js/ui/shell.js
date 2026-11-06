@@ -10,8 +10,9 @@ import { buildGraph, persistBoard, readVault, saveSettings } from "../services/v
 import { undo } from "../services/save.js";
 import { runSync, stopSync, sync, syncAvailable, syncBoot } from "../services/sync.js";
 import { upd } from "../services/updates.js";
-import { $, h, ic, iconBtn } from "./dom.js";
-import { defaultEcho, echo, Menu, minibufPick, notice, openLayer, promptModal } from "./ui.js";
+import { lsGet, lsSet } from "../services/storage.js";
+import { $, h, ic, iconBtn, keyName, keyText } from "./dom.js";
+import { defaultEcho, echo, Menu, notice, openLayer, promptModal, suggestModal } from "./ui.js";
 import { createCard, quickOpen, saveCurrentView, togglePin } from "./actions.js";
 import { masonries } from "./masonry.js";
 import { goBack, LAYOUTS, patchBoard, renderBoard, setLayout, setTarget, toggleSearch } from "./board.js";
@@ -30,9 +31,6 @@ export function applyTheme() {
   const dark = UI.theme === "dark" || (UI.theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.body.classList.toggle("theme-dark", dark);
   document.body.classList.toggle("theme-light", !dark);
-  document.body.classList.toggle("write-serif", UI.writeFont === "serif");
-  document.body.classList.toggle("write-sans", UI.writeFont === "sans");
-  document.body.classList.toggle("write-inter", UI.writeFont === "inter");
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 export function applyLanguage() {
@@ -69,36 +67,37 @@ export function refresh(o = {}) {
 }
 function commandList() {
   const c = [];
-  const add = (title, icon, run, key) => c.push({ title, icon, note: key || "", run });
-  add(t("openShort") + "…", "search", quickOpen, "C-o");
-  add(wt("todayHint"), "calendar-days", openToday, "C-S-d");
-  add(tt("tasksHint"), "calendar-check", () => openTasksView(true, "agenda"), "C-S-k");
+  // on: a setting this command switches, or the board's current depth, layout or sort; the palette ticks it
+  const add = (title, icon, run, key, on) => c.push({ title, icon, keys: key ? key.split("+") : null, run, checked: !!on });
+  add(t("openShort") + "…", "search", quickOpen, "Ctrl+O");
+  add(wt("todayHint"), "calendar-days", openToday, "Ctrl+Shift+D");
+  add(tt("tasksHint"), "calendar-check", () => openTasksView(true, "agenda"), "Ctrl+Shift+K");
   add(`${tt("tasks")}: ${tt("vTodo")}`, "list-todo", () => openTasksView(true, "todo"));
   add(`${tt("tasks")}: ${tt("vMatch")}`, "tags", () => openTasksView(true, "match"));
   add(`${tt("tasks")}: ${tt("vSearch")}`, "search", () => openTasksView(true, "search"));
   add(tt("capTitle") + "…", "plus-circle", () => orgCapture());
-  add(fvt("files"), "paperclip", () => openFilesView(), "C-S-e");
+  add(fvt("files"), "paperclip", () => openFilesView(), "Ctrl+Shift+E");
   if (editor.path) { add(ft("foldAll"), "chevrons-down-up", () => orgFoldNote(true)); add(ft("unfoldAll"), "chevrons-up-down", () => orgFoldNote(false)); }
-  add(UI.focus ? wt("focusExit") : wt("focus"), "focus", () => setFocusMode(!UI.focus), "C-S-f");
+  add(wt("focus"), "focus", () => setFocusMode(!UI.focus), "Ctrl+Shift+F", UI.focus);
   if (editor.path) add(wt("outline"), "table-of-contents", () => outlineMenu($("#editor .sn-editor-head") || document.body));
   add(t("newCard"), "plus", async () => { const title = await promptModal(t("newCard")); if (title) createCard(title, board.target, "", undefined, { open: true }); });
   if (board.target) add(t("cmdEditTarget"), "pencil", () => openEditor(board.target, { focus: true }));
-  if (board.target) add(t("toParent"), "arrow-up", () => { const ps = graph.parentsOf(board.target).filter((p) => graph.has(p)); setTarget(ps[0] ?? null); }, "M-↑");
-  add(t("back"), "arrow-left", goBack, "M-←");
+  if (board.target) add(t("toParent"), "arrow-up", () => { const ps = graph.parentsOf(board.target).filter((p) => graph.has(p)); setTarget(ps[0] ?? null); }, "Alt+↑");
+  add(t("back"), "arrow-left", goBack, "Alt+←");
   add(t("allCards"), "home", () => setTarget(null));
-  add(t("searchAndFilters").replace(/ \(.*\)$/, ""), "search", () => toggleSearch(true), "C-f");
-  for (const d of DEPTHS) add(t("cmdDepth", { d: d || "∞" }), "list-tree", () => { board.depth = d; persistBoard(); renderBoard(); });
-  for (const [v, icn, label] of LAYOUTS()) add(t("cmdLayout", { l: label }), icn, () => setLayout(v));
-  for (const [v, k] of [["manual", "sortManual"], ["name", "sortName"], ["modified", "sortModified"], ["created", "sortCreated"]]) add(t("cmdSort", { s: t(k) }), "arrow-up-down", () => { board.sort = v; persistBoard(); renderBoard(); });
-  add(t("groupByParent"), "group", () => { board.grouped = !board.grouped; persistBoard(); renderBoard(); });
-  add(board.selectMode ? t("selectModeOff") : t("selectMode"), "check-square", () => { board.selectMode = !board.selectMode; if (!board.selectMode) board.selection.clear(); renderBoard(); });
+  add(t("searchAndFilters").replace(/ \(.*\)$/, ""), "search", () => toggleSearch(true), "Ctrl+F");
+  for (const d of DEPTHS) add(t("cmdDepth", { d: d || "∞" }), "list-tree", () => { board.depth = d; persistBoard(); renderBoard(); }, null, normDepth(board.depth) === d);
+  for (const [v, icn, label] of LAYOUTS()) add(t("cmdLayout", { l: label }), icn, () => setLayout(v), null, board.layout === v);
+  for (const [v, k] of [["manual", "sortManual"], ["name", "sortName"], ["modified", "sortModified"], ["created", "sortCreated"]]) add(t("cmdSort", { s: t(k) }), "arrow-up-down", () => { board.sort = v; persistBoard(); renderBoard(); }, null, board.sort === v);
+  add(t("groupByParent"), "group", () => { board.grouped = !board.grouped; persistBoard(); renderBoard(); }, null, board.grouped);
+  add(t("selectMode"), "check-square", () => { board.selectMode = !board.selectMode; if (!board.selectMode) board.selection.clear(); renderBoard(); }, null, board.selectMode);
   add(t("saveView"), "bookmark-plus", saveCurrentView);
-  if (board.target) add(S.pinned.includes(board.target) ? t("unpin") : t("pin"), "pin", () => togglePin(board.target));
+  if (board.target) add(t("pin"), "pin", () => togglePin(board.target), null, S.pinned.includes(board.target));
   add(t("revealCurrent"), "crosshair", () => revealInTree(board.target));
   add(t("collapseAll"), "chevrons-down-up", () => { tree.expanded.clear(); persistBoard(); renderTree(); });
-  add(t("toggleSidebar"), "panel-left", () => setSide($("#app").classList.contains("side-closed")), "C-\\");
-  add(t("toggleTheme"), "sun-moon", () => { const dark = document.body.classList.contains("theme-dark"); UI.theme = dark ? "light" : "dark"; saveUI(); applyTheme(); });
-  add(t("undo"), "undo-2", undo, "C-z");
+  add(t("cmdSidebar"), "panel-left", () => setSide($("#app").classList.contains("side-closed")), "Ctrl+\\", !$("#app").classList.contains("side-closed"));
+  add(t("cmdDark"), "moon", () => { const dark = document.body.classList.contains("theme-dark"); UI.theme = dark ? "light" : "dark"; saveUI(); applyTheme(); }, null, document.body.classList.contains("theme-dark"));
+  add(t("undo"), "undo-2", undo, "Ctrl+Z");
   if (vault.fs.kind === "disk") add(t("reload"), "refresh-cw", async () => { await loadVault(vault.fs); notice(t("vaultReloaded")); });
   add(t("openOther"), "folder-open", pickVault);
   add(t("settings"), "settings", settingsModal);
@@ -109,9 +108,16 @@ function commandList() {
   }
   return c;
 }
+/** The palette lists the last few commands run first (by title, kept per device). */
+const RECENT_KEY = "sn-cmd-recent", RECENT_MAX = 5;
 export async function commandPalette() {
-  const pick = await minibufPick({ placeholder: t("cmdPalette"), items: commandList() });
-  if (pick) pick.run();
+  const all = commandList();
+  const recent = lsGet(RECENT_KEY, []).map((title) => all.find((c) => c.title === title)).filter(Boolean);
+  const items = [...recent.map((c) => ({ ...c, group: t("cmdRecent") })), ...all.filter((c) => !recent.includes(c)).map((c) => ({ ...c, group: recent.length ? t("commands") : null }))];
+  const pick = await suggestModal({ placeholder: t("cmdPalette"), items });
+  if (!pick) return;
+  lsSet(RECENT_KEY, [pick.title, ...lsGet(RECENT_KEY, []).filter((x) => x !== pick.title)].slice(0, RECENT_MAX));
+  pick.run();
 }
 export function wbBtn(iconName, label, onClick, cls = "", kbd = null) {
   const b = h("button", { cls: "wb-btn " + cls, type: "button", title: label }, iconName ? ic("", iconName) : null, h("span", { cls: "wb-label", text: label }), kbd ? h("kbd", { text: kbd }) : null);
@@ -220,7 +226,6 @@ export function settingsModal(tab) {
     ["appearance", t("sectionAppearance"), "palette", () => [
       item(t("setLanguage"), null, select(UI.lang, [["auto", "Auto"], ["en", "English"], ["ru", "Русский"]], (v) => { UI.lang = v; saveUI(); applyLanguage(); close(); settingsModal("appearance"); })),
       item(t("setTheme"), null, select(UI.theme, [["auto", t("themeAuto")], ["light", t("themeLight")], ["dark", t("themeDark")]], (v) => { UI.theme = v; saveUI(); applyTheme(); })),
-      item(wt("setWriteFont"), wt("setWriteFontDesc"), select(UI.writeFont || "mono", [["mono", wt("wfMono")], ["serif", wt("wfSerif")], ["sans", wt("wfSans")], ["inter", wt("wfInter")]], (v) => { UI.writeFont = v; saveUI(); applyTheme(); })),
     ]],
     ["board", t("sectionBoard"), "layout-grid", () => [
       item(t("setDefaultDepth"), null, select(normDepth(S.defaultDepth), DEPTHS.map((d) => [d, d ? String(d) : "∞"]), (v) => { S.defaultDepth = Number(v); save(); })),
@@ -270,7 +275,7 @@ export function settingsModal(tab) {
 export function hotkeysModal() {
   const panel = h("div", { cls: "modal" });
   const close = openLayer(panel);
-  const kb = (...keys) => h("span", {}, keys.map((k, i) => [i ? " " : "", h("kbd", { cls: "sn-k", text: k })]));
+  const kb = (...keys) => h("span", { cls: "suggestion-keys" }, keys.map((k) => h("kbd", { text: keyName(k) })));
   const rows = [[kb("Ctrl", "P"), t("k_palette")], [kb("Alt", "X"), t("k_palette")], [kb("click"), t("k_click")], [kb("dbl-click"), t("k_dbl")],
     [kb("←", "↑", "→", "↓"), t("k_arrows")], [kb("Enter"), t("k_enter")], [kb("Alt", "↑"), t("k_parent")], [kb("Alt", "←"), t("k_back")], [kb("Shift", "Enter"), t("k_shiftEnter")], [kb("Ctrl", "Enter"), t("k_modEnter")],
     [kb("Space"), t("k_space")], [kb("Shift", "click"), t("k_shiftClick")], [kb("Delete"), t("k_delete")], [kb("a…z"), t("k_type")], [kb("Ctrl", "F"), t("k_find")],
@@ -278,9 +283,9 @@ export function hotkeysModal() {
     [kb("[["), t("k_link")], [kb("Ctrl", "L"), t("k_link")], [kb("Ctrl", "E"), t("k_reading")],
     [kb("/"), wt("slashHint")], [kb("#"), wt("tagsSection")], [kb("Ctrl", "Shift", "D"), wt("todayHint")], [kb("Ctrl", "Shift", "F"), wt("focus")],
     [kb("Ctrl", "Shift", "K"), tt("tasksHint")], [kb("Ctrl", "Shift", "E"), fvt("filesHint")], [kb("Ctrl", "Enter"), LANG === "ru" ? "TODO: следующее состояние / отметить чекбокс (в редакторе)" : "Next TODO state / tick a checkbox (in the editor)"],
-    [kb("C-c", "…"), tt("keysEditor")], [kb(LANG === "ru" ? "агенда" : "agenda"), tt("keysAgenda")]];
+    [kb("Ctrl", "C", "…"), tt("keysEditor")], [kb(LANG === "ru" ? "агенда" : "agenda"), tt("keysAgenda")]];
   panel.append(iconBtn("x", t("close"), () => close(), "modal-close"), h("div", { cls: "modal-title", text: t("hotkeys") }),
-    h("table", { cls: "sn-kbd-table" }, rows.map(([k, d]) => h("tr", {}, h("td", {}, k), h("td", { text: d })))));
+    h("table", { cls: "sn-kbd-table" }, rows.map(([k, d]) => h("tr", {}, h("td", {}, k), h("td", { text: keyText(d) })))));
 }
 
 /** Open a vault: read it (services/vault.js readVault), then show it and start syncing. */
