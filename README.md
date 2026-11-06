@@ -1,6 +1,6 @@
 # Supstack
 
-**Supstack shows a folder of Markdown notes (a vault) as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
+**Supstack shows a folder of Markdown notes (a vault) as a board of nested cards, with tasks in six states, an agenda, and git sync between your devices.**
 
 Every card is an ordinary Markdown note in your vault. Supstack adds nothing to your files except the frontmatter it needs to link cards together, so other editors, Git, Syncthing and any other tool keep working on the same folder.
 
@@ -26,15 +26,27 @@ This repository wraps the Supstack page into native apps with [Tauri 2](https://
 - **Select mode:** select several cards to move, re-parent or delete them together. **Undo** reverts the last card action.
 
 ### Editor
-- **Live preview editing:** the note is one editor (CodeMirror 6) that shows its Markdown rendered: headings, bold, italic, highlights, code, links, tags, tasks, bullets and TODO keywords read as they will look, and their Markdown shows only where the caret is. Callouts and code blocks render as blocks and open into their Markdown when you click or arrow into them; tables stay rendered and are edited a cell at a time. Click a link to follow it (Ctrl/Cmd+click opens a card in the editor), tick a checkbox to toggle its task, select text for a floating format bar (bold, italic, highlight, code, link, heading, lists, quote). Undo and redo cover every edit. Your files stay plain Markdown.
+- **Live preview editing:** the note is one editor (CodeMirror 6) that shows its Markdown rendered: headings, bold, italic, highlights, code, links, tags, task boxes, bullets and priorities read as they will look, and their Markdown shows only where the caret is. Callouts and code blocks render as blocks and open into their Markdown when you click or arrow into them; tables stay rendered and are edited a cell at a time. Click a link to follow it (Ctrl/Cmd+click opens a card in the editor), click a task's box to tick it (right-click it for every state), select text for a floating format bar (bold, italic, highlight, code, link, heading, lists, quote). Undo and redo cover every edit. Your files stay plain Markdown.
 - **Foldable callouts and table editing:** `> [!info]+` makes a callout that starts open and `> [!info]-` one that starts folded; click its title to fold or unfold it. Click a table cell to edit it in place; Tab and Shift+Tab go to the next and previous cell, Enter goes to the cell below (Tab or Enter at the end adds a row, Enter on an empty last row leaves the table), Shift+Enter breaks a line in a cell, and Alt+arrows move the row or column. The table's Markdown keeps its columns lined up. Right-click a cell (or use the toolbar's table button) to add, move, delete, align or sort rows and columns; the + buttons under and beside a table add a row or a column.
 - A source mode for the whole file, a reading view, **full-width** and **focus** modes, and a toolbar for formatting, images and files.
 - `[[` or `Ctrl+L` links to another card; `/` opens the insert menu.
 - Turn a selection into a **new child card**.
 
-### TODOs and the agenda
-- Org-mode style keywords on headings and list items: `TODO`, `NEXT`, `DONE` and the others you configure, with **priorities** and **`SCHEDULED` / `DEADLINE`** dates.
-- The **agenda** (calendar icon, or `Ctrl+Shift+K`) collects them from the whole vault by day, with a calendar to jump to a date and a quick-capture form for new entries. Plain checkbox items can be included too.
+### Tasks and the agenda
+- **A task is a list item with a box**, and the character in the box is its state. The editor, the reading view and the agenda draw each state as its own icon:
+
+  | Box | State | |
+  |---|---|---|
+  | `- [ ]` | to do | open |
+  | `- [/]` | in progress | open |
+  | `- [<]` | waiting / scheduling | open |
+  | `- [x]` | done | closed |
+  | `- [-]` | cancelled | closed, left out of progress |
+  | `- [>]` | forwarded (moved elsewhere) | closed, left out of progress |
+
+  The set is fixed. Headings are never tasks. A click on the box ticks an open task or reopens a closed one; right-click it (or press `T` in the agenda) to pick any state; `Ctrl+Enter` steps `[ ]` → `[/]` → `[x]` and turns a plain line into a task.
+- Tasks take **priorities** (`- [ ] [#A] …`), `:tags:` and **`SCHEDULED` / `DEADLINE`** dates on the line under them, with Org's repeaters (`+1w`, `++1m`, `.+3d`): closing a repeating task moves it to its next date. A dated task gets `CLOSED:` when it closes. Subtasks count towards their parent's `[2/5]`.
+- The **agenda** (calendar icon, or `Ctrl+Shift+K`) collects them from the whole vault by day, with a calendar to jump to a date and a quick-capture form for new entries. Its task list shows every open task or the ones in one state, and match queries filter by state (`STATE=doing`, `/wait|doing`).
 
 ### Search and filters
 - `Ctrl+F` searches the board; filter by tag with `+tag` / `-tag`.
@@ -49,9 +61,9 @@ This repository wraps the Supstack page into native apps with [Tauri 2](https://
 ### Look and keyboard
 - A full-height sidebar with search, a blue *New card* button and the vault at the bottom; Inter type, white cards on warm grey.
 - Light and dark themes; English and Russian interface.
-- Emacs-flavoured details: a mode line under each board (layout, depth, sort, card count) and a minibuffer with key hints. Most actions have shortcuts. Org-style `C-c` chords work in the editor, for example `C-c C-t` to cycle a TODO state and `C-c C-s` / `C-c C-d` to schedule or set a deadline.
+- Emacs-flavoured details: a mode line under each board (layout, depth, sort, card count) and a minibuffer with key hints. Most actions have shortcuts. Org-style `C-c` chords work in the editor, for example `C-c C-t` to step a task's state and `C-c C-s` / `C-c C-d` to schedule or set a deadline.
 - On phones the layout switches to a single column, the side tree becomes a drawer, and the Android **Back** button closes the editor, menus and dialogs before leaving the app.
-- **Settings** has a tab per group: Appearance, Cards, Board, Agenda, Git (in the app) and About, which shows the version and checks for updates.
+- **Settings** has a tab per group: Appearance, Cards, Board, Git (in the app) and About, which shows the version and checks for updates.
 
 ### Updates
 - The Windows and macOS apps check GitHub Releases when they start and twice a day. When a new version is out, a note appears in the minibuffer. **Settings → About → Install and restart** downloads it, checks its signature, installs it and restarts the app. Nothing is installed without asking, and the automatic check can be turned off there.
@@ -97,7 +109,7 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 
 ```
 web/src/                    the Supstack page's sources: page.html, css/, js/ (ES modules) and vendor/ (libraries, fonts)
-  js/core/                  pure logic: frontmatter, hierarchy graph, board model, Org TODOs and dates, tables, texts
+  js/core/                  pure logic: frontmatter, hierarchy graph, board model, tasks and dates, tables, texts
   js/services/              app state, the vault, saving and undo, attachments, Git sync, updates (no DOM)
   js/ui/                    everything on screen: board, tree, editor, agenda, files, menus, settings
   js/main.js                the entry point: loads the layers in order and starts the page

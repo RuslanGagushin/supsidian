@@ -1,9 +1,8 @@
 import { CODE_RE, extractLinkpath } from "../core/frontmatter.js";
-import { orgKwClass } from "../core/org.js";
+import { orgLine, orgSetState, TASK_LINE_RE, taskState } from "../core/org.js";
 import { findTables, tableSpans } from "../core/tables.js";
 import { editor, graph, vault } from "../services/state.js";
 import { resolveFileLink, resolveLink } from "../services/vault.js";
-import { todoSet } from "../services/tasks.js";
 import { $, $$, h, isMod } from "./dom.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
 import { createCard } from "./actions.js";
@@ -13,10 +12,12 @@ import { liveCellOpen, liveTableAt, liveTableButtons, liveTableOp, tableMenu } f
 import { updateEdToolbar } from "./editor-toolbar.js";
 import { ORG_DECOR_RE } from "./org-editing.js";
 import { openAttachment } from "./files.js";
+import { orgPickStateChar } from "./org-commands.js";
+import { taskBox } from "./task-icons.js";
 
 /* ---------- Live preview: the note body is one CodeMirror document, and away from the caret its Markdown
    renders in place. Formatting marks (**, *, ~~, ==, `, [[ ]], [](…), #, >) hide unless the caret is in that piece of text; headings,
-   links, tags, highlights, tasks, bullets and Org keywords show as they read. Callouts, code blocks and embeds render as blocks that turn
+   links, tags, highlights, task boxes, bullets and priorities show as they read. Callouts, code blocks and embeds render as blocks that turn
    back into Markdown when the caret goes in; tables stay rendered and are edited a cell at a time. editor.live = { path, body } holds the
    body the editor opened with; liveText() is what it holds now. */
 export function liveTa() { return $(".sn-editor-text.is-live"); }
@@ -42,7 +43,7 @@ export function liveActivate(off) {
 }
 export function liveActivateEnd() { return liveActivate(liveText().length); }
 function liveTaskCount(text) {
-  return (text.replace(CODE_RE, (m) => m.replace(/\[/g, "\u0001")).match(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[ xX]\]/gm) || []).length;
+  return (text.replace(CODE_RE, (m) => m.replace(/\[/g, "\u0001")).match(new RegExp(TASK_LINE_RE.source, "gm")) || []).length;
 }
 /** Where a click in rendered Markdown falls in its source: match the rendered text before the point against the source. */
 function liveClickOffset(el, e, src) {
@@ -65,13 +66,15 @@ function liveClickOffset(el, e, src) {
 }
 export function wireLive(box, path) {
   wireRendered(box, path);
-  // a task ticked inside a rendered block (a callout) is numbered against the whole note before toggleTask runs
-  box.addEventListener("change", (e) => {
-    const cb = e.target.closest('input[type="checkbox"][data-task]'), w = cb?.closest(".lp-block"), view = liveTa()?.cmView;
+  // a task box clicked inside a rendered block (a callout) is numbered against the whole note before setTaskState runs
+  const renumber = (e) => {
+    const cb = e.target.closest(".task-box[data-task]"), w = cb?.closest(".lp-block"), view = liveTa()?.cmView;
     if (!w || !view) return;
-    const local = $$('input[type="checkbox"][data-task]', w).indexOf(cb);
+    const local = $$(".task-box[data-task]", w).indexOf(cb);
     cb.dataset.task = String(liveTaskCount(view.state.doc.sliceString(0, view.posAtDOM(w))) + local);
-  }, true);
+  };
+  box.addEventListener("click", renumber, true);
+  box.addEventListener("contextmenu", renumber, true);
 }
 
 /* the decorations: the caret "touches" a piece of text when the editor has focus and a selection range meets it */
@@ -90,23 +93,38 @@ class LpTags extends CM.WidgetType {
   toDOM() { return h("span", { cls: "tags org-tags" }, this.tags.map((x) => h("span", { cls: "tag", text: x }))); }
 }
 class LpRule extends CM.WidgetType { eq() { return true; } toDOM() { return h("hr", { cls: "lp-hr" }); } }
-class LpCheck extends CM.WidgetType {
-  constructor(checked) { super(); this.checked = checked; }
-  eq(o) { return o.checked === this.checked; }
+/** Set the state of the task on the line at `pos`: `pick(current)` gives the new box character (undefined leaves it). */
+function lpSetState(view, pos, pick) {
+  const doc = view.state.doc, l = doc.lineAt(pos), nx = l.number < doc.lines ? doc.line(l.number + 1) : null;
+  const m = /^((?:[ \t]*>)*[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX\/<>-])\]/.exec(l.text);
+  if (!m) return;
+  const to = pick(m[2]);
+  if (to === undefined) return;
+  if (orgLine(l.text)?.box == null) { view.dispatch({ changes: { from: l.from + m[1].length, to: l.from + m[1].length + 1, insert: to }, userEvent: "input.task" }); return; }
+  // CLOSED: and repeaters live on the planning line under the task, so the change covers both lines
+  const before = nx ? l.text + "\n" + nx.text : l.text, L = before.split("\n");
+  if (!orgSetState(L, 0, to)) return;
+  const after = L.join("\n");
+  let a = 0, b = 0;
+  while (a < before.length && a < after.length && before[a] === after[a]) a++;
+  while (b < before.length - a && b < after.length - a && before[before.length - 1 - b] === after[after.length - 1 - b]) b++;
+  view.dispatch({ changes: { from: l.from + a, to: l.from + before.length - b, insert: after.slice(a, after.length - b) }, userEvent: "input.task" });
+}
+class LpBox extends CM.WidgetType {
+  constructor(ch) { super(); this.ch = ch; }
+  eq(o) { return o.ch === this.ch; }
   toDOM(view) {
-    const cb = h("input", { type: "checkbox", cls: "lp-task" });
-    cb.checked = this.checked;
-    cb.addEventListener("mousedown", (e) => e.preventDefault());
-    cb.addEventListener("click", (e) => {
+    const el = taskBox(this.ch);
+    el.addEventListener("mousedown", (e) => e.preventDefault());
+    el.addEventListener("click", (e) => { e.preventDefault(); lpSetState(view, view.posAtDOM(el), (cur) => (taskState(cur)?.open ? "x" : " ")); });
+    el.addEventListener("contextmenu", async (e) => {
       e.preventDefault();
-      const pos = view.posAtDOM(cb), line = view.state.doc.lineAt(pos), m = /\[([ xX])\]/.exec(line.text.slice(pos - line.from));
-      if (!m) return;
-      const at = pos + m.index + 1;
-      view.dispatch({ changes: { from: at, to: at + 1, insert: m[1] === " " ? "x" : " " }, userEvent: "input.task" });
+      const pos = view.posAtDOM(el), ch = await orgPickStateChar(this.ch);
+      if (ch !== undefined) lpSetState(view, pos, () => ch);
     });
-    return cb;
+    return el;
   }
-  ignoreEvent() { return false; }
+  ignoreEvent() { return true; }
 }
 /** Rendered Markdown in the document: an embed inline, or a whole block (a callout, a code block); a click opens its source at that spot. */
 class LpRendered extends CM.WidgetType {
@@ -202,11 +220,13 @@ function lpInline(view) {
       }
       if (name === "URL" && n.node.parent?.name !== "Link") { mark(n.from, n.to, "cm-sn-link", { "data-url": state.sliceDoc(n.from, n.to) }); return; }
       if (name === "ListMark") {
-        const item = n.node.parent, task = item?.getChild("Task"), tm = task?.getChild("TaskMarker");
-        if (tm) {
-          const checked = /x/i.test(state.sliceDoc(tm.from, tm.to));
-          if (checked) mark(tm.to, task.to, "cm-sn-done");
-          if (!lpNear(state, n.from, tm.to)) add(n.from, tm.to, CM.Decoration.replace({ widget: new LpCheck(checked) }));
+        const item = n.node.parent, lineTo = state.doc.lineAt(n.from).to;
+        const bm = /^([ \t]+)\[([ xX\/<>-])\](?=[ \t]|$)/.exec(state.sliceDoc(n.to, Math.min(lineTo, n.to + 12)));
+        const st = bm && taskState(bm[2]);
+        if (st) {
+          const boxTo = n.to + bm[0].length;
+          if (st.id !== "todo" && boxTo < lineTo) mark(boxTo, lineTo, "cm-sn-task s-" + st.id);
+          if (!lpNear(state, n.from, boxTo)) add(n.from, boxTo, CM.Decoration.replace({ widget: new LpBox(st.ch) }));
           return;
         }
         if (item?.parent?.name === "BulletList") { if (!lpNear(state, n.from, n.to)) add(n.from, n.to, CM.Decoration.replace({ widget: new LpText("•", "cm-sn-bullet") })); }
@@ -219,9 +239,8 @@ function lpInline(view) {
       if (name === "Escape") { if (!near()) hide(n.from, n.from + 1); }
     } });
   }
-  // what the Markdown parser doesn't know: [[links]], ![[embeds]], ==highlights==, #tags and Org keywords, outside code and links
+  // what the Markdown parser doesn't know: [[links]], ![[embeds]], ==highlights==, #tags and priorities, outside code and links
   const inSkip = (a, b) => skip.some(([s, e]) => a < e && b > s);
-  const set = todoSet(vault.notes.get(editor.path));
   for (const { from, to } of view.visibleRanges) {
     for (let pos = from; pos <= to; ) {
       const l = state.doc.lineAt(pos), text = l.text, at = (i) => l.from + i;
@@ -249,20 +268,15 @@ function lpInline(view) {
         const a = at(m.index + m[1].length), b = at(m.index + m[0].length);
         if (!inSkip(a, b) && !/^#+\s/.test(text)) mark(a, b, "cm-sn-tag", { "data-tag": m[2] });
       }
-      const om = /^(\s*(?:#{1,6}\s+|(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?))(\S+)(?=\s|$)(\s+\[#([A-Z0-9])\])?/.exec(text);
-      if (om && set.all.includes(om[2])) {
-        const a = at(om[1].length);
-        if (/^\s*#/.test(text)) line(l.from, "cm-sn-org"); // a TODO heading reads like text, as in reading mode
-        mark(a, a + om[2].length, `org-kw kw ${orgKwClass(om[2], set)}`);
-        if (om[3]) mark(at(om[0].length - om[3].trimStart().length), at(om[0].length), `pri ${om[4]}`);
-      }
+      const om = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[ xX\/<>-]\][ \t]+)\[#([A-Z0-9])\](?=\s|$)/.exec(text);
+      if (om) mark(at(om[1].length), at(om[1].length + 4), `pri ${om[2]}`);
       // Org tags at the end of a heading or list item (:work:urgent:) show as tag pills away from the caret
       const tm = /^\s*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s).*?(\s):((?:[\p{L}\p{N}_@#%-]+:)+)\s*$/u.exec(text);
       if (tm) {
         const b = l.to, a = b - (text.length - text.lastIndexOf(":" + tm[2]));
         if (!inSkip(a, b)) { if (lpNearLine(state, a)) mark(a, b, "cm-sn-fmt"); else add(a, b, CM.Decoration.replace({ widget: new LpTags(tm[2].split(":").filter(Boolean)) })); }
       }
-      // SCHEDULED: / DEADLINE: / CLOSED: read as pills like the TODO keywords, and dates as pills without their < > or [ ]
+      // SCHEDULED: / DEADLINE: / CLOSED: read as pills like the priorities, and dates as pills without their < > or [ ]
       // (the colon and the brackets come back where the caret is, so the text stays plain Org)
       for (const m of text.matchAll(new RegExp(ORG_DECOR_RE.source, "g"))) {
         const a = at(m.index), b = a + m[0].length;

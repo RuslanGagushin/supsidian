@@ -197,7 +197,6 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .markdown-rendered ul li::marker { color: var(--l2); }
 .markdown-rendered ol li::marker { color: var(--l2); font-family: var(--font-mono); font-size: .9em; }
 .markdown-rendered input[type="checkbox"] { accent-color: var(--l3); }
-.markdown-rendered li.is-checked { color: var(--faint); }
 .markdown-rendered mark, .sn-mark { background: var(--flash); color: inherit; }
 /* callouts share the code block frame; only the icon carries the callout colour */
 .markdown-rendered .callout { --cc: var(--l1); margin-block: 0 1em; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--win); }

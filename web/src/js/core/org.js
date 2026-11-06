@@ -1,16 +1,17 @@
 /* =========================================================
-   Org-style TODOs and an Org-agenda for plain Markdown notes.
+   Tasks with states, dates and an Org-style agenda for plain Markdown notes.
    No plugin format — the notes stay readable everywhere:
 
-     ## TODO [#A] Write the report :work:
-     SCHEDULED: <2026-10-29 Thu 10:00> DEADLINE: <2026-10-31 Sat -2d>
-
-     - NEXT Call the plumber #home
+     - [ ] [#A] Write the report :work:
+       SCHEDULED: <2026-10-29 Thu 10:00> DEADLINE: <2026-10-31 Sat -2d>
+       - [x] outline                                ← nested tasks count towards progress [1/2]
+       - [/] draft
+     - [<] Call the plumber #home
        SCHEDULED: <2026-10-28 Wed +1w>
      - Dentist <2026-10-30 Fri 14:00-15:00>        ← a plain line with a date is an event
-     - [ ] checkbox items count towards progress [2/5]
 
-   Keywords: TODO NEXT WAIT | DONE CANCELLED (settings, or per note: `todo:` in frontmatter).
+   Tasks are list items with a state box: [ ] to do, [/] in progress, [<] waiting, [x] done, [-] cancelled,
+   [>] forwarded. Headings are never tasks.
    Repeaters +1w ++1m .+2d, warnings -3d, CLOSED: [..] on done, tags :a:b: or #a, inherited
    from parent headings and the note's tags. `category:` in frontmatter names the agenda column.
    This module is the pure part: dates, timestamps, the line grammar, parsing a note into
@@ -113,34 +114,29 @@ export function orgReadDate(str, base) {
   if (!Number.isFinite(dn)) return null;
   return { dn, time, end, rep, warn };
 }
-export const ORG_DEFAULT_KW = "TODO NEXT WAIT | DONE CANCELLED";
-const orgKwCache = new Map();
-export function orgParseKw(str) {
-  if (orgKwCache.has(str)) return orgKwCache.get(str);
-  const clean = (x) => x.trim().split(/[\s,]+/).filter(Boolean).map((w) => w.replace(/\(.*\)$/, ""));
-  const parts = String(str).split("|");
-  const todo = clean(parts[0] || "");
-  let done = parts.length > 1 ? clean(parts[1]) : [];
-  if (parts.length < 2 && todo.length > 1) done = [todo.pop()];
-  const set = todo.length || done.length ? { todo, done, all: [...todo, ...done] } : orgParseKw(ORG_DEFAULT_KW);
-  orgKwCache.set(str, set);
-  return set;
-}
-/** The TODO keywords of a note: its frontmatter `todo:`, else `fallback` (the settings). */
-export function orgSet(note, fallback = ORG_DEFAULT_KW) {
-  const v = note?.fm?.todo ?? note?.fm?.TODO;
-  const s = Array.isArray(v) ? v.join(" ") : typeof v === "string" && v.trim() ? v : fallback || ORG_DEFAULT_KW;
-  return orgParseKw(s);
-}
-export function orgKwClass(kw, set) {
-  if (!kw) return "";
-  if (set.done.includes(kw)) return /^(CANCEL|KILL|ОТМЕН)/i.test(kw) ? "cancel" : "done";
-  if (/^(NEXT|STARTED|DOING|PROG|IN-PROGRESS|СЕЙЧАС|ДЕЛАЮ)/i.test(kw)) return "next";
-  if (kw === set.todo[0] || /^TODO$/i.test(kw)) return "todo";
-  return "wait";
+/** The six task states: the character in the box, its name, and whether the task is still open. Only list items
+ *  with a box are tasks ("- [ ] call Anna"); headings never are. */
+export const TASK_STATES = [
+  { ch: " ", id: "todo", open: true },
+  { ch: "/", id: "doing", open: true },
+  { ch: "<", id: "wait", open: true },
+  { ch: "x", id: "done", open: false },
+  { ch: "-", id: "cancel", open: false },
+  { ch: ">", id: "fwd", open: false },
+];
+/** The state of a box character ("X" reads as "x"), or null for a character that is not a state. */
+export const taskState = (ch) => TASK_STATES.find((s) => s.ch === (ch === "X" ? "x" : ch)) || null;
+/** Ctrl+Enter steps through these; the other states are picked from the state menu. */
+export const TASK_CYCLE = [" ", "/", "x"];
+export function orgNextState(ch, dir = 1) {
+  const i = TASK_CYCLE.indexOf(ch === "X" ? "x" : ch);
+  if (i < 0) return taskState(ch)?.open ? "x" : " ";
+  return TASK_CYCLE[(i + dir + TASK_CYCLE.length) % TASK_CYCLE.length];
 }
 const OHEAD_RE = /^(#{1,6})([ \t]+)(.*)$/;
-const OITEM_RE = /^([ \t]*)([-*+]|\d+[.)])([ \t]+)(?:\[([ xX\/-])\](?:[ \t]+|$))?(.*)$/;
+const OITEM_RE = /^([ \t]*)([-*+]|\d+[.)])([ \t]+)(?:\[([ xX\/<>-])\](?:[ \t]+|$))?(.*)$/;
+/** The boxes of a note's text in order, also in quotes and callouts (the reading view numbers its boxes the same way). */
+export const TASK_LINE_RE = /^((?:[ \t]*>)*[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX\/<>-])(\])(?=[ \t]|$)/gm;
 export const OPLAN_RE = /^[ \t]*(SCHEDULED|DEADLINE|CLOSED):/;
 export const oIndentW = (s) => s.replace(/\t/g, "    ").length;
 export function orgLine(line) {
@@ -155,12 +151,11 @@ export function orgLine(line) {
   }
   return null;
 }
-export function orgHead(rest, set) {
-  const o = { kw: null, pri: null, title: "", tags: [] };
+/** The priority, title and tags of an entry's text. */
+export function orgHead(rest) {
+  const o = { pri: null, title: "", tags: [] };
   rest = String(rest || "").replace(/\s+$/, "");
-  let mm = rest.match(/^(\S+)(?:[ \t]+|$)([\s\S]*)$/);
-  if (mm && set.all.includes(mm[1])) { o.kw = mm[1]; rest = mm[2]; }
-  mm = rest.match(/^\[#([A-Z0-9])\](?:[ \t]+|$)([\s\S]*)$/);
+  let mm = rest.match(/^\[#([A-Z0-9])\](?:[ \t]+|$)([\s\S]*)$/);
   if (mm) { o.pri = mm[1]; rest = mm[2]; }
   mm = rest.match(/^([\s\S]*?)(?:^|[ \t]+)(:(?:[\p{L}\p{N}_@#%-]+:)+)$/u);
   if (mm) { o.tags = mm[2].split(":").filter(Boolean); rest = mm[1]; }
@@ -168,13 +163,11 @@ export function orgHead(rest, set) {
   return o;
 }
 export function orgBuild(info, o) {
-  let s = info.prefix;
   const parts = [];
-  if (o.kw) parts.push(o.kw);
   if (o.pri) parts.push(`[#${o.pri}]`);
   if (o.title) parts.push(o.title);
   if (o.tags?.length) parts.push(":" + o.tags.join(":") + ":");
-  return s + parts.join(" ");
+  return info.prefix + parts.join(" ");
 }
 export function orgPlanMap(line) {
   const map = {}, re = /(SCHEDULED|DEADLINE|CLOSED):[ \t]*([<\[][^>\]\n]*[>\]])/g;
@@ -212,42 +205,30 @@ function orgRepeat(lines, li) {
   if (ns) orgSetPlanning(lines, li, "SCHEDULED", orgTsStr(ns));
   return tt("repeats", { when: ns ? "SCHEDULED: " + orgTsStr(ns) : "DEADLINE: " + orgTsStr(nd) });
 }
-export function orgSetState(lines, li, kw, set) {
+/** The localized name of a state, e.g. "in progress". */
+export const taskStateName = (ch) => tt("st_" + (taskState(ch)?.id || "todo"));
+/** Put a task into state `ch`; a list item without a box gets one. Closing a repeating task moves it to its next date
+ *  instead; a task with a planning line gets CLOSED: when it closes and loses it when it opens again. */
+export function orgSetState(lines, li, ch) {
   const info = orgLine(lines[li]);
-  if (!info) return null;
-  const o = orgHead(info.rest, set);
-  const from = o.kw;
-  const wasDone = set.done.includes(from), isDone = set.done.includes(kw);
-  o.kw = kw;
-  lines[li] = orgBuild(info, o);
-  let msg = kw ? tt("stateTo", { kw }) : tt("kwRemoved");
-  if (isDone && !wasDone) {
+  const to = taskState(ch);
+  if (!info || info.type !== "li" || !to) return null;
+  const from = taskState(info.box) || TASK_STATES[0];
+  const put = (c) => { lines[li] = info.lead + info.marker + " " + `[${c}] ` + info.rest; };
+  const planned = () => li + 1 < lines.length && OPLAN_RE.test(lines[li + 1]);
+  if (to.id === "done" && from.open) {
     const r = orgRepeat(lines, li);
-    if (r) { o.kw = from && !set.done.includes(from) ? from : set.todo[0]; lines[li] = orgBuild(info, o); msg = r; }
-    else orgSetPlanning(lines, li, "CLOSED", orgNowTs());
-  } else if (!isDone && wasDone) orgSetPlanning(lines, li, "CLOSED", null);
-  return msg;
-}
-export function orgSetBox(lines, li, checked) {
-  const info = orgLine(lines[li]);
-  if (!info || info.box == null) return null;
-  const set = (ch) => { lines[li] = info.lead + info.marker + " " + `[${ch}]` + (info.rest ? " " + info.rest : " "); };
-  if (checked) {
-    const r = orgRepeat(lines, li);
-    if (r) return r;
-    set("x");
-    if (li + 1 < lines.length && OPLAN_RE.test(lines[li + 1])) orgSetPlanning(lines, li, "CLOSED", orgNowTs());
-    return tt("stateTo", { kw: "[x]" });
+    if (r) { put(from.ch); return r; }
   }
-  set(" ");
-  if (li + 1 < lines.length && OPLAN_RE.test(lines[li + 1])) orgSetPlanning(lines, li, "CLOSED", null);
-  return tt("stateTo", { kw: "[ ]" });
+  put(to.ch);
+  if (!to.open && from.open && planned()) orgSetPlanning(lines, li, "CLOSED", orgNowTs());
+  else if (to.open && planned()) orgSetPlanning(lines, li, "CLOSED", null);
+  return tt("stateTo", { kw: taskStateName(to.ch) });
 }
-export function orgNextKw(set, kw, dir) { const seq = [null, ...set.all]; let i = seq.indexOf(kw); if (i < 0) i = 0; return seq[(i + dir + seq.length) % seq.length]; }
-export function orgSetPriority(lines, li, set, dir, explicit) {
+export function orgSetPriority(lines, li, dir, explicit) {
   const info = orgLine(lines[li]);
   if (!info) return null;
-  const o = orgHead(info.rest, set);
+  const o = orgHead(info.rest);
   let p;
   if (explicit !== undefined) p = explicit;
   else if (dir > 0) p = o.pri == null ? "A" : o.pri === "A" ? null : String.fromCharCode(o.pri.charCodeAt(0) - 1);
@@ -256,10 +237,10 @@ export function orgSetPriority(lines, li, set, dir, explicit) {
   lines[li] = orgBuild(info, o);
   return p ? tt("priTo", { p }) : tt("priRemoved");
 }
-export function orgSetTags(lines, li, set, tags) {
+export function orgSetTags(lines, li, tags) {
   const info = orgLine(lines[li]);
   if (!info) return null;
-  const o = orgHead(info.rest, set);
+  const o = orgHead(info.rest);
   o.tags = tags;
   lines[li] = orgBuild(info, o);
   return tags.length ? tt("tagsSet") : tt("tagsRemoved");
@@ -283,9 +264,10 @@ export function orgShift(lines, li, kind, days) {
   return tt("stampTo", { ts: orgTsStr(ts) });
 }
 export const orgCache = new Map();
-export function orgParse(note, set = orgSet(note)) {
+/** A note's tasks (list items with a state box) and events (lines with an active timestamp), cached per text. */
+export function orgParse(note) {
   const c = orgCache.get(note.path);
-  if (c && c.raw === note.raw && c.set === set) return c.list;
+  if (c && c.raw === note.raw) return c.list;
   const lines = note.raw.split("\n");
   const ftRaw = note.fm?.tags;
   const fileTags = (Array.isArray(ftRaw) ? ftRaw : typeof ftRaw === "string" ? ftRaw.split(/[,\s]+/) : []).map((x) => String(x).replace(/^#/, "")).filter(Boolean);
@@ -294,14 +276,10 @@ export function orgParse(note, set = orgSet(note)) {
   let i = 0;
   if (/^---\s*$/.test(lines[0] || "")) { for (i = 1; i < lines.length; i++) if (/^(---|\.\.\.)\s*$/.test(lines[i])) { i++; break; } }
   const hstack = [], istack = [];
-  let inCode = false, last = null, plainHead = null;
+  let inCode = false, last = null;
   const closeItems = (minIndent, at) => { while (istack.length && istack[istack.length - 1].indent >= minIndent) { const x = istack.pop(); if (x.entry) x.entry.secEnd = at; } };
-  const owner = () => {
-    for (let k = istack.length - 1; k >= 0; k--) if (istack[k].entry?.kw) return istack[k].entry;
-    for (let k = hstack.length - 1; k >= 0; k--) if (hstack[k].entry?.kw) return hstack[k].entry;
-    return null;
-  };
-  const mk = (kind, info, o, li) => {
+  const owner = () => { for (let k = istack.length - 1; k >= 0; k--) if (istack[k].entry?.isTodo) return istack[k].entry; return null; };
+  const mk = (kind, info, o, li, st = null) => {
     const anc = [...fileTags];
     for (const x of hstack) anc.push(...x.tags);
     for (const x of istack) anc.push(...x.tags);
@@ -311,8 +289,8 @@ export function orgParse(note, set = orgSet(note)) {
     const own = new Set([...o.tags, ...inline].map((x) => x.toLowerCase()));
     const e = {
       key: note.path + "\u0000" + li, path: note.path, line: li, raw: lines[li], kind, level: info?.level || 0, indent: info?.indent || 0,
-      kw: o.kw, pri: o.pri, title: orgStripTs(o.title) || o.title, fullTitle: o.title, tags: o.tags, alltags: all, inherited: all.filter((x) => !own.has(x.toLowerCase())),
-      set, category, done: set.done.includes(o.kw), cls: orgKwClass(o.kw, set), isTodo: !!o.kw, box: null,
+      kw: st?.id ?? null, state: st?.ch ?? null, pri: o.pri, title: orgStripTs(o.title) || o.title, fullTitle: o.title, tags: o.tags, alltags: all, inherited: all.filter((x) => !own.has(x.toLowerCase())),
+      category, done: !!st && !st.open, cls: st?.id || "", isTodo: !!st, nested: false,
       sched: null, dead: null, closed: null, stamps: orgStamps(o.title), cbTotal: 0, cbDone: 0, secEnd: lines.length,
       outline: hstack.map((x) => x.title).filter(Boolean),
     };
@@ -323,53 +301,43 @@ export function orgParse(note, set = orgSet(note)) {
     const L = lines[i].replace(/\r$/, "");
     if (/^\s*(```|~~~)/.test(L)) { inCode = !inCode; last = null; continue; }
     if (inCode) continue;
-    if (!last && plainHead && plainHead.li === i - 1 && OPLAN_RE.test(L)) {
-      last = mk(plainHead.info.type === "h" ? "hl" : "item", plainHead.info, plainHead.o, plainHead.li);
-      if (plainHead.slot) plainHead.slot.entry = last;
-    }
     if (last && last.line === i - 1 && OPLAN_RE.test(L)) {
       const map = orgPlanMap(L);
       last.sched = orgTsParse(map.SCHEDULED); last.dead = orgTsParse(map.DEADLINE); last.closed = orgTsParse(map.CLOSED);
       last.planLine = i;
       continue;
     }
-    last = null; plainHead = null;
-    if (!L.trim()) continue;
+    last = null;
+    if (!L.trim() || OPLAN_RE.test(L)) continue; // a planning line under something that is not a task is not an event either
     const info = orgLine(L);
     if (info?.type === "h") {
       closeItems(0, i);
       while (hstack.length && hstack[hstack.length - 1].level >= info.level) { const x = hstack.pop(); if (x.entry) x.entry.secEnd = i; }
-      const o = orgHead(info.rest, set);
-      const e = o.kw ? mk("hl", info, o, i) : orgHasActive(o.title) ? mk("event", info, o, i) : null;
-      const slot = { level: info.level, tags: o.tags, title: orgStripTs(o.title), entry: e };
-      hstack.push(slot);
+      const o = orgHead(info.rest);
+      const e = orgHasActive(o.title) ? mk("event", info, o, i) : null;
+      hstack.push({ level: info.level, tags: o.tags, title: orgStripTs(o.title), entry: e });
       last = e;
-      if (!e) plainHead = { info, o, li: i, slot };
       continue;
     }
     if (info?.type === "li") {
       closeItems(info.indent, i);
-      const o = orgHead(info.rest, set);
+      const o = orgHead(info.rest), st = taskState(info.box);
       let e = null;
-      if (info.box != null && !o.kw) {
+      if (st) {
         const own = owner();
-        if (own) { own.cbTotal++; if (/[xX]/.test(info.box)) own.cbDone++; }
-        e = mk("box", info, o, i);
-        e.box = info.box; e.isTodo = true; e.nested = !!own;
-        e.done = /[xX-]/.test(info.box); e.cls = info.box === "-" ? "cancel" : e.done ? "done" : "todo";
-      } else if (o.kw) e = mk("item", info, o, i);
-      else if (orgHasActive(o.title)) e = mk("event", info, o, i);
-      const slot = { indent: info.indent, tags: o.tags, entry: e };
-      istack.push(slot);
+        if (own && (st.open || st.id === "done")) { own.cbTotal++; if (st.id === "done") own.cbDone++; }
+        e = mk("item", info, o, i, st);
+        e.nested = !!own;
+      } else if (orgHasActive(o.title)) e = mk("event", info, o, i);
+      istack.push({ indent: info.indent, tags: o.tags, entry: e });
       last = e;
-      if (!e) plainHead = { info, o, li: i, slot };
       continue;
     }
     const ind = oIndentW(/^[ \t]*/.exec(L)[0]);
     if (istack.length && ind <= istack[istack.length - 1].indent) closeItems(ind, i);
-    if (orgHasActive(L)) mk("event", null, { ...orgHead(L.trim(), { all: [] }), kw: null, pri: null }, i);
+    if (orgHasActive(L)) mk("event", null, orgHead(L.trim()), i);
   }
-  orgCache.set(note.path, { raw: note.raw, set, list });
+  orgCache.set(note.path, { raw: note.raw, list });
   return list;
 }
 export const orgSkip = (e) => e.alltags.some((x) => x.toUpperCase() === "ARCHIVE");
@@ -377,7 +345,7 @@ export function orgStats(all) {
   const T = onow().dn;
   let open = 0, overdue = 0, today = 0;
   for (const e of all) {
-    if (orgSkip(e) || e.done || e.kind === "event" || (e.kind === "box" && !e.sched && !e.dead)) continue;
+    if (orgSkip(e) || e.done || e.kind === "event") continue;
     if (e.isTodo) open++;
     const d = Math.min(e.dead?.active ? e.dead.dn : Infinity, e.sched?.active ? e.sched.dn : Infinity);
     if (d < T) overdue++; else if (d === T) today++;

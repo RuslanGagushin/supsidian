@@ -1,15 +1,15 @@
 /* =========================================================
-   The agenda view (Org-agenda style): day / week agenda, TODO list, tag match, search, and Capture.
+   The agenda view (Org-agenda style): day / week agenda, task list, tag match, search, and Capture.
    ========================================================= */
 import { LANG, t, tt } from "../core/i18n.js";
 import { baseName, debounce, norm } from "../core/util.js";
-import { oFmt, ohm, oisoWeek, onow, opad, orgCache, orgDayEntries, orgNowTs, orgPriRank, orgReadDate, orgShift, orgSkip, orgStats, orgTsStr, orgWithGrid, oymd } from "../core/org.js";
+import { oFmt, ohm, oisoWeek, onow, opad, orgCache, orgDayEntries, orgNowTs, orgPriRank, orgReadDate, orgShift, orgSkip, orgStats, orgTsStr, orgWithGrid, oymd, TASK_STATES } from "../core/org.js";
 import { lsGet, lsSet } from "../services/storage.js";
 import { board, vault } from "../services/state.js";
 import { persistBoard } from "../services/vault.js";
 import { txn, writeRaw } from "../services/save.js";
 import { dailyNotePath } from "../services/daily-notes.js";
-import { orgAll, todoSet } from "../services/tasks.js";
+import { orgAll } from "../services/tasks.js";
 import { $, $$, h, ic, iconBtn, isMod, keyText } from "./dom.js";
 import { echo, Menu, openLayer, promptModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
@@ -19,10 +19,14 @@ import { renderTree } from "./tree.js";
 import { setSide } from "./shell.js";
 import { orgCycle, orgEdit, orgPickPriority, orgPickState, orgPlanEntry, orgPri, orgRefocus, orgTagsEntry } from "./org-commands.js";
 import { openEditorAtLine, orgAskDate, orgCalendar, orgDateText } from "./org-editing.js";
+import { taskBox, taskIcon } from "./task-icons.js";
 
 /* ---------- agenda state */
-export const AG = Object.assign({ view: "agenda", span: "week", log: false, todoKw: "ALL", match: "", search: "", boxes: false }, lsGet("sn-agenda", {}), { anchor: null, filter: {}, sel: null });
-const saveAG = () => lsSet("sn-agenda", { view: AG.view, span: AG.span, log: AG.log, todoKw: AG.todoKw, match: AG.match, boxes: AG.boxes });
+export const AG = Object.assign({ view: "agenda", span: "week", log: false, todoKw: "ALL", match: "", search: "" }, lsGet("sn-agenda", {}), { anchor: null, filter: {}, sel: null });
+/** The task list's state filter: all open tasks, or one open state. */
+const TODO_FILTERS = ["ALL", ...TASK_STATES.filter((x) => x.open).map((x) => x.id)];
+if (!TODO_FILTERS.includes(AG.todoKw)) AG.todoKw = "ALL";
+const saveAG = () => lsSet("sn-agenda", { view: AG.view, span: AG.span, log: AG.log, todoKw: AG.todoKw, match: AG.match });
 export let AGROWS = [];
 export function openTasksView(push = true, view) {
   if (view) { AG.view = view; saveAG(); }
@@ -74,7 +78,7 @@ export function orgMatcher(q) {
     while ((m = re.exec(src))) { if (!m[0]) break; terms.push({ neg: m[1] === "-", key: m[2], op: m[3], val: m[4] != null ? m[4].replace(/^"|"$/g, "") : null, tag: m[5]?.replace(/^#/, "") }); }
     return terms;
   });
-  const todoFn = todoPart == null ? () => true : todoPart === "!" ? (e) => e.isTodo && !e.done : (e) => todoPart.replace(/^!/, "").split("|").map((s) => s.trim()).filter(Boolean).includes(e.kw);
+  const todoFn = todoPart == null ? () => true : todoPart === "!" ? (e) => e.isTodo && !e.done : (e) => todoPart.replace(/^!/, "").split("|").map((s) => s.trim().toLowerCase()).filter(Boolean).includes(e.kw);
   const cmp = (a, op, b) => {
     const num = /^-?[\d.]+$/.test(b) && /^-?[\d.]+$/.test(a);
     const x = num ? parseFloat(a) : String(a).toLowerCase(), y = num ? parseFloat(b) : String(b).toLowerCase();
@@ -87,7 +91,7 @@ export function orgMatcher(q) {
       const k = tm.key.toUpperCase();
       const fm = vault.notes.get(e.path)?.fm || {};
       const fk = Object.keys(fm).find((x) => x.toUpperCase() === k);
-      const v = k === "TODO" ? e.kw || "" : k === "PRIORITY" ? e.pri || "B" : k === "LEVEL" ? String(e.level) : k === "CATEGORY" ? e.category : fk ? String(fm[fk]) : "";
+      const v = k === "STATE" || k === "TODO" ? e.kw || "" : k === "PRIORITY" ? e.pri || "B" : k === "LEVEL" ? String(e.level) : k === "CATEGORY" ? e.category : fk ? String(fm[fk]) : "";
       r = cmp(v, tm.op, tm.val);
     }
     return tm.neg ? !r : r;
@@ -136,12 +140,17 @@ export function renderTasksView(root) {
     agbar.append(sp, btn("‹", tt("earlier"), () => orgNav(-1)), btn(tt("today"), tt("today") + " (.)", () => orgNav(0)), btn("›", tt("later"), () => orgNav(1)),
       btn(tt("goTo"), tt("goTo") + " (j)", () => orgNav("jump")), btn(tt("log"), tt("log") + " (l)", () => { AG.log = !AG.log; saveAG(); renderBoard(); }, AG.log));
   } else if (AG.view === "todo") {
-    const kws = [...new Set(all.filter((e) => e.kind !== "box").flatMap((e) => e.set.todo))];
-    for (const k of ["ALL", ...(kws.length ? kws : todoSet(null).todo)]) agbar.append(btn(k, k, () => { AG.todoKw = k; saveAG(); renderBoard(); }, AG.todoKw === k));
-    agbar.append(btn(tt("boxes"), tt("boxesHint"), () => { AG.boxes = !AG.boxes; saveAG(); renderBoard(); }, AG.boxes));
+    const sp = h("div", { cls: "sn-seg" });
+    for (const k of TODO_FILTERS) {
+      const st = TASK_STATES.find((x) => x.id === k), name = st ? tt("st_" + k) : tt("stAll");
+      const b = h("button", { cls: "clickable-icon ag-state" + (AG.todoKw === k ? " is-active" : ""), type: "button", title: name, "aria-pressed": String(AG.todoKw === k) }, st ? taskIcon(st.ch) : null, h("span", { text: name }));
+      b.addEventListener("click", () => { AG.todoKw = k; saveAG(); renderBoard(); });
+      sp.append(b);
+    }
+    agbar.append(sp);
   } else {
     const isM = AG.view === "match";
-    const inp = h("input", { type: "text", cls: "ag-input", spellcheck: "false", placeholder: isM ? "+work-home|PRIORITY=A/NEXT" : LANG === "ru" ? "слова для поиска" : "words to find", "aria-label": tt(isM ? "vMatch" : "vSearch"), dataset: { agInput: AG.view } });
+    const inp = h("input", { type: "text", cls: "ag-input", spellcheck: "false", placeholder: isM ? "+work-home|PRIORITY=A/doing" : LANG === "ru" ? "слова для поиска" : "words to find", "aria-label": tt(isM ? "vMatch" : "vSearch"), dataset: { agInput: AG.view } });
     inp.value = isM ? AG.match : AG.search;
     const run = () => { if (isM) { AG.match = inp.value; saveAG(); } else AG.search = inp.value; renderBoard(); };
     inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); run(); } else if (e.key === "ArrowDown") { e.preventDefault(); $(".ag-body")?.focus(); orgSelect(0, true); } else if (e.key === "Escape" && inp.value) { e.stopPropagation(); inp.value = ""; run(); } });
@@ -186,14 +195,14 @@ export function renderTasksView(root) {
       body.append(card);
     }
   } else if (AG.view === "todo") {
-    const items = all.filter((e) => e.isTodo && !e.done && !orgSkip(e) && (e.kind !== "box" || AG.boxes) && (AG.todoKw === "ALL" || e.kw === AG.todoKw) && pass(e))
+    const items = all.filter((e) => e.isTodo && !e.done && !orgSkip(e) && (AG.todoKw === "ALL" || e.kw === AG.todoKw) && pass(e))
       .sort((a, b) => orgPriRank(b) - orgPriRank(a) || (a.category < b.category ? -1 : a.category > b.category ? 1 : a.line - b.line));
-    body.append(h("div", { cls: "ag-title" }, tt("todoTitle") + " ", h("b", { text: AG.todoKw }), ` · ${items.length}`));
+    body.append(h("div", { cls: "ag-title" }, tt("todoTitle") + " ", h("b", { text: AG.todoKw === "ALL" ? tt("stAll") : tt("st_" + AG.todoKw) }), ` · ${items.length}`));
     if (items.length) body.append(h("section", { cls: "ag-card" }, items.map((e) => orgRow({ e, kind: "todo", label: "", time: null, dn: null }))));
     if (!items.length) body.append(h("div", { cls: "ag-help", text: tt("noTodo") }));
   } else if (AG.view === "match") {
     const fn = orgMatcher(AG.match);
-    const items = all.filter((e) => !orgSkip(e) && e.kind !== "event" && (e.kind !== "box" || AG.boxes || AG.match.includes("/")) && fn(e) && pass(e));
+    const items = all.filter((e) => !orgSkip(e) && e.kind !== "event" && fn(e) && pass(e));
     body.append(h("div", { cls: "ag-title" }, tt("matchTitle") + " ", h("b", { text: AG.match || tt("everything") }), ` · ${items.length}`));
     if (items.length) body.append(h("section", { cls: "ag-card" }, items.map((e) => orgRow({ e, kind: "match", label: "", time: null, dn: null }))));
     if (!items.length) body.append(h("div", { cls: "ag-help", text: tt("noMatch") }));
@@ -253,15 +262,14 @@ function orgRow(x) {
   const row = h("div", { cls: `ag-row k-${kindCls}` + (x.overdue ? " overdue" : "") + (e.done ? " is-done" : ""), role: "option", dataset: { i: String(i), path: e.path, line: String(e.line) } });
   const cat = h("span", { cls: "ag-cat", title: e.path, text: e.category + ":" });
   const main = h("span", { cls: "ag-main" });
-  if (e.kind === "box") main.append(h("button", { cls: `kw ${e.cls} is-box`, type: "button", dataset: { act: "todo" }, title: tt("cycle") + " (t)", text: `[${e.box === "-" ? "-" : e.done ? "x" : " "}]` }));
-  else if (e.kw) main.append(h("button", { cls: `kw ${e.cls}`, type: "button", dataset: { act: "todo" }, title: tt("cycle") + " (t)", text: e.kw }));
+  if (e.isTodo) main.append(taskBox(e.state, { dataset: { act: "tick" } }));
   if (e.pri) main.append(h("span", { cls: `pri ${e.pri}`, text: `[#${e.pri}]` }));
   main.append(renderInline(e.title, e.path));
   if (e.cbTotal) main.append(h("span", { cls: "ag-cookie", text: `[${e.cbDone}/${e.cbTotal}]` }));
   const shown = e.alltags.filter((x) => !(e.title || "").toLowerCase().includes("#" + x.toLowerCase()));
   if (shown.length) main.append(h("span", { cls: "tags" }, shown.map((tg) => h("span", { cls: "tag" + (e.inherited.includes(tg) ? " inh" : ""), text: tg }))));
   const act = h("span", { cls: "ag-act" });
-  if (e.kind !== "event") act.append(h("button", { type: "button", dataset: { act: "todo" }, text: tt("actState"), title: "t" }));
+  if (e.kind !== "event") act.append(h("button", { type: "button", dataset: { act: "state" }, text: tt("actState"), title: "T" }));
   if (x.kind === "sched" || x.kind === "dead" || x.kind === "ts") act.append(h("button", { type: "button", dataset: { act: "later" }, text: tt("actLater"), title: "Shift+→" }));
   act.append(h("button", { type: "button", dataset: { act: "goto" }, text: tt("actOpen"), title: "Enter" }));
   row.append(h("span", { cls: "ag-meta" }, cat, h("span", { cls: "ag-time", text: time }), h("span", { cls: "ag-lab", text: label })), main, act);
@@ -289,6 +297,8 @@ function orgAct(x, act) {
   if (!x) return;
   const e = x.e;
   if (act === "todo") return orgCycle(e);
+  if (act === "tick") return orgCycle(e, 1, true);
+  if (act === "state") return orgPickState(e);
   if (act === "later" || act === "earlier") return orgEdit(e, (L, li) => orgShift(L, li, x.kind === "dead" || x.kind === "sched" ? x.kind : "ts", act === "later" ? 1 : -1));
   if (act === "goto") return openEditorAtLine(e.path, e.line);
 }
@@ -438,7 +448,7 @@ export function orgCapture(pre = {}) {
     const extra = notes.value.replace(/\s+$/, "").split("\n").filter((l, i, a) => a.join("").trim()).map((l) => "  " + l);
     const ts = r ? orgTsStr({ active: true, dn: r.dn, time: r.time, end: r.end, rep: r.rep, warn: r.warn }) : null;
     let out;
-    if (tpl === "t") out = [`- ${todoSet(null).todo[0] || "TODO"} ${title}`, ...(ts ? [`  SCHEDULED: ${ts}`] : []), ...extra];
+    if (tpl === "t") out = [`- [ ] ${title}`, ...(ts ? [`  SCHEDULED: ${ts}`] : []), ...extra];
     else if (tpl === "n") out = [`- ${title} ${orgNowTs()}`, ...extra];
     else if (tpl === "m") out = [`- ${title} ${ts} #meeting`, ...extra];
     else out = [`- ${ohm(onow().min)} ${title}`, ...extra];

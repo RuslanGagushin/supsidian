@@ -2,7 +2,6 @@
    App shell
    ========================================================= */
 import { ft, fvt, LANG, setLang, st, t, tt, ut, wt } from "../core/i18n.js";
-import { ORG_DEFAULT_KW, orgCache } from "../core/org.js";
 import { DEPTHS, normDepth } from "../core/board-model.js";
 import { on } from "../services/events.js";
 import { board, editor, graph, S, saveUI, setGraph, tree, UI, vault } from "../services/state.js";
@@ -236,9 +235,6 @@ export function settingsModal(tab) {
       item(t("setMaxCards"), null, text(S.maxCards, "1000", (v) => { const n = Number(v); if (Number.isFinite(n) && n > 0) { S.maxCards = Math.floor(n); save(); } }, "number")),
       storedIn(),
     ]],
-    ["agenda", tt("sectionAgenda"), "calendar-check", () => [
-      item(tt("setKeywords"), tt("setKeywordsDesc"), text(UI.todoKeywords || ORG_DEFAULT_KW, ORG_DEFAULT_KW, (v) => { UI.todoKeywords = v.trim() || ORG_DEFAULT_KW; saveUI(); orgCache.clear(); })),
-    ]],
     syncAvailable() && ["sync", "Git", "git-branch", () => syncSettingsBody(item, toggle)],
     ["about", ut("about"), "info", () => aboutBody(item, toggle)],
   ].filter(Boolean);
@@ -282,7 +278,7 @@ export function hotkeysModal() {
     [kb("Ctrl", "A"), t("k_selectAll")], [kb("Ctrl", "Z"), t("k_undo")], [kb("Ctrl", "O"), t("k_open")], [kb("Esc"), t("k_esc")], [kb("Ctrl", "Alt"), t("k_drag")],
     [kb("[["), t("k_link")], [kb("Ctrl", "L"), t("k_link")], [kb("Ctrl", "E"), t("k_reading")],
     [kb("/"), wt("slashHint")], [kb("#"), wt("tagsSection")], [kb("Ctrl", "Shift", "D"), wt("todayHint")], [kb("Ctrl", "Shift", "F"), wt("focus")],
-    [kb("Ctrl", "Shift", "K"), tt("tasksHint")], [kb("Ctrl", "Shift", "E"), fvt("filesHint")], [kb("Ctrl", "Enter"), LANG === "ru" ? "TODO: следующее состояние / отметить чекбокс (в редакторе)" : "Next TODO state / tick a checkbox (in the editor)"],
+    [kb("Ctrl", "Shift", "K"), tt("tasksHint")], [kb("Ctrl", "Shift", "E"), fvt("filesHint")], [kb("Ctrl", "Enter"), LANG === "ru" ? "Задача: следующее состояние (в редакторе)" : "Next task state (in the editor)"],
     [kb("Ctrl", "C", "…"), tt("keysEditor")], [kb(LANG === "ru" ? "агенда" : "agenda"), tt("keysAgenda")]];
   panel.append(iconBtn("x", t("close"), () => close(), "modal-close"), h("div", { cls: "modal-title", text: t("hotkeys") }),
     h("table", { cls: "sn-kbd-table" }, rows.map(([k, d]) => h("tr", {}, h("td", {}, k), h("td", { text: keyText(d) })))));

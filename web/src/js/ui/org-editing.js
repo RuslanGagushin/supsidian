@@ -1,10 +1,10 @@
 import { ct, ft, LANG, t, tt } from "../core/i18n.js";
 import { debounce } from "../core/util.js";
 import { splitNote } from "../core/frontmatter.js";
-import { oaddMonths, odn, oFmt, ohm, oIndentW, oisoWeek, onow, opad, OPLAN_RE, orgHead, orgKwClass, orgLine, orgNextKw, orgPlanMap, orgReadDate, orgSetBox, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgSkip, orgTsParse, orgTsStr, oymd } from "../core/org.js";
+import { oaddMonths, odn, oFmt, ohm, oIndentW, oisoWeek, onow, opad, OPLAN_RE, orgHead, orgLine, orgNextState, orgPlanMap, orgReadDate, orgSetPlanning, orgSetPriority, orgSetState, orgSetTags, orgSkip, orgTsParse, orgTsStr, oymd, taskStateName } from "../core/org.js";
 import { lsGet, lsSet } from "../services/storage.js";
 import { editor, vault } from "../services/state.js";
-import { orgAll, todoSet } from "../services/tasks.js";
+import { orgAll } from "../services/tasks.js";
 import { $, $$, h, ic, isMod, setIcon } from "./dom.js";
 import { defaultEcho, echo, promptPanel, promptModal } from "./ui.js";
 import { openEditor } from "./editor.js";
@@ -162,18 +162,20 @@ export function orgAskDate(label, cur, o = {}) {
 }
 
 /* ---------- the same commands at the editor caret */
+/** The task the caret is on: its line, the planning line under it, or a continuation line of it; -1 when there is none.
+ *  With `make`, a plain line or list item there becomes a task ("- [ ] …"); a heading never does. */
 function orgHeadAt(lines, cl, make) {
-  if (orgLine(lines[cl])) return cl;
-  if (cl > 0 && OPLAN_RE.test(lines[cl]) && orgLine(lines[cl - 1])) return cl - 1;
-  const ind = oIndentW(/^[ \t]*/.exec(lines[cl] || "")[0]);
-  for (let k = cl - 1; k >= 0 && lines[k].trim(); k--) { const inf = orgLine(lines[k]); if (inf) { if (inf.type === "li" && ind > inf.indent) return k; break; } }
-  if (!make) {
-    for (let k = cl - 1; k >= 0; k--) { const inf = orgLine(lines[k]); if (inf?.type === "h") return k; }
-    return -1;
+  const here = orgLine(lines[cl]);
+  if (here?.box != null) return cl;
+  if (cl > 0 && OPLAN_RE.test(lines[cl]) && orgLine(lines[cl - 1])?.box != null) return cl - 1;
+  if (!here) {
+    const ind = oIndentW(/^[ \t]*/.exec(lines[cl] || "")[0]);
+    for (let k = cl - 1; k >= 0 && lines[k].trim(); k--) { const inf = orgLine(lines[k]); if (inf) { if (inf.box != null && ind > inf.indent) return k; break; } }
   }
-  const L = lines[cl] ?? "";
-  const lead = /^[ \t]*/.exec(L)[0];
-  lines[cl] = lead + "- " + L.slice(lead.length);
+  if (!make || here?.type === "h" || (cl > 0 && OPLAN_RE.test(lines[cl]))) return -1;
+  if (here) { lines[cl] = here.lead + here.marker + " [ ] " + here.rest; return cl; }
+  const L = lines[cl] ?? "", lead = /^[ \t]*/.exec(L)[0];
+  lines[cl] = lead + "- [ ] " + L.slice(lead.length);
   return cl;
 }
 function orgEd(ta, fn) {
@@ -183,7 +185,7 @@ function orgEd(ta, fn) {
   const cl = v.slice(0, s).split("\n").length - 1;
   const col = s - (v.lastIndexOf("\n", s - 1) + 1);
   const before = lines.length;
-  const r = fn(lines, cl, todoSet(vault.notes.get(editor.path)));
+  const r = fn(lines, cl);
   if (r === false || r == null) { if (r === false) echo(tt("noEntry")); return; }
   const nv = lines.join("\n");
   if (nv !== v) {
@@ -205,27 +207,22 @@ function orgEd(ta, fn) {
   if (r.msg) echo(r.msg);
   updateEdToolbar?.();
 }
-/** Ctrl+Enter / Ctrl+C Ctrl+T: tick a checkbox, otherwise cycle the TODO keyword (a plain line becomes "- TODO …"). */
+/** Ctrl+Enter / Ctrl+C Ctrl+T: the task's next state ([ ] → [/] → [x], Shift goes back); a plain line becomes "- [ ] …". */
 function edToggleTask(ta, dir = 1) {
-  orgEd(ta, (lines, cl, set) => {
-    const empty = !lines[cl].trim();
+  orgEd(ta, (lines, cl) => {
+    const had = orgHeadAt(lines, cl, false) >= 0, oldLen = lines[cl].length;
     const li = orgHeadAt(lines, cl, true);
-    const info = orgLine(lines[li]);
-    if (empty) info.rest = "";
-    const oldLen = lines[li].length;
-    let msg;
-    if (info.box != null && !orgHead(info.rest, set).kw) msg = orgSetBox(lines, li, !/[xX]/.test(info.box));
-    else msg = orgSetState(lines, li, orgNextKw(set, orgHead(info.rest, set).kw, dir), set);
-    if (empty) lines[li] += " ";
-    return empty ? { msg, line: li, col: lines[li].length } : { msg, anchor: li, dcol: li === cl ? lines[li].length - oldLen : 0 };
+    if (li < 0) return false;
+    const msg = had ? orgSetState(lines, li, orgNextState(orgLine(lines[li]).box, dir)) : tt("stateTo", { kw: taskStateName(" ") });
+    return { msg, anchor: li, dcol: li === cl ? lines[cl].length - oldLen : 0 };
   });
 }
 function edOrgPriority(ta, explicit) {
-  orgEd(ta, (lines, cl, set) => {
+  orgEd(ta, (lines, cl) => {
     const li = orgHeadAt(lines, cl, false);
     if (li < 0) return false;
     const old = lines[li].length;
-    const msg = orgSetPriority(lines, li, set, 1, explicit);
+    const msg = orgSetPriority(lines, li, 1, explicit);
     return { msg, anchor: li, dcol: li === cl ? lines[li].length - old : 0 };
   });
 }
@@ -236,15 +233,15 @@ async function edOrgAsk(ta, kind) {
   let cur = null, li0 = -1;
   if (kind === "SCHEDULED" || kind === "DEADLINE") {
     li0 = orgHeadAt(lines0, cl0, false);
-    if (li0 < 0) { echo(tt("noEntry")); return; }
-    const map = OPLAN_RE.test(lines0[li0 + 1] || "") ? orgPlanMap(lines0[li0 + 1]) : {};
+    if (li0 < 0 && orgHeadAt([...lines0], cl0, true) < 0) { echo(tt("noEntry")); return; }
+    const map = li0 >= 0 && OPLAN_RE.test(lines0[li0 + 1] || "") ? orgPlanMap(lines0[li0 + 1]) : {};
     cur = orgTsParse(map[kind]);
   }
   let value;
   if (kind === "tags") {
     const info = orgLine(lines0[orgHeadAt(lines0, cl0, false)]);
     if (!info) { echo(tt("noEntry")); return; }
-    const o = orgHead(info.rest, todoSet(vault.notes.get(editor.path)));
+    const o = orgHead(info.rest);
     value = await promptModal(tt("tags"), o.tags.length ? ":" + o.tags.join(":") + ":" : "");
     if (value == null && !o.tags.length) return;
   } else if (kind === "priority") {
@@ -266,18 +263,20 @@ async function edOrgAsk(ta, kind) {
     edInsert(ta, s0, ta.selectionEnd, pre + ts);
     return;
   }
-  orgEd(ta, (lines, cl, set) => {
-    const li = orgHeadAt(lines, cl, false);
+  orgEd(ta, (lines, cl) => {
+    const oldLen = lines[cl].length;
+    const li = orgHeadAt(lines, cl, kind === "SCHEDULED" || kind === "DEADLINE");
     if (li < 0) return false;
+    const dcol = li === cl ? lines[cl].length - oldLen : 0;
     if (kind === "tags") {
       const old = lines[li].length;
-      const msg = orgSetTags(lines, li, set, String(value || "").split(/[:\s,]+/).map((x) => x.replace(/^#/, "")).filter(Boolean));
+      const msg = orgSetTags(lines, li, String(value || "").split(/[:\s,]+/).map((x) => x.replace(/^#/, "")).filter(Boolean));
       return { msg, anchor: li, dcol: li === cl ? lines[li].length - old : 0 };
     }
-    if (value === null) { orgSetPlanning(lines, li, kind, null); return { msg: tt("planRemoved", { key: kind }), anchor: li }; }
+    if (value === null) { orgSetPlanning(lines, li, kind, null); return { msg: tt("planRemoved", { key: kind }), anchor: li, dcol }; }
     const ts = orgTsStr({ active: true, dn: value.dn, time: value.time, end: value.end, rep: value.rep || cur?.rep || null, warn: value.warn || cur?.warn || null });
     orgSetPlanning(lines, li, kind, ts);
-    return { msg: tt("planSet", { key: kind, ts }), anchor: li };
+    return { msg: tt("planSet", { key: kind, ts }), anchor: li, dcol };
   });
 }
 /** The Ctrl+C prefix in the editor (only with no selection, so Ctrl+C still copies). Returns true when handled. */
@@ -323,8 +322,7 @@ export const orgLineIsEntry = (ta) => {
   const v = ta.value, s = ta.selectionStart;
   const ls = v.lastIndexOf("\n", s - 1) + 1;
   let le = v.indexOf("\n", s); if (le < 0) le = v.length;
-  const info = orgLine(v.slice(ls, le));
-  return !!info && !!orgHead(info.rest, todoSet(vault.notes.get(editor.path))).kw;
+  return orgLine(v.slice(ls, le))?.box != null;
 };
 
 /** Open a note in the editor with the caret at the end of a line: beside the agenda, which stays in view. */
@@ -352,29 +350,17 @@ export function openEditorAtLine(path, lineIndex) {
   }, 30);
 }
 
-/* ---------- reading view: show keywords, priorities and dates like Org does */
+/* ---------- reading view: show priorities, tags and dates like Org does */
 /** A timestamp as its pill shows it: without the < > or [ ] around it, a range as "from – to". */
 export const orgTsLabel = (s) => s.replace(/>--</, " – ").replace(/^[<[]|[>\]]$/g, "");
 export const ORG_DECOR_RE = /(SCHEDULED:|DEADLINE:|CLOSED:)|(<\d{4}-\d{2}-\d{2}[^>\n]*>(?:--<\d{4}-\d{2}-\d{2}[^>\n]*>)?)|(\[\d{4}-\d{2}-\d{2}[^\]\n]*\])/g;
 export function orgDecorate(el, path) {
-  const set = todoSet(vault.notes.get(path));
-  for (const blk of el.querySelectorAll("h1, h2, h3, h4, h5, h6, li")) {
-    let n = blk.firstChild;
-    if (n && n.nodeType === 1 && n.tagName === "INPUT") { n = n.nextSibling; }
-    if (!n || n.nodeType !== 3) continue;
-    const m = /^(\s*)(\S+)(?=\s|$)/.exec(n.data);
-    if (!m) continue;
-    let rest = n.data;
-    const frag = document.createDocumentFragment();
-    if (set.all.includes(m[2])) {
-      frag.append(m[1], h("span", { cls: `org-kw kw ${orgKwClass(m[2], set)}`, text: m[2] }));
-      rest = rest.slice(m[0].length);
-      blk.classList.add("org-entry");
-      if (set.done.includes(m[2])) blk.classList.add("org-done");
-    }
-    const pm = /^(\s*)\[#([A-Z0-9])\](?=\s|$)/.exec(rest);
-    if (pm) { frag.append(pm[1], h("span", { cls: `pri ${pm[2]}`, text: `[#${pm[2]}]` })); rest = rest.slice(pm[0].length); }
-    if (frag.childNodes.length) { frag.append(rest); n.replaceWith(frag); }
+  for (const blk of el.querySelectorAll("li.task-list-item")) {
+    blk.classList.add("org-entry");
+    const host = blk.firstElementChild?.tagName === "P" ? blk.firstElementChild : blk;
+    const n = host.querySelector(":scope > .task-box")?.nextSibling;
+    const pm = n?.nodeType === 3 && /^(\s*)\[#([A-Z0-9])\](?=\s|$)/.exec(n.data);
+    if (pm) n.replaceWith(pm[1], h("span", { cls: `pri ${pm[2]}`, text: `[#${pm[2]}]` }), n.data.slice(pm[0].length));
   }
   for (const blk of el.querySelectorAll("h1, h2, h3, h4, h5, h6, li, p")) {
     for (const n of [...blk.childNodes]) {
@@ -407,7 +393,7 @@ export function orgDecorate(el, path) {
   orgFoldSetup(el, path);
 }
 
-/* ---------- folding TODO entries in the reading view and card previews (like Org's TAB) */
+/* ---------- folding headings and tasks in the reading view and card previews (like Org's TAB) */
 const ORG_FOLD = new Map(Object.entries(lsGet("sn-fold", {})));
 const saveFold = debounce(() => { const o = {}; [...ORG_FOLD.entries()].slice(-600).forEach(([k, v]) => { if (v) o[k] = 1; }); lsSet("sn-fold", o); }, 300);
 const HLEVEL = (x) => (x?.nodeType === 1 && /^H[1-6]$/.test(x.tagName) ? +x.tagName[1] : 0);
@@ -448,7 +434,7 @@ function orgFoldSetup(el, path) {
     dots.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); orgToggleFold(blk, false); });
     for (const ev of ["mousedown", "dblclick"]) { btn.addEventListener(ev, (e) => e.stopPropagation()); dots.addEventListener(ev, (e) => e.stopPropagation()); }
     const host = blk.firstElementChild?.tagName === "P" ? blk.firstElementChild : blk;
-    const cb = host.firstChild?.nodeType === 1 && host.firstChild.tagName === "INPUT" ? host.firstChild : null;
+    const cb = host.firstChild?.nodeType === 1 && host.firstChild.classList.contains("task-box") ? host.firstChild : null;
     (cb ? cb : host.firstChild) ? (cb || host.firstChild).before(btn) : host.append(btn);
     const lineEnd = host.querySelector(":scope > .org-body") || [...host.childNodes].find((x) => x.nodeType === 1 && /^(UL|OL)$/.test(x.tagName));
     if (lineEnd) lineEnd.before(dots); else host.append(dots);
@@ -480,7 +466,7 @@ function orgToggleFold(blk, force, scope) {
   saveFold();
   for (const r of new Set([root, ...$$(".markdown-rendered").filter((x) => x.querySelector(".org-foldable") && !x.parentElement.closest(".markdown-rendered"))])) orgApplyFold(r);
 }
-/** Palette commands: fold or unfold every TODO entry of the note in the editor's reading view. */
+/** Palette commands: fold or unfold every heading and task of the note in the editor's reading view. */
 export function orgFoldNote(fold) {
   const root = $("#editor .sn-reading") || $("#editor .markdown-rendered");
   if (!root) { echo(LANG === "ru" ? "Откройте заметку в режиме чтения (Ctrl+E)" : "Open the note in reading view first (Ctrl+E)"); return; }

@@ -142,10 +142,9 @@ describe("board model", () => {
   });
 });
 
-describe("Org TODOs", () => {
+describe("tasks", () => {
   before(() => mock.timers.enable({ apis: ["Date"], now: new Date(2026, 9, 29, 10, 0) }));
   after(() => mock.timers.reset());
-  const set = () => org.orgParseKw(org.ORG_DEFAULT_KW);
   const apply = (src, fn) => { const L = src.split("\n"); const msg = fn(L); return { text: L.join("\n"), msg }; };
 
   test("timestamps", () => {
@@ -163,29 +162,29 @@ describe("Org TODOs", () => {
     assert.equal(org.orgReadDate("tomorrow").dn, org.odn(2026, 10, 30));
   });
 
-  test("keywords and headings", () => {
-    assert.deepEqual(org.orgSet({ fm: { todo: "A B | C" } }).all, ["A", "B", "C"]);
-    assert.deepEqual(org.orgSet(null, "WAIT | GONE").done, ["GONE"], "the settings' keywords when the note has none");
-    assert.equal(org.orgHead("TODOLIST is not a keyword", set()).kw, null);
-    assert.equal(org.orgHead("NEXT [#A] Call", set()).kw, "NEXT");
+  test("states and headings", () => {
+    assert.equal(org.taskState("X").id, "done");
+    assert.equal(org.orgNextState("/"), "x");
+    assert.equal(org.orgLine("## [ ] heading").box, null, "a heading is never a task");
+    assert.deepEqual(org.orgHead("[#A] Call :x:"), { pri: "A", title: "Call", tags: ["x"] });
   });
 
   test("closing, reopening and repeating", () => {
-    const done = apply("## TODO Task\nSCHEDULED: <2026-10-29 Thu>", (L) => org.orgSetState(L, 0, "DONE", set()));
-    assert.equal(done.text, "## DONE Task\nCLOSED: [2026-10-29 Thu 10:00] SCHEDULED: <2026-10-29 Thu>");
-    assert.equal(apply(done.text, (L) => org.orgSetState(L, 0, "TODO", set())).text, "## TODO Task\nSCHEDULED: <2026-10-29 Thu>");
-    assert.equal(apply("## TODO Run\nSCHEDULED: <2026-10-22 Thu +1w>", (L) => org.orgSetState(L, 0, "DONE", set())).text, "## TODO Run\nSCHEDULED: <2026-10-29 Thu +1w>");
+    const done = apply("- [ ] Task\n  SCHEDULED: <2026-10-29 Thu>", (L) => org.orgSetState(L, 0, "x"));
+    assert.equal(done.text, "- [x] Task\n  CLOSED: [2026-10-29 Thu 10:00] SCHEDULED: <2026-10-29 Thu>");
+    assert.equal(apply(done.text, (L) => org.orgSetState(L, 0, " ")).text, "- [ ] Task\n  SCHEDULED: <2026-10-29 Thu>");
+    assert.equal(apply("- [ ] Run\n  SCHEDULED: <2026-10-22 Thu +1w>", (L) => org.orgSetState(L, 0, "x")).text, "- [ ] Run\n  SCHEDULED: <2026-10-29 Thu +1w>");
   });
 
   test("a note's entries and the agenda's day", () => {
-    const note = { path: "Work.md", raw: "## TODO [#A] Report :work:\nSCHEDULED: <2026-10-29 Thu 10:00>\n\n- NEXT Call #home\n  DEADLINE: <2026-10-31 Sat>\n- Dentist <2026-10-29 Thu 14:00>\n- [x] box\n- [ ] box 2", fm: {} };
+    const note = { path: "Work.md", raw: "## Work :work:\n- [ ] [#A] Report\n  SCHEDULED: <2026-10-29 Thu 10:00>\n- [/] Call #home\n  DEADLINE: <2026-10-31 Sat>\n- Dentist <2026-10-29 Thu 14:00>\n- [x] box\n- [-] gone", fm: {} };
     const es = org.orgParse(note);
     assert.deepEqual(es.map((e) => [e.kind, e.kw, e.pri, e.title, e.alltags, e.done]), [
-      ["hl", "TODO", "A", "Report", ["work"], false],
-      ["item", "NEXT", null, "Call #home", ["work", "home"], false], // tags are inherited from the heading above
+      ["item", "todo", "A", "Report", ["work"], false],
+      ["item", "doing", null, "Call #home", ["work", "home"], false], // tags are inherited from the heading above
       ["event", null, null, "Dentist", ["work"], false],
-      ["box", null, null, "box", ["work"], true],
-      ["box", null, null, "box 2", ["work"], false],
+      ["item", "done", null, "box", ["work"], true],
+      ["item", "cancel", null, "gone", ["work"], true],
     ]);
     const T = org.onow().dn;
     assert.deepEqual(org.orgDayEntries(T, es, T).map((x) => [x.label, x.e.title]), [["Scheduled:", "Report"], ["", "Dentist"], ["In 2 d.:", "Call #home"]], "a deadline shows up days early");

@@ -1,4 +1,4 @@
-// Org-mode TODOs: timestamps, the date reader, keywords and states, repeaters, parsing a note, the agenda and match queries.
+// Tasks: timestamps, the date reader, task states, repeaters, parsing a note, the agenda and match queries.
 // The clock is frozen at Thursday 2026-10-29 10:00.
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -10,29 +10,31 @@ const NOTE = `---
 tags: [home]
 ---
 # Project :work:
-## TODO [#A] Write report :urgent:
-DEADLINE: <2026-10-27 Tue>
-- [x] outline
-- [ ] draft
-- [ ] review
-## NEXT Call Bob
-SCHEDULED: <2026-10-25 Sun>
-## DONE Old thing
-CLOSED: [2026-10-20 Tue 09:00]
+- [ ] [#A] Write report :urgent:
+  DEADLINE: <2026-10-27 Tue>
+  - [x] outline
+  - [ ] draft
+  - [ ] review
+- [/] Call Bob
+  SCHEDULED: <2026-10-25 Sun>
+- [x] Old thing
+  CLOSED: [2026-10-20 Tue 09:00]
 ## Meeting <2026-10-29 Thu 14:00-15:00>
 ## Plain heading
 SCHEDULED: <2026-10-31 Sat>
-## WAIT Parts :shop:
-DEADLINE: <2026-11-05 Thu -10d>
+- [<] Parts :shop:
+  DEADLINE: <2026-11-05 Thu -10d>
+- [-] Dropped idea
+- [>] Moved elsewhere
 \`\`\`
-## TODO inside code
+- [ ] inside code
 \`\`\`
-- TODO list item task #errand
+- [ ] errand task #errand
 - [ ] loose checkbox
 `;
 const day = (y, m, d) => ev(([y, m, d]) => odn(y, m, d), [y, m, d]);
 
-before(() => openVault({ demo: false, time: NOW, notes: { "cards/Work.md": NOTE, "cards/Gym.md": "## TODO Run\nSCHEDULED: <2026-10-22 Thu +1w>\n" } }));
+before(() => openVault({ demo: false, time: NOW, notes: { "cards/Work.md": NOTE, "cards/Gym.md": "- [ ] Run\n  SCHEDULED: <2026-10-22 Thu +1w>\n" } }));
 
 describe("timestamps", () => {
   test("parse and print round-trip with time ranges, repeaters and warnings", async () => {
@@ -63,80 +65,90 @@ describe("timestamps", () => {
   });
 });
 
-describe("keywords and states", () => {
-  test("keyword sets: explicit, implicit done, default", async () => {
-    const r = await ev(() => [orgParseKw("TODO(t) DOING | DONE(d!) KILLED"), orgParseKw("OPEN CLOSED"), orgParseKw("")]);
-    assert.deepEqual(r.map((x) => [x.todo, x.done]), [[["TODO", "DOING"], ["DONE", "KILLED"]], [["OPEN"], ["CLOSED"]], [["TODO", "NEXT", "WAIT"], ["DONE", "CANCELLED"]]]);
-    assert.deepEqual(await ev(() => { const s = orgParseKw(ORG_DEFAULT_KW); return ["TODO", "NEXT", "WAIT", "DONE", "CANCELLED", null].map((k) => orgKwClass(k, s)); }), ["todo", "next", "wait", "done", "cancel", ""]);
-    assert.deepEqual(await ev(() => orgSet({ fm: { todo: "A B | C" } }).all), ["A", "B", "C"]);
+describe("task states", () => {
+  test("six states, three of them open; X reads as x", async () => {
+    assert.deepEqual(await ev(() => TASK_STATES.map((x) => `${x.ch}${x.id}${x.open ? "+" : "-"}`)), [" todo+", "/doing+", "<wait+", "xdone-", "-cancel-", ">fwd-"]);
+    assert.deepEqual(await ev(() => [taskState("X")?.id, taskState("?"), taskState(null)]), ["done", null, null]);
   });
 
-  test("a heading's keyword, priority, title and tags", async () => {
-    const r = await ev(() => { const s = orgParseKw(ORG_DEFAULT_KW); const info = orgLine("## TODO [#B] Fix the sink :home:plumbing:"); const o = orgHead(info.rest, s); return { o, back: orgBuild(info, o) }; });
-    assert.deepEqual(r.o, { kw: "TODO", pri: "B", title: "Fix the sink", tags: ["home", "plumbing"] });
-    assert.equal(r.back, "## TODO [#B] Fix the sink :home:plumbing:");
-    assert.deepEqual(await ev(() => orgHead("TODOLIST is not a keyword", orgParseKw(ORG_DEFAULT_KW)).kw), null);
+  test("Ctrl+Enter steps [ ] → [/] → [x] and back; other states join the cycle", async () => {
+    assert.deepEqual(await ev(() => [" ", "/", "x", "<", "-", ">", "X"].map((c) => orgNextState(c))), ["/", "x", " ", "x", " ", " ", " "]);
+    assert.deepEqual(await ev(() => [" ", "/", "x"].map((c) => orgNextState(c, -1))), ["x", " ", "/"]);
   });
 
-  const apply = (src, fn, arg) => ev(({ src, fn, arg }) => { const L = src.split("\n"); const set = orgParseKw(ORG_DEFAULT_KW); const msg = globalThis[fn](L, 0, ...arg.map((a) => (a === "$set" ? set : a))); return { text: L.join("\n"), msg }; }, { src, fn, arg });
-
-  test("closing adds CLOSED, reopening removes it", async () => {
-    const done = await apply("## TODO Task\nSCHEDULED: <2026-10-29 Thu>", "orgSetState", ["DONE", "$set"]);
-    assert.equal(done.text, "## DONE Task\nCLOSED: [2026-10-29 Thu 10:00] SCHEDULED: <2026-10-29 Thu>");
-    const open = await apply(done.text, "orgSetState", ["TODO", "$set"]);
-    assert.equal(open.text, "## TODO Task\nSCHEDULED: <2026-10-29 Thu>");
-    const plain = await apply("- TODO item", "orgSetState", ["DONE", "$set"]);
-    assert.equal(plain.text, "- DONE item\n  CLOSED: [2026-10-29 Thu 10:00]");
-    assert.equal((await apply("## TODO x", "orgSetState", [null, "$set"])).text, "## x");
+  test("a task's priority, title and tags", async () => {
+    const r = await ev(() => { const info = orgLine("- [/] [#B] Fix the sink :home:plumbing:"); const o = orgHead(info.rest); return { box: info.box, o, back: orgBuild(info, o) }; });
+    assert.equal(r.box, "/");
+    assert.deepEqual(r.o, { pri: "B", title: "Fix the sink", tags: ["home", "plumbing"] });
+    assert.equal(r.back, "- [/] [#B] Fix the sink :home:plumbing:");
+    assert.equal(await ev(() => orgLine("- [?] not a state").box), null);
   });
 
-  test("repeating entries move to the next date and stay open", async () => {
-    assert.equal((await apply("## TODO Run\nSCHEDULED: <2026-10-22 Thu +1w>", "orgSetState", ["DONE", "$set"])).text, "## TODO Run\nSCHEDULED: <2026-10-29 Thu +1w>");
-    assert.equal((await apply("## NEXT Pay\nDEADLINE: <2026-08-01 Sat ++1m>", "orgSetState", ["DONE", "$set"])).text, "## NEXT Pay\nDEADLINE: <2026-11-01 Sun ++1m>", "++ skips past today");
-    assert.equal((await apply("## TODO Water\nSCHEDULED: <2026-10-01 Thu .+3d>", "orgSetState", ["DONE", "$set"])).text, "## TODO Water\nSCHEDULED: <2026-11-01 Sun .+3d>", ".+ counts from today");
-    assert.equal((await apply("- [ ] pills\n  SCHEDULED: <2026-10-29 Thu +1d>", "orgSetBox", [true])).text, "- [ ] pills\n  SCHEDULED: <2026-10-30 Fri +1d>");
+  const apply = (src, fn, arg) => ev(({ src, fn, arg }) => { const L = src.split("\n"); const msg = globalThis[fn](L, 0, ...arg); return { text: L.join("\n"), msg }; }, { src, fn, arg });
+
+  test("closing a planned task adds CLOSED, reopening removes it; plain checklists stay plain", async () => {
+    const done = await apply("- [ ] Task\n  SCHEDULED: <2026-10-29 Thu>", "orgSetState", ["x"]);
+    assert.equal(done.text, "- [x] Task\n  CLOSED: [2026-10-29 Thu 10:00] SCHEDULED: <2026-10-29 Thu>");
+    assert.equal(done.msg, "State: Done");
+    assert.equal((await apply(done.text, "orgSetState", [" "])).text, "- [ ] Task\n  SCHEDULED: <2026-10-29 Thu>");
+    assert.equal((await apply("- [/] Task\n  SCHEDULED: <2026-10-29 Thu>", "orgSetState", ["-"])).text, "- [-] Task\n  CLOSED: [2026-10-29 Thu 10:00] SCHEDULED: <2026-10-29 Thu>", "cancelling closes too");
+    assert.equal((await apply("- [ ] buy milk", "orgSetState", ["x"])).text, "- [x] buy milk");
+    assert.equal((await apply("- [x] buy milk", "orgSetState", ["<"])).text, "- [<] buy milk");
+    assert.equal((await apply("1. item", "orgSetState", [" "])).text, "1. [ ] item", "a list item gets a box");
+    const head = await apply("## Heading", "orgSetState", ["x"]);
+    assert.deepEqual([head.text, head.msg], ["## Heading", null], "headings are never tasks");
   });
 
-  test("checkboxes, priorities, tags and shifting dates", async () => {
-    assert.equal((await apply("- [ ] buy milk", "orgSetBox", [true])).text, "- [x] buy milk");
-    assert.equal((await apply("- [x] buy milk", "orgSetBox", [false])).text, "- [ ] buy milk");
-    const pri = async (src, dir) => (await apply(src, "orgSetPriority", ["$set", dir])).text;
-    assert.deepEqual([await pri("## TODO a", 1), await pri("## TODO [#A] a", 1), await pri("## TODO [#B] a", 1), await pri("## TODO a", -1), await pri("## TODO [#C] a", -1)],
-      ["## TODO [#A] a", "## TODO a", "## TODO [#A] a", "## TODO [#C] a", "## TODO a"]);
-    assert.equal((await apply("## TODO a :old:", "orgSetTags", ["$set", ["x", "y"]])).text, "## TODO a :x:y:");
-    assert.equal((await apply("## TODO a\nDEADLINE: <2026-10-29 Thu 09:00>", "orgShift", ["dead", 3])).text, "## TODO a\nDEADLINE: <2026-11-01 Sun 09:00>");
+  test("repeating tasks move to the next date and keep their open state", async () => {
+    assert.equal((await apply("- [ ] Run\n  SCHEDULED: <2026-10-22 Thu +1w>", "orgSetState", ["x"])).text, "- [ ] Run\n  SCHEDULED: <2026-10-29 Thu +1w>");
+    assert.equal((await apply("- [/] Pay\n  DEADLINE: <2026-08-01 Sat ++1m>", "orgSetState", ["x"])).text, "- [/] Pay\n  DEADLINE: <2026-11-01 Sun ++1m>", "++ skips past today");
+    assert.equal((await apply("- [ ] Water\n  SCHEDULED: <2026-10-01 Thu .+3d>", "orgSetState", ["x"])).text, "- [ ] Water\n  SCHEDULED: <2026-11-01 Sun .+3d>", ".+ counts from today");
+    assert.equal((await apply("- [ ] Gone\n  SCHEDULED: <2026-10-22 Thu +1w>", "orgSetState", ["-"])).text, "- [-] Gone\n  CLOSED: [2026-10-29 Thu 10:00] SCHEDULED: <2026-10-22 Thu +1w>", "cancelling ends the repeats");
+  });
+
+  test("priorities, tags and shifting dates", async () => {
+    const pri = async (src, dir) => (await apply(src, "orgSetPriority", [dir])).text;
+    assert.deepEqual([await pri("- [ ] a", 1), await pri("- [ ] [#A] a", 1), await pri("- [ ] [#B] a", 1), await pri("- [ ] a", -1), await pri("- [ ] [#C] a", -1)],
+      ["- [ ] [#A] a", "- [ ] a", "- [ ] [#A] a", "- [ ] [#C] a", "- [ ] a"]);
+    assert.equal((await apply("- [ ] a :old:", "orgSetTags", [["x", "y"]])).text, "- [ ] a :x:y:");
+    assert.equal((await apply("- [ ] a\n  DEADLINE: <2026-10-29 Thu 09:00>", "orgShift", ["dead", 3])).text, "- [ ] a\n  DEADLINE: <2026-11-01 Sun 09:00>");
     assert.equal((await apply("## Party <2026-10-29 Thu>", "orgShift", ["ts", -1])).text, "## Party <2026-10-28 Wed>");
-    assert.equal((await apply("## TODO a\nSCHEDULED: <2026-10-29 Thu>", "orgSetPlanning", ["SCHEDULED", null])).text, "## TODO a");
+    assert.equal((await apply("- [ ] a\n  SCHEDULED: <2026-10-29 Thu>", "orgSetPlanning", ["SCHEDULED", null])).text, "- [ ] a");
   });
 });
 
 describe("parsing a note", () => {
-  const entries = () => ev(() => orgEntries(vault.notes.get("cards/Work.md")).map((e) => ({ kind: e.kind, kw: e.kw, pri: e.pri, title: e.title, tags: e.alltags, inh: e.inherited, cb: [e.cbDone, e.cbTotal], sched: e.sched?.dn ?? null, dead: e.dead?.dn ?? null, closed: !!e.closed, outline: e.outline })));
+  const entries = () => ev(() => orgEntries(vault.notes.get("cards/Work.md")).map((e) => ({ kind: e.kind, kw: e.kw, pri: e.pri, title: e.title, tags: e.alltags, inh: e.inherited, cb: [e.cbDone, e.cbTotal], nested: e.nested, sched: e.sched?.dn ?? null, dead: e.dead?.dn ?? null, closed: !!e.closed, outline: e.outline })));
 
-  test("headings, items, checkboxes, events; nothing from code blocks", async () => {
+  test("tasks in every state and events; no headings, nothing from code blocks", async () => {
     const es = await entries();
     assert.deepEqual(es.map((e) => `${e.kind}:${e.kw ?? ""}:${e.title}`), [
-      "hl:TODO:Write report", "box::outline", "box::draft", "box::review", "hl:NEXT:Call Bob", "hl:DONE:Old thing", "event::Meeting",
-      "hl::Plain heading", "hl:WAIT:Parts", "item:TODO:list item task #errand", "box::loose checkbox"]);
+      "item:todo:Write report", "item:done:outline", "item:todo:draft", "item:todo:review", "item:doing:Call Bob", "item:done:Old thing", "event::Meeting",
+      "item:wait:Parts", "item:cancel:Dropped idea", "item:fwd:Moved elsewhere", "item:todo:errand task #errand", "item:todo:loose checkbox"]);
   });
 
-  test("tags are inherited from the file and parent headings", async () => {
-    const [report, , , , call, , , , parts, item] = await entries();
+  test("tags are inherited from the file, headings and parent tasks", async () => {
+    const [report, outline, , , call, , , parts, , , errand] = await entries();
     assert.deepEqual(report.tags, ["home", "work", "urgent"]);
     assert.deepEqual(report.inh, ["home", "work"]);
+    assert.deepEqual(outline.tags, ["home", "work", "urgent"], "a subtask inherits its parent's tags");
     assert.deepEqual(parts.tags, ["home", "work", "shop"]);
-    assert.deepEqual(item.tags, ["home", "work", "shop", "errand"], "a list item below a heading inherits its tags");
+    assert.deepEqual(errand.tags, ["home", "work", "errand"], "a task's tags stop at its own subtree");
     assert.deepEqual(call.outline, ["Project"]);
   });
 
-  test("planning lines, priorities and checkbox counts", async () => {
-    const [report, , , , call, old, , plain] = await entries();
+  test("planning lines, priorities and subtask counts", async () => {
+    const [report, outline, , , call, old] = await entries();
     assert.equal(report.pri, "A");
     assert.equal(report.dead, await day(2026, 10, 27));
     assert.deepEqual(report.cb, [1, 3]);
+    assert.deepEqual([report.nested, outline.nested], [false, true]);
     assert.equal(call.sched, await day(2026, 10, 25));
     assert.equal(old.closed, true);
-    assert.equal(plain.sched, await day(2026, 10, 31), "a plain heading with a planning line is on the agenda too");
+  });
+
+  test("card progress counts done tasks; cancelled and forwarded ones drop out", async () => {
+    assert.deepEqual(await ev(() => cardTaskProgress("cards/Work.md")), { done: 2, n: 9 });
   });
 });
 
@@ -154,18 +166,20 @@ describe("agenda", () => {
     assert.ok(r[1].includes("Run"), "its own first day");
   });
 
-  test("match queries: tags, properties, TODO states", async () => {
+  test("match queries: tags, properties, task states", async () => {
     const m = (q) => ev((q) => orgAll().filter(orgMatcher(q)).map((e) => e.title), q);
-    assert.deepEqual(await m("+work -shop/!"), ["Write report", "draft", "review", "Call Bob"], "open checkboxes count as open TODOs");
+    assert.deepEqual(await m("+work -shop/!"), ["Write report", "draft", "review", "Call Bob", "errand task #errand", "loose checkbox"]);
     assert.deepEqual(await m("+work-shop"), [], "a hyphen is part of the tag name here (Markdown #tags), unlike Org's +work-boss");
     assert.deepEqual(await m("PRIORITY=A"), ["Write report"]);
-    assert.deepEqual(await m("/WAIT|NEXT"), ["Call Bob", "Parts"]);
-    assert.deepEqual(await m("errand|shop"), ["Parts", "list item task #errand", "loose checkbox"]);
-    assert.deepEqual(await m("LEVEL>1+urgent"), ["Write report"]);
+    assert.deepEqual(await m("/wait|DOING"), ["Call Bob", "Parts"]);
+    assert.deepEqual(await m("/done"), ["outline", "Old thing"]);
+    assert.deepEqual(await m("errand|shop"), ["Parts", "errand task #errand"]);
+    assert.deepEqual(await m("STATE=todo+urgent"), ["Write report", "draft", "review"], "subtasks inherit the tag");
+    assert.deepEqual(await m("TODO=cancel"), ["Dropped idea"], "TODO= still names the state");
     assert.deepEqual(await m("CATEGORY=gym"), ["Run"]);
   });
 
-  test("the agenda view lists today and t cycles a TODO", async () => {
+  test("the agenda view lists today, t steps a task's state and a click on its box ticks it", async () => {
     const page = H.page;
     await ev(() => openTasksView(true, "agenda"));
     await page.waitForSelector(".ag-row");
@@ -175,17 +189,23 @@ describe("agenda", () => {
     assert.match(await page.getAttribute("#tasks-btn", "title"), /2 overdue|overdue/i);
     await ev(() => { const i = AGROWS.findIndex((x) => x.e.title === "Call Bob"); orgSelect(i); $(".ag-body").focus(); });
     await page.keyboard.press("t");
-    await page.waitForFunction(() => vault.notes.get("cards/Work.md").raw.includes("## WAIT Call Bob"));
+    await page.waitForFunction(() => vault.notes.get("cards/Work.md").raw.includes("- [x] Call Bob\n  CLOSED: [2026-10-29 Thu 10:00] SCHEDULED: <2026-10-25 Sun>"));
+    await page.click(".ag-row:has-text('Run') .task-box");
+    await page.waitForFunction(() => vault.notes.get("cards/Gym.md").raw === "- [ ] Run\n  SCHEDULED: <2026-10-29 Thu +1w>\n", null, { timeout: 5000 });
+    await ev(() => $(".ag-body").focus());
     await page.keyboard.press("q");
     assert.equal(await ev(() => board.view), null);
     assert.equal(H.errors.length, 0, H.errors.join("\n"));
   });
 
-  test("the TODO list view", async () => {
+  test("the task list view, all open states or one", async () => {
     await ev(() => { AG.todoKw = "ALL"; openTasksView(true, "todo"); });
     const titles = await H.page.$$eval(".ag-row .ag-title, .ag-row", (rows) => rows.map((r) => r.textContent));
     const all = titles.join("\n");
     for (const t of ["Write report", "Parts", "Run"]) assert.match(all, new RegExp(t));
-    assert.doesNotMatch(all, /Old thing/);
+    assert.doesNotMatch(all, /Old thing|Dropped idea|Moved elsewhere/);
+    await ev(() => { AG.todoKw = "wait"; openTasksView(true, "todo"); });
+    assert.deepEqual(await H.page.$$eval(".ag-row .ag-ttl", (rows) => rows.map((r) => r.textContent)), ["Parts"]);
+    await ev(() => { AG.todoKw = "ALL"; });
   });
 });

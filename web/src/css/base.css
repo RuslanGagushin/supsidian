@@ -162,8 +162,20 @@ input[type="checkbox"] { accent-color: var(--interactive-accent); }
 .markdown-rendered ul, .markdown-rendered ol { padding-inline-start: 1.6em; margin-block: 0 1em; }
 .markdown-rendered li { margin-block: .1em; }
 .markdown-rendered li.task-list-item { list-style: none; margin-inline-start: -1.4em; }
-.markdown-rendered li.task-list-item > input { margin: 0 .5em 0 0; vertical-align: -2px; }
-.markdown-rendered li.is-checked { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--text-faint); }
+/* task boxes: [ ] [/] [<] [x] [-] [>] drawn as their state's icon (ui/task-icons.js) */
+button.task-box, button.task-box:not(.clickable-icon) { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.05em; height: 1.05em; min-width: 14px; min-height: 14px; margin: 0 .5em 0 0; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; color: var(--task-c); vertical-align: -.16em; cursor: pointer; }
+button.task-box:not(.clickable-icon):hover { background: transparent; filter: brightness(.85); }
+body.theme-dark button.task-box:not(.clickable-icon):hover { filter: brightness(1.25); }
+button.task-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.task-icon, .task-icon.suggestion-icon { display: inline-flex; flex: none; width: 16px; height: 16px; color: var(--task-c); }
+.task-box svg.task-svg, .task-icon svg.task-svg { display: block; width: 100%; height: 100%; }
+.s-todo { --task-c: var(--faint); } .s-doing { --task-c: var(--accent); } .s-wait { --task-c: var(--muted); }
+.s-done { --task-c: var(--accent); } .s-cancel { --task-c: var(--faint); } .s-fwd { --task-c: var(--muted); }
+.task-box.s-todo:hover, .task-box.s-todo:focus-visible { --task-c: var(--accent); }
+.markdown-rendered li.is-state-done { color: var(--text-muted); }
+.markdown-rendered li.is-state-fwd { color: var(--text-muted); }
+.markdown-rendered li.is-state-cancel { color: var(--text-faint); text-decoration: line-through; text-decoration-color: var(--text-faint); }
+.markdown-rendered li.task-list-item > .task-box, .markdown-rendered li.task-list-item > p > .task-box { text-decoration: none; }
 .markdown-rendered h1, .markdown-rendered h2, .markdown-rendered h3, .markdown-rendered h4, .markdown-rendered h5, .markdown-rendered h6 { line-height: var(--line-height-tight); margin: 1.2em 0 .5em; font-weight: var(--font-bold); }
 .markdown-rendered h1 { font-size: var(--h1-size); } .markdown-rendered h2 { font-size: var(--h2-size); } .markdown-rendered h3 { font-size: var(--h3-size); }
 .markdown-rendered h4 { font-size: var(--h4-size); } .markdown-rendered h5 { font-size: var(--h5-size); } .markdown-rendered h6 { font-size: var(--h6-size); }

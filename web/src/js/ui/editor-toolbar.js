@@ -139,7 +139,7 @@ export function editorKeys(e) {
   }
   if (e.key === "Enter" && !e.shiftKey && !isMod(e) && s === en && !e.isComposing) {
     const line = value.slice(lineStart, s);
-    const m = /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\]\s+)?/.exec(line);
+    const m = /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX\/<>-]\]\s+)?/.exec(line);
     if (!m) return;
     e.preventDefault();
     // an empty item ends the list; the text goes on after a blank line (a line right under the list would join its last item)
@@ -187,7 +187,7 @@ export function edLines(ta, fn) {
   const out = fn(lines).join("\n");
   edInsert(ta, a, b, out, a + out.length, a + out.length);
 }
-const LIST_RE = /^(\s*)([-*+] \[[ xX]\] |[-*+] |\d+[.)] )/;
+const LIST_RE = /^(\s*)([-*+] \[[ xX\/<>-]\] |[-*+] |\d+[.)] )/;
 export function edPrefix(ta, prefix) {
   edLines(ta, (lines) => {
     const all = lines.every((l) => !l.trim() || l.replace(/^\s*/, "").startsWith(prefix.replace(/\d+/, "")) || (prefix === "1. " && /^\s*\d+[.)] /.test(l)));
@@ -280,7 +280,7 @@ export function edLineState(ta) {
   const noBold = before.replace(/\*\*/g, "");
   return {
     heading: hm ? hm[1].length : 0,
-    list: /^\s*[-*+] (?!\[[ xX]\] )/.test(line), num: /^\s*\d+[.)] /.test(line), task: /^\s*[-*+] \[[ xX]\] /.test(line), quote: /^\s*> /.test(line),
+    list: /^\s*[-*+] (?!\[[ xX\/<>-]\] )/.test(line), num: /^\s*\d+[.)] /.test(line), task: /^\s*[-*+] \[[ xX\/<>-]\] /.test(line), quote: /^\s*> /.test(line),
     bold: odd(/\*\*/g), italic: ((noBold.match(/\*/g) || []).length % 2) === 1,
     strikethrough: odd(/~~/g), highlighter: odd(/==/g), code: ((before.replace(/```/g, "").match(/`/g) || []).length % 2) === 1,
   };

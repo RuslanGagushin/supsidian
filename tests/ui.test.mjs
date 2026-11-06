@@ -303,7 +303,7 @@ describe("live preview", () => {
     assert.equal(ls[2], "Para bold text");
     assert.equal(await ev(() => $("#editor .cm-sn-h1")?.textContent), "Title");
     assert.equal(await ev(() => $("#editor .cm-sn-strong").textContent), "bold");
-    assert.equal(await ev(() => $$("#editor .lp-task").length), 2);
+    assert.equal(await ev(() => $$("#editor .task-box").length), 2);
     noErrors();
   });
 
@@ -330,11 +330,30 @@ describe("live preview", () => {
     assert.match(await raw("cards/L.md"), /- \[ \] two\n- \[ \] three\n\nAfter\n\nLast$/);
   });
 
-  test("a rendered checkbox ticks its own task", async () => {
-    await page().click("#editor .lp-task >> nth=1");
+  test("a rendered box ticks its own task", async () => {
+    await page().click("#editor .task-box >> nth=1");
     assert.match(await value(), /- \[ \] one\n- \[x\] two/);
     await page().keyboard.press("Control+s");
     await page().waitForFunction(() => vault.notes.get("cards/L.md").raw.includes("- [x] two"));
+    noErrors();
+  });
+
+  test("every state shows its icon; Ctrl+Enter steps the state, a plain line becomes a task; right-click picks any state", async () => {
+    await ev(() => { const t = $(".sn-editor-text.is-live"); t.cmView.dispatch({ changes: { from: 0, to: t.value.length, insert: "- [/] b\n- [<] c\n- [-] f\n- [>] g\n- [x] d\n  CLOSED: [2026-11-03 Tue 18:20]\nplain" } }); t.blur(); });
+    assert.deepEqual(await ev(() => $$("#editor .task-box").map((b) => b.className.replace("task-box s-", ""))), ["doing", "wait", "cancel", "fwd", "done"]);
+    assert.ok(await ev(() => !!$("#editor .cm-sn-task.s-cancel")), "a cancelled task's text is struck through");
+    await caretAt((await value()).length);
+    await page().keyboard.press("Control+Enter");
+    assert.match(await value(), /\n- \[ \] plain$/);
+    await page().keyboard.press("Control+Enter");
+    assert.match(await value(), /\n- \[\/\] plain$/);
+    await ev(() => $(".sn-editor-text.is-live").blur());
+    await ev(() => $$("#editor .task-box")[4].dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
+    await page().waitForSelector(".prompt .suggestion-item");
+    await page().keyboard.type("waiting");
+    await page().keyboard.press("Enter");
+    await page().waitForFunction(() => $(".sn-editor-text.is-live").value.includes("- [<] d\n- [/] plain"), null, { timeout: 5000 });
+    assert.doesNotMatch(await value(), /CLOSED/, "reopening drops CLOSED");
     noErrors();
   });
 
@@ -373,7 +392,7 @@ describe("live preview", () => {
 });
 
 describe("planning lines", () => {
-  const NOTE = "## TODO Book the tour\nDEADLINE: <2026-11-07 Sat> SCHEDULED: <2026-11-05 Thu>\n\nIntro\n\n- DONE Set up\n  CLOSED: [2026-11-03 Tue 18:20]\n";
+  const NOTE = "- [ ] Book the tour\n  DEADLINE: <2026-11-07 Sat> SCHEDULED: <2026-11-05 Thu>\n\nIntro\n\n- [x] Set up\n  CLOSED: [2026-11-03 Tue 18:20]\n";
   beforeEach(async () => { await openVault({ demo: false, notes: { "cards/P.md": NOTE } }); await ev(() => openEditor("cards/P.md", { focus: false })); });
   const shown = (sel) => ev((s) => [...document.querySelectorAll(s)].map((x) => x.innerText.trim()), sel);
 
@@ -551,7 +570,7 @@ describe("rendering", () => {
     assert.match(html, /class="tag"[^>]*>#tag</);
     assert.match(html, /<mark>hi<\/mark>/);
     assert.match(html, /callout/);
-    assert.match(html, /type="checkbox"/);
+    assert.match(html, /<li class="task-list-item is-state-todo[^"]*"><button type="button" class="task-box s-todo"/);
     await H.page.waitForFunction(() => [...document.querySelectorAll("img")].some((i) => i.src.startsWith("blob:") && i.naturalWidth === 40));
   });
 
@@ -595,12 +614,28 @@ describe("rendering", () => {
     assert.deepEqual(await ev(() => [window.x, window.y]), [undefined, undefined]);
   });
 
-  test("clicking a rendered checkbox ticks the task in the file", async () => {
-    await ev(async () => { await writeRaw("cards/A.md", "- [ ] one\n- [ ] two\n"); openEditor("cards/A.md"); editor.mode = "read"; renderEditor(); });
-    // a native click in the page fires the same change event (Playwright's actionability wait is flaky here)
-    await H.page.waitForFunction(() => document.querySelectorAll(".sn-reading input[type=checkbox]").length === 2);
-    await ev(() => document.querySelectorAll(".sn-reading input[type=checkbox]")[1].click());
-    await H.page.waitForFunction(() => vault.notes.get("cards/A.md").raw === "- [ ] one\n- [x] two\n");
+  test("every state renders as its icon, numbered in the order of the text", async () => {
+    await render("- [ ] a\n- [/] b\n- [<] c\n- [x] d\n- [X] e\n- [-] f\n- [>] g\n- [?] h\n- plain\n\n> - [/] quoted\n\n```\n- [ ] code\n```\n\n- [/] [#A] pri");
+    const r = await ev(() => [...document.body.lastChild.querySelectorAll(".task-box")].map((b) => `${b.dataset.task}${b.className.replace("task-box s-", ":")}:${b.nextSibling.textContent.trim()}`));
+    assert.deepEqual(r, ["0:todo:a", "1:doing:b", "2:wait:c", "3:done:d", "4:done:e", "5:cancel:f", "6:fwd:g", "7:doing:quoted", "8:doing:"]);
+    assert.equal(await ev(() => document.body.lastChild.querySelector(".task-box.s-doing ~ .pri.A")?.textContent), "[#A]", "the priority after the box is a pill");
+    assert.equal(await ev(() => document.body.lastChild.querySelectorAll("li.is-checked").length), 4, "done, cancelled and forwarded tasks are closed");
+  });
+
+  test("clicking a rendered box ticks the task in the file, right-clicking picks a state", async () => {
+    await ev(async () => { await writeRaw("cards/A.md", "- [ ] one\n- [/] two\n> - [ ] quoted\n"); openEditor("cards/A.md"); editor.mode = "read"; renderEditor(); });
+    // a native click in the page (Playwright's actionability wait is flaky here)
+    await H.page.waitForFunction(() => document.querySelectorAll(".sn-reading .task-box").length === 3);
+    await ev(() => document.querySelectorAll(".sn-reading .task-box")[1].click());
+    await H.page.waitForFunction(() => vault.notes.get("cards/A.md").raw === "- [ ] one\n- [x] two\n> - [ ] quoted\n");
+    await ev(() => document.querySelectorAll(".sn-reading .task-box")[2].click());
+    await H.page.waitForFunction(() => vault.notes.get("cards/A.md").raw === "- [ ] one\n- [x] two\n> - [x] quoted\n");
+    await ev(() => document.querySelectorAll(".sn-reading .task-box")[0].dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
+    await H.page.waitForSelector(".prompt .suggestion-item");
+    assert.deepEqual(await H.page.$$eval(".prompt .suggestion-title", (x) => x.map((e) => e.textContent)), ["To do", "In progress", "Waiting", "Done", "Cancelled", "Forwarded"]);
+    await H.page.keyboard.type("forw");
+    await H.page.keyboard.press("Enter");
+    await H.page.waitForFunction(() => vault.notes.get("cards/A.md").raw.startsWith("- [>] one\n"));
   });
 });
 
@@ -663,7 +698,7 @@ describe("palettes, settings, language and themes", () => {
   test("settings have a tab per group, arrow keys move between them and the last tab is remembered", async () => {
     await ev(() => settingsModal("appearance"));
     const tabs = () => page().$$eval(".sn-set-tab", (b) => b.map((x) => [x.textContent, x.getAttribute("aria-selected")]));
-    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Board", "Agenda", "About"], "no Git tab outside the app");
+    assert.deepEqual((await tabs()).map((x) => x[0]), ["Appearance", "Board", "About"], "no Git tab outside the app");
     assert.match(await page().textContent(".sn-set-body"), /Theme/);
     assert.doesNotMatch(await page().textContent(".sn-set-body"), /Parents field/, "one group at a time");
     const height = await page().$eval(".modal", (m) => m.offsetHeight);
@@ -672,10 +707,10 @@ describe("palettes, settings, language and themes", () => {
     assert.equal(await page().$eval(".modal", (m) => m.offsetHeight), height, "the dialog keeps its size between tabs");
     await page().focus(".sn-set-tab.is-active");
     await page().keyboard.press("ArrowRight");
-    assert.equal((await tabs()).find((x) => x[1] === "true")[0], "Agenda");
+    assert.equal((await tabs()).find((x) => x[1] === "true")[0], "About");
     await page().keyboard.press("Escape");
     await ev(() => settingsModal());
-    assert.equal(await page().textContent(".sn-set-tab.is-active"), "Agenda");
+    assert.equal(await page().textContent(".sn-set-tab.is-active"), "About");
     await ev(() => settingsModal("about")); // already open: switches tabs instead of stacking a second dialog
     assert.equal(await page().$$eval(".modal", (m) => m.length), 1);
     noErrors();

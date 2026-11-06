@@ -1,5 +1,5 @@
 /* ==========================================================
-   Agenda and Org-style TODOs
+   Agenda and tasks
    ========================================================= */
 .wb-tasks .wb-count { min-width: 18px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--panel); color: var(--muted); font-size: 10.5px; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums; }
 .wb-tasks .wb-count.is-today { background: color-mix(in srgb, var(--next) 18%, transparent); color: var(--next); }
@@ -12,9 +12,7 @@ button.wb-btn.wb-tasks.is-active { border-color: var(--accent); background: var(
 /* agenda (after Emacs's *Org Agenda* buffer) */
 body { --wait:#7457ad; --cancel:#8a948e; --pri-a:#c42f27; --pri-b:#b25f06; --pri-c:#5b6761; --now:#c42f27; }
 body.theme-dark { --wait:#b9a0ef; --cancel:#6f7a73; --pri-a:#ff7c70; --pri-b:#f0a650; --pri-c:#94a098; --now:#ff7c70; }
-/* TODO keywords, priorities, tags and timestamps are pills, like the tags on cards */
-.kw { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; padding: 1px 7px; border-radius: 48px; background: color-mix(in srgb, currentColor 13%, transparent); line-height: 1.5; white-space: nowrap; }
-.kw.todo { color: var(--todo); } .kw.next { color: var(--next); } .kw.wait { color: var(--wait); } .kw.done { color: var(--done); } .kw.cancel { color: var(--cancel); }
+/* priorities, tags and timestamps are pills, like the tags on cards */
 .pri { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 48px; background: color-mix(in srgb, currentColor 12%, transparent); line-height: 1.5; white-space: nowrap; }
 .pri.A { color: var(--pri-a); } .pri.B { color: var(--pri-b); } .pri.C { color: var(--pri-c); }
 .tags { display: inline-flex; gap: 4px; flex-wrap: wrap; vertical-align: baseline; }
@@ -63,8 +61,9 @@ button.fchip.exc { background: color-mix(in srgb, var(--todo) 12%, transparent);
 .k-closed .ag-lab { color: var(--l8); }
 .ag-main { min-width: 0; display: block; line-height: 1.6; padding-right: 4px; }
 .ag-main > * { margin-right: 6px; }
-.ag-main button.kw, .ag-main button.kw:not(.clickable-icon) { display: inline; height: auto; padding: 1px 7px; border: 0; border-radius: 48px; background: color-mix(in srgb, currentColor 13%, transparent); box-shadow: none; font-size: 10.5px; font-weight: 700; vertical-align: 1px; cursor: pointer; }
-.ag-main button.kw:hover { background: color-mix(in srgb, currentColor 22%, transparent); }
+.ag-main button.task-box { width: 15px; height: 15px; margin-right: 7px; vertical-align: -3px; }
+.agbar .ag-state { display: inline-flex; align-items: center; gap: 6px; }
+.agbar .ag-state .task-icon { width: 13px; height: 13px; }
 .ag-ttl { overflow-wrap: anywhere; font-family: var(--font-ui); font-size: 13.5px; color: var(--fg); }
 .ag-ttl a.tag { font-size: 11px; }
 .ag-cookie { color: var(--muted); font-size: 12px; }
@@ -95,9 +94,6 @@ button.fchip.exc { background: color-mix(in srgb, var(--todo) 12%, transparent);
   .ag-capture .wb-label { display: none; }
 }
 /* org markup in notes */
-.markdown-rendered .org-kw { margin-right: .35em; font-size: .78em; vertical-align: .08em; }
-.markdown-rendered .org-done > :not(.org-kw) { opacity: .75; }
-.markdown-rendered h1.org-done, .markdown-rendered h2.org-done, .markdown-rendered h3.org-done, .markdown-rendered h4.org-done { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--faint) 60%, transparent); }
 .markdown-rendered .pri { font-size: .8em; margin-right: .3em; }
 .markdown-rendered .org-tags { margin-left: .4em; font-size: .9rem; }
 .markdown-rendered .org-plan {
@@ -175,10 +171,7 @@ button.cap-cal-btn[aria-expanded="true"] { border-color: var(--accent); color: v
 button.cap-cal-btn svg { width: 15px; height: 15px; }
 .cap-field .org-cal { grid-column: 2; width: 100%; max-width: 320px; box-shadow: none; margin-top: 2px; }
 
-/* TODO entries read like text, not like big headings; folding like Org's TAB */
-.markdown-rendered :is(h1, h2, h3, h4, h5, h6).org-entry { font-size: 1em; line-height: var(--line-height-normal, 1.6); margin: .9em 0 .15em; font-family: inherit; letter-spacing: 0; }
-.markdown-rendered :is(h1, h2, h3, h4, h5, h6).org-entry + p { margin-top: .15em; }
-.markdown-rendered .org-entry .org-kw { font-size: .82em; vertical-align: .05em; }
+/* folding headings and tasks like Org's TAB */
 .markdown-rendered .org-hidden { display: none !important; }
 .markdown-rendered button.org-fold, .markdown-rendered button.org-fold:not(.clickable-icon) { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin: 0 2px 0 -2px; padding: 0; border: 0; border-radius: 4px; background: transparent; box-shadow: none; color: var(--faint); vertical-align: -3px; cursor: pointer; }
 .markdown-rendered button.org-fold svg { width: 14px; height: 14px; transition: transform .12s ease; }

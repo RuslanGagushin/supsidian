@@ -1,20 +1,23 @@
 /* =========================================================
    Markdown rendering (with wikilinks, embeds, tags, ==marks==, callouts, tasks)
    ========================================================= */
-import { t } from "../core/i18n.js";
+import { t, tt } from "../core/i18n.js";
 import { esc } from "../core/util.js";
 import { CODE_RE, extractLinkpath, splitNote } from "../core/frontmatter.js";
 import { IS_NATIVE } from "../services/native.js";
 import { editor, graph, vault } from "../services/state.js";
 import { resolveAttachment, resolveFileLink, resolveLink } from "../services/vault.js";
 import { attachmentUrl, IMG_EXT, PDF_EXT } from "../services/attachments.js";
-import { writeRaw } from "../services/save.js";
-import { $$, h, ic, isMod } from "./dom.js";
+import { orgLine, orgSetState, TASK_LINE_RE, taskState, taskStateName } from "../core/org.js";
+import { txn, writeRaw } from "../services/save.js";
+import { h, ic, isMod } from "./dom.js";
 import { createCard } from "./actions.js";
 import { openTagView, setTarget } from "./board.js";
 import { openEditor, saveEditor } from "./editor.js";
 import { refresh } from "./shell.js";
 import { orgDecorate } from "./org-editing.js";
+import { orgPickStateChar } from "./org-commands.js";
+import { taskBox } from "./task-icons.js";
 import { openAttachment } from "./files.js";
 
 /* PDF embeds (![[doc.pdf#page=3&height=400]]): the platform's own viewer where the webview has one,
@@ -238,13 +241,25 @@ export function renderMarkdown(md, sourcePath, opts = {}) {
     bq.replaceWith(c);
   }
   for (const tb of el.querySelectorAll("table")) { const wrap = h("div", { cls: "sn-table-wrap" }); tb.replaceWith(wrap); wrap.append(tb); tableWide.observe(wrap); tableWide.observe(tb); }
-  // Tasks: clickable checkboxes toggle the line in the file
-  $$('input[type="checkbox"]', el).forEach((cb, i) => {
-    cb.removeAttribute("disabled");
-    cb.dataset.task = String(i);
-    const li = cb.closest("li");
-    if (li) { li.classList.add("task-list-item"); if (cb.checked) li.classList.add("is-checked"); }
-  });
+  // Tasks: a list item's box ([ ] and [x] come as checkboxes, [/] [<] [-] [>] as text) becomes its state's icon,
+  // numbered in the order TASK_LINE_RE finds the boxes in the text
+  let ti = 0;
+  for (const li of el.querySelectorAll("li")) {
+    const host = li.firstElementChild?.tagName === "P" && !li.firstChild.textContent.trim() ? li.firstElementChild : li;
+    let first = host.firstChild;
+    while (first?.nodeType === 3 && !first.data.trim() && first.nextSibling) first = first.nextSibling;
+    let ch = null;
+    if (first?.nodeType === 1 && first.tagName === "INPUT" && first.type === "checkbox") { ch = first.checked ? "x" : " "; first.replaceWith(); }
+    else if (first?.nodeType === 3) {
+      const m = /^\s*\[([ xX\/<>-])\](?=\s|$)/.exec(first.data);
+      if (m) { ch = m[1]; first.data = first.data.slice(m[0].length); }
+    }
+    const st = ch != null && taskState(ch);
+    if (!st) continue;
+    host.prepend(taskBox(st.ch, { dataset: { task: String(ti++) } }));
+    li.classList.add("task-list-item", "is-state-" + st.id);
+    if (!st.open) li.classList.add("is-checked");
+  }
   for (const a of el.querySelectorAll("a[href]")) {
     if (a.classList.contains("internal-link")) continue;
     const href = a.getAttribute("href") || "";
@@ -294,27 +309,39 @@ export function wireRendered(el, sourcePath) {
     const ct = e.target.closest(".callout.is-collapsible > .callout-title");
     if (ct) { e.preventDefault(); e.stopPropagation(); toggleCallout(ct.parentElement); }
   });
-  el.addEventListener("change", (e) => {
-    const cb = e.target.closest('input[type="checkbox"][data-task]');
-    if (cb) toggleTask(sourcePath, +cb.dataset.task, cb.checked);
+  el.addEventListener("click", (e) => {
+    const tb = e.target.closest(".task-box[data-task]");
+    if (tb) { e.preventDefault(); e.stopPropagation(); toggleTask(sourcePath, +tb.dataset.task); }
+  });
+  el.addEventListener("contextmenu", async (e) => {
+    const tb = e.target.closest(".task-box[data-task]");
+    if (!tb) return;
+    e.preventDefault(); e.stopPropagation();
+    const ch = await orgPickStateChar(tb.dataset.state);
+    if (ch !== undefined) setTaskState(sourcePath, +tb.dataset.task, ch);
   });
 }
-export async function toggleTask(path, index, checked) {
-  const n = vault.notes.get(path);
-  if (!n) return;
+/** A click on a task's box: tick an open task, reopen a closed one. */
+export const toggleTask = (path, index) => setTaskState(path, index, (cur) => (taskState(cur)?.open ? "x" : " "));
+/** Put the note's index-th box (in TASK_LINE_RE's order) into state `ch` (or `ch(current)`), as one undoable edit. */
+export async function setTaskState(path, index, ch) {
+  if (!vault.notes.has(path)) return;
   if (editor.path === path && editor.dirty) await saveEditor();
-  const { fm, body } = splitNote(n.raw);
-  let i = -1;
+  const raw = vault.notes.get(path)?.raw;
+  if (raw == null) return;
+  const { fm, body } = splitNote(raw);
   const masked = body.replace(CODE_RE, (m) => m.replace(/\[/g, "\u0001"));
-  let out = "", last = 0;
-  const re = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)( |x|X)(\])/gm;
-  let m;
-  while ((m = re.exec(masked))) {
-    i++;
-    if (i === index) { out = body.slice(0, m.index) + m[1] + (checked ? "x" : " ") + m[3] + body.slice(m.index + m[0].length); last = 1; break; }
-  }
-  if (!last) return;
-  await writeRaw(path, fm + out);
+  const re = new RegExp(TASK_LINE_RE.source, "gm");
+  let m, i = -1;
+  while ((m = re.exec(masked)) && ++i < index);
+  if (!m) return;
+  const to = typeof ch === "function" ? ch(m[2]) : ch;
+  const lines = raw.split("\n"), li = (fm + body.slice(0, m.index)).split("\n").length - 1;
+  let msg;
+  if (orgLine(lines[li])?.box != null) msg = orgSetState(lines, li, to);
+  else { lines[li] = lines[li].replace(/\[[ xX\/<>-]\]/, `[${to}]`); msg = tt("stateTo", { kw: taskStateName(to) }); } // a task inside a quote or callout
+  if (!msg) return;
+  await txn(msg, () => writeRaw(path, lines.join("\n")));
   refresh();
 }
 
