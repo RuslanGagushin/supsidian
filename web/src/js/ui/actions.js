@@ -3,6 +3,7 @@
    ========================================================= */
 import { t } from "../core/i18n.js";
 import { baseName, dirName } from "../core/util.js";
+import { normDepth } from "../core/board-model.js";
 import { composeBody, dumpYaml, extractLinkpath, fillTemplate, parentLinkpaths, TEMPLATE_SKIP_KEYS, toStringList } from "../core/frontmatter.js";
 import { reorderBlock } from "../core/graph.js";
 import { board, editor, graph, PARENTS_FIELD, S, tree, vault } from "../services/state.js";
@@ -237,7 +238,7 @@ export async function saveCurrentView() {
 }
 export function applyView(v) {
   board.history.push(board.target);
-  Object.assign(board, { target: v.target && graph.has(v.target) ? v.target : null, depth: v.depth ?? board.depth, layout: ["list", "notes"].includes(v.layout) ? v.layout : "columns", sort: v.sort ?? board.sort, grouped: !!v.grouped });
+  Object.assign(board, { target: v.target && graph.has(v.target) ? v.target : null, depth: normDepth(v.depth ?? board.depth), layout: ["list", "notes"].includes(v.layout) ? v.layout : "columns", sort: v.sort ?? board.sort, grouped: !!v.grouped });
   board.filter = { query: v.filter?.query || "", tags: v.filter?.tags || [] };
   board.searchOpen = !!(board.filter.query || board.filter.tags.length);
   board.selection.clear(); board.rendered = 60;

@@ -19,7 +19,7 @@ This repository wraps the Supstack page into native apps with [Tauri 2](https://
 ### Cards and the board
 - **Every note is a card.** A card shows its title, its parents and a preview of its text. The preview length and card height are adjustable.
 - **Cards nest, and a card can have several parents.** Parents are listed in the `parents` frontmatter property, so one note can sit under *Personal* and under *Documents* at the same time. The breadcrumb, **↑ Go to parent** and the side tree let you move around.
-- **Depth control:** show 1, 2 or 3 levels of children, or all of them (`∞`).
+- **Depth control:** show 1 or 2 levels of children, or all of them (`∞`).
 - **Board, list or notes layout.** The notes layout lists the card's own note and its children as rows (where each sits, when it changed, its title, two lines of text, tags and the first image) and opens the selected note beside the list, as a mail app does: the arrow keys page through the notes, the handle between them sizes the list, and ⤢ gives the note the whole width. On phones a tap opens the note over the list.
 - Grouping by parent, sorting (manual, or recently modified first), and **saved views** so a board you like is one tap away.
 - **Quick capture:** type into *Start typing a new card…* at the top of a board to create a child card there. You can choose a **template note** for a card's children.

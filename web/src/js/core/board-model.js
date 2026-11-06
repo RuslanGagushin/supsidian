@@ -4,6 +4,9 @@
 import { norm } from "./util.js";
 import { groupByTopLevel } from "./graph.js";
 
+/** The depths the board offers: one or two levels of children, or all of them (0). A depth it no longer offers (3) shows all. */
+export const DEPTHS = [1, 2, 0];
+export const normDepth = (d) => (DEPTHS.includes(Number(d)) ? Number(d) : 0);
 export function filterActive(f) { return !!f.query.trim() || f.tags.length > 0; }
 /**
  * The cards the board shows. `view` is the board's state ({ target, depth, grouped, filter }); `cards` says what the

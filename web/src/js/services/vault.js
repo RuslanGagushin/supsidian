@@ -5,7 +5,7 @@
 import { baseName, dirName } from "../core/util.js";
 import { fmInner, noteLinks, noteTags, parentLinkpaths, parseYaml, splitNote } from "../core/frontmatter.js";
 import { HierarchyGraph } from "../core/graph.js";
-import { computeModel } from "../core/board-model.js";
+import { computeModel, normDepth } from "../core/board-model.js";
 import { lsGet, lsSet } from "./storage.js";
 import { emit } from "./events.js";
 import { board, DEFAULTS, graph, PARENTS_FIELD, resetSettings, S, setGraph, tree, undoStack, vault } from "./state.js";
@@ -155,11 +155,12 @@ export async function readVault(fs) {
   const moved = await gatherNotes();
   const saved = lsGet(boardKey(), null);
   Object.assign(board, {
-    target: null, depth: S.defaultDepth, layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
+    target: null, depth: normDepth(S.defaultDepth), layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
     filter: { query: "", tags: [] }, searchOpen: false, history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
   });
   if (saved) {
     for (const k of ["target", "depth", "layout", "sort", "grouped", "heroCollapsed", "tagView", "view"]) if (saved[k] !== undefined) board[k] = saved[k];
+    board.depth = normDepth(board.depth);
     if (saved.filter) board.filter = { query: saved.filter.query || "", tags: saved.filter.tags || [], scope: saved.filter.scope === "all" ? "all" : "here" };
     board.searchOpen = !!(board.filter.query || board.filter.tags.length);
     tree.expanded = new Set(saved.treeExpanded || []);

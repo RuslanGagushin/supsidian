@@ -3,6 +3,7 @@
    ========================================================= */
 import { ft, fvt, LANG, setLang, st, t, tt, ut, wt } from "../core/i18n.js";
 import { ORG_DEFAULT_KW, orgCache } from "../core/org.js";
+import { DEPTHS, normDepth } from "../core/board-model.js";
 import { on } from "../services/events.js";
 import { board, editor, graph, S, saveUI, setGraph, tree, UI, vault } from "../services/state.js";
 import { buildGraph, persistBoard, readVault, saveSettings } from "../services/vault.js";
@@ -86,7 +87,7 @@ function commandList() {
   add(t("back"), "arrow-left", goBack, "M-←");
   add(t("allCards"), "home", () => setTarget(null));
   add(t("searchAndFilters").replace(/ \(.*\)$/, ""), "search", () => toggleSearch(true), "C-f");
-  for (const d of [1, 2, 3, 0]) add(t("cmdDepth", { d: d || "∞" }), "list-tree", () => { board.depth = d; persistBoard(); renderBoard(); });
+  for (const d of DEPTHS) add(t("cmdDepth", { d: d || "∞" }), "list-tree", () => { board.depth = d; persistBoard(); renderBoard(); });
   for (const [v, icn, label] of LAYOUTS()) add(t("cmdLayout", { l: label }), icn, () => setLayout(v));
   for (const [v, k] of [["manual", "sortManual"], ["name", "sortName"], ["modified", "sortModified"], ["created", "sortCreated"]]) add(t("cmdSort", { s: t(k) }), "arrow-up-down", () => { board.sort = v; persistBoard(); renderBoard(); });
   add(t("groupByParent"), "group", () => { board.grouped = !board.grouped; persistBoard(); renderBoard(); });
@@ -222,7 +223,7 @@ export function settingsModal(tab) {
       item(wt("setWriteFont"), wt("setWriteFontDesc"), select(UI.writeFont || "mono", [["mono", wt("wfMono")], ["serif", wt("wfSerif")], ["sans", wt("wfSans")], ["inter", wt("wfInter")]], (v) => { UI.writeFont = v; saveUI(); applyTheme(); })),
     ]],
     ["board", t("sectionBoard"), "layout-grid", () => [
-      item(t("setDefaultDepth"), null, select(S.defaultDepth, [[1, "1"], [2, "2"], [3, "3"], [0, "∞"]], (v) => { S.defaultDepth = Number(v); save(); })),
+      item(t("setDefaultDepth"), null, select(normDepth(S.defaultDepth), DEPTHS.map((d) => [d, d ? String(d) : "∞"]), (v) => { S.defaultDepth = Number(v); save(); })),
       item(t("setDefaultLayout"), null, select(S.defaultLayout, LAYOUTS().map(([v, , l]) => [v, l]), (v) => { S.defaultLayout = v; save(); })),
       item(t("setDefaultSort"), null, select(S.defaultSort, [["manual", t("sortManual")], ["name", t("sortName")], ["modified", t("sortModified")], ["created", t("sortCreated")]], (v) => { S.defaultSort = v; save(); })),
       item(t("setPreview"), t("setPreviewDesc"), text(S.previewLength, "600", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.previewLength = Math.floor(n); save(); } }, "number")),

@@ -736,6 +736,14 @@ describe("sidebar", () => {
 describe("phone layout", () => {
   beforeEach(() => openVault({ viewport: { width: 390, height: 800 } }));
 
+  test("the board's toolbar fits a 360px phone, with depths 1, 2 and ∞", async () => {
+    await page().setViewportSize({ width: 360, height: 760 });
+    const r = await ev(() => { setLayout("notes"); setTarget("cards/History.md"); return { right: $(".sn-tools").getBoundingClientRect().right, depths: [...document.querySelectorAll(".sn-tools .sn-seg:first-child button")].map((b) => b.textContent) }; });
+    assert.ok(r.right <= 360, `the tools end at ${r.right}px`);
+    assert.deepEqual(r.depths, ["1", "2", "∞"]);
+    noErrors();
+  });
+
   test("the sidebar starts closed and the editor fills the screen", async () => {
     assert.equal(await ev(() => $("#app").classList.contains("side-closed")), true);
     await ev(() => openEditor("cards/History.md"));

@@ -3,7 +3,7 @@
    ========================================================= */
 import { LANG, t } from "../core/i18n.js";
 import { baseName, debounce } from "../core/util.js";
-import { filterActive } from "../core/board-model.js";
+import { DEPTHS, filterActive } from "../core/board-model.js";
 import { board, editor, graph, S, vault } from "../services/state.js";
 import { boardModel, cardIcon, cardTags, makeComparator, persistBoard } from "../services/vault.js";
 import { $, $$, h, ic, iconBtn, isMod, setIcon } from "./dom.js";
@@ -322,7 +322,7 @@ function renderToolbar() {
 
   const tools = h("div", { cls: "sn-tools" });
   const seg = h("div", { cls: "sn-seg", title: t("depth") }, ic("sn-seg-icon", "list-tree"));
-  for (const [v, label] of [[1, "1"], [2, "2"], [3, "3"], [0, "∞"]]) {
+  for (const [v, label] of DEPTHS.map((d) => [d, d ? String(d) : "∞"])) {
     const b = h("button", { cls: "clickable-icon" + (v === board.depth ? " is-active" : ""), type: "button", text: label, title: `${t("depth")}: ${label}` });
     b.addEventListener("click", () => { board.depth = v; board.rendered = 60; persistBoard(); renderBoard(); });
     seg.append(b);

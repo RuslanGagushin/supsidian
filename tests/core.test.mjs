@@ -13,7 +13,7 @@ const { baseName, dirName, norm, esc, plainText } = await import("../web/src/js/
 const { formatMoment } = await import("../web/src/js/core/dates.js");
 const fm = await import("../web/src/js/core/frontmatter.js");
 const { HierarchyGraph, groupByTopLevel, reorderBlock } = await import("../web/src/js/core/graph.js");
-const { computeModel, filterActive } = await import("../web/src/js/core/board-model.js");
+const { computeModel, filterActive, normDepth } = await import("../web/src/js/core/board-model.js");
 const org = await import("../web/src/js/core/org.js");
 const tables = await import("../web/src/js/core/tables.js");
 
@@ -217,5 +217,11 @@ describe("plain text previews", () => {
   test("plainText links show their target or alias, and the text is cut to a length", () => {
     assert.equal(plainText("See [[Notes/Rome#Forum]] and [[Rome|the city]]"), "See Notes/Rome and the city");
     assert.equal(plainText("word ".repeat(100), 20), "word word word word ");
+  });
+});
+
+describe("board depths", () => {
+  test("the board offers depths 1, 2 and all; a saved depth it no longer offers shows all", () => {
+    assert.deepEqual([1, 2, 0, 3, "2", undefined].map(normDepth), [1, 2, 0, 0, 2, 0]);
   });
 });
