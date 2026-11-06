@@ -1,5 +1,5 @@
 // Sets up release signing for the Android app (run once, after `npm run android:init`).
-// Creates src-tauri/gen/android/supsidian.jks + keystore.properties and teaches the Gradle build to use them.
+// Creates src-tauri/gen/android/supstack.jks + keystore.properties and teaches the Gradle build to use them.
 // Keep the .jks file and its password: updates to an installed app must be signed with the same key.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,15 +12,15 @@ const gradle = join(android, "app", "build.gradle.kts");
 if (!existsSync(gradle)) { console.error("Run `npm run android:init` first."); process.exit(1); }
 
 const props = join(android, "keystore.properties");
-const jks = join(android, "supsidian.jks");
+const jks = join(android, "supstack.jks");
 if (!existsSync(props)) {
-  const password = process.env.SUPSIDIAN_KEY_PASSWORD || randomBytes(18).toString("base64url");
+  const password = process.env.SUPSTACK_KEY_PASSWORD || randomBytes(18).toString("base64url");
   const keytool = process.env.JAVA_HOME ? join(process.env.JAVA_HOME, "bin", process.platform === "win32" ? "keytool.exe" : "keytool") : "keytool";
   if (!existsSync(jks)) {
     execFileSync(keytool, ["-genkeypair", "-v", "-keystore", jks, "-storetype", "JKS", "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000",
-      "-alias", "supsidian", "-storepass", password, "-keypass", password, "-dname", "CN=Supsidian"], { stdio: "inherit" });
+      "-alias", "supstack", "-storepass", password, "-keypass", password, "-dname", "CN=Supstack"], { stdio: "inherit" });
   }
-  writeFileSync(props, `password=${password}\nkeyAlias=supsidian\nstoreFile=${jks.replace(/\\/g, "/")}\n`);
+  writeFileSync(props, `password=${password}\nkeyAlias=supstack\nstoreFile=${jks.replace(/\\/g, "/")}\n`);
   console.log(`Created ${jks}\nPassword saved in ${props} — back both up.`);
 }
 

@@ -1,6 +1,6 @@
 # Supstack
 
-**Supstack (formerly Supsidian) shows a folder of Markdown notes (a vault) as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
+**Supstack shows a folder of Markdown notes (a vault) as a board of nested cards, with Org-style TODOs, an agenda, and git sync between your devices.**
 
 Every card is an ordinary Markdown note in your vault. Supstack adds nothing to your files except the frontmatter it needs to link cards together, so other editors, Git, Syncthing and any other tool keep working on the same folder.
 
@@ -84,7 +84,7 @@ Want to look around first? **Try the demo vault** loads a sample board in memory
 | Daily notes (also cards) | `daily notes/YYYY-MM-DD.md` |
 | Pasted, dropped and uploaded files | `attachments/` |
 | Card parents | the `parents` frontmatter property in each note |
-| Vault settings: pins, saved views, card and board options | `.supstack/settings.json` in the vault (versions up to 0.15 kept them in `.obsidian/plugins/supsidian/data.json`; they move on first open) |
+| Vault settings: pins, saved views, card and board options | `.supstack/settings.json` in the vault (versions up to 0.15 kept them under `.obsidian/plugins/`; they move on first open) |
 | App settings, fold state, agenda view | stored per installation, not in the vault |
 
 **The three folders are the same in every vault**, so there is nothing to set up: Supstack creates them as needed, and a folder that already exists with other letter case (`Cards/`) is used as it is. Each time a vault is opened, notes outside them are moved into `cards/`, keeping their subfolders, so links to them keep working; files that are not notes stay where they are.
@@ -138,9 +138,9 @@ On Android the app draws edge to edge (behind the status bar and gesture bar). T
 ### Desktop update signing
 The installed Windows and macOS apps only accept updates signed with the key whose public half is in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`).
 
-- Add the private key as the repository secret `TAURI_SIGNING_PRIVATE_KEY`, with the contents of `~/.tauri/supsidian.key`. If the key has a password, also add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Tagged builds are then signed, and the release gets a `latest.json` (made by `scripts/updater-manifest.mjs`) that the apps read.
+- Add the private key as the repository secret `TAURI_SIGNING_PRIVATE_KEY`, with the contents of `~/.tauri/supstack.key`. If the key has a password, also add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Tagged builds are then signed, and the release gets a `latest.json` (made by `scripts/updater-manifest.mjs`) that the apps read.
 - Without the secret, the apps still build, but a release can't update them. **Check now** falls back to comparing versions with GitHub and opens the release page.
-- Keep a backup of the private key. If it is lost, installed apps can't take signed updates any more, and everyone has to download one release by hand. To start over with a new key, run `npx tauri signer generate -w ~/.tauri/supsidian.key`, then put the new `.pub` contents in `tauri.conf.json`.
+- Keep a backup of the private key. If it is lost, installed apps can't take signed updates any more, and everyone has to download one release by hand. To start over with a new key, run `npx tauri signer generate -w ~/.tauri/supstack.key`, then put the new `.pub` contents in `tauri.conf.json`.
 - When releasing, bump the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`; the page takes its version from `package.json` when it is built. A test checks that they match.
 
 ### Android signing
@@ -148,7 +148,7 @@ The workflow always builds a **release** APK. Android only installs signed APKs,
 
 - **Without setup**, each run signs the APK with a new one-off key. It installs fine, but the next build can't update it: uninstall first. Your notes are safe, since they live in the vault folder.
 - **To update in place**, add two repository secrets under **Settings → Secrets and variables → Actions**:
-  - `ANDROID_KEYSTORE_BASE64`: the key file as base64. Create the key once locally with `npm run android:init` and then `node scripts/android-signing.mjs`. Encode it with `base64 -w0 src-tauri/gen/android/supsidian.jks`, or on Windows with `[Convert]::ToBase64String([IO.File]::ReadAllBytes("src-tauri\gen\android\supsidian.jks"))`.
+  - `ANDROID_KEYSTORE_BASE64`: the key file as base64. Create the key once locally with `npm run android:init` and then `node scripts/android-signing.mjs`. Encode it with `base64 -w0 src-tauri/gen/android/supstack.jks`, or on Windows with `[Convert]::ToBase64String([IO.File]::ReadAllBytes("src-tauri\gen\android\supstack.jks"))`.
   - `ANDROID_KEY_PASSWORD`: the password from `src-tauri/gen/android/keystore.properties`.
 
 Switching from a build signed with a different key (for example an older debug build) needs one uninstall.
@@ -210,7 +210,7 @@ All platforms need **Rust** (<https://rustup.rs>) and **Node.js 20+** (<https://
    npm run android:init
    node scripts/android-signing.mjs
    ```
-   The key and its password are saved in `src-tauri/gen/android/` (`supsidian.jks` and `keystore.properties`, both git-ignored). **Back them up**: updates must be signed with the same key.
+   The key and its password are saved in `src-tauri/gen/android/` (`supstack.jks` and `keystore.properties`, both git-ignored). **Back them up**: updates must be signed with the same key.
 5. Run `npm run android:build`. The APK is at `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`.
 
 ---

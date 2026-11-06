@@ -1,5 +1,5 @@
 # Builds the Supstack apps on GitHub's machines.
-# Works both in the full supsidian repository (app/ + standalone/) and in a repository that holds only the app folder.
+# Works both in a repository with app/ + standalone/ folders and in a repository that holds only the app folder.
 #  - Run it by hand: Actions → "Build apps" → Run workflow. The files appear under the run's "Artifacts".
 #  - Push a tag like v0.1.0 and the same files are also attached to a GitHub Release.
 # Desktop updates: with the TAURI_SIGNING_PRIVATE_KEY secret (and TAURI_SIGNING_PRIVATE_KEY_PASSWORD
@@ -140,7 +140,7 @@ jobs:
           for d in src-tauri/icons/android/mipmap-*dpi; do cp "$d/ic_launcher_foreground.png" "src-tauri/gen/android/app/src/main/res/${d##*/}/"; done
       # Optional: add these repository secrets to get a signed release APK that you can update later
       #   ANDROID_KEYSTORE_BASE64  — base64 of a .jks file (scripts/android-signing.mjs makes one)
-      #   ANDROID_KEY_PASSWORD     — its password (key alias must be "supsidian")
+      #   ANDROID_KEY_PASSWORD     — its password (the key alias is read from the file)
       # Without them the release APK is signed with a one-off key made for that run: it installs fine,
       # but the next build can't update it in place (uninstall first), since every run has a new key.
       - name: Signing key
@@ -150,8 +150,11 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > src-tauri/gen/android/supsidian.jks
-            printf 'password=%s\nkeyAlias=supsidian\nstoreFile=%s\n' "$KEY_PASSWORD" "$PWD/src-tauri/gen/android/supsidian.jks" > src-tauri/gen/android/keystore.properties
+            JKS="$PWD/src-tauri/gen/android/supstack.jks"
+            echo "$KEYSTORE_B64" | base64 -d > "$JKS"
+            ALIAS=$(keytool -list -keystore "$JKS" -storepass "$KEY_PASSWORD" | awk -F, '/PrivateKeyEntry/ { print $1; exit }')
+            [ -n "$ALIAS" ] || { echo "::error::No private key found in ANDROID_KEYSTORE_BASE64"; exit 1; }
+            printf 'password=%s\nkeyAlias=%s\nstoreFile=%s\n' "$KEY_PASSWORD" "$ALIAS" "$JKS" > src-tauri/gen/android/keystore.properties
             node scripts/android-signing.mjs
           else
             node scripts/android-signing.mjs

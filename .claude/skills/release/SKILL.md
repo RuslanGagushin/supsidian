@@ -28,7 +28,7 @@ only fixes → patch (0.12.0 → 0.12.1). If the user names a version, use their
 | `package.json` | `"version"` |
 | `package-lock.json` | the top `"version"` and `packages[""].version` (the first two, lines ~3 and ~9) |
 | `src-tauri/Cargo.toml` | `version` under `[package]` |
-| `src-tauri/Cargo.lock` | `version` of the `name = "supsidian"` package (not other crates) |
+| `src-tauri/Cargo.lock` | `version` of the `name = "supstack"` package (not other crates) |
 | `src-tauri/tauri.conf.json` | `"version"` |
 
 The page's `APP_VERSION` is not one of them: `scripts/page.mjs` fills it in from `package.json` when it builds the page.
@@ -69,4 +69,4 @@ git push origin vX.Y.Z
 ## 6. Report
 
 Tell the user the version, the commit, the release URL
-(`https://github.com/RuslanGagushin/supsidian/releases/tag/vX.Y.Z`) and whether the build has finished.
+(`https://github.com/RuslanGagushin/supstack/releases/tag/vX.Y.Z`) and whether the build has finished.

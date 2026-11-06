@@ -58,16 +58,28 @@ export class MemoryFS {
 }
 
 /* IndexedDB: remember the last opened folder handle */
+const IDB_NAME = "supstack-standalone";
+const OLD_IDB_NAME = "supsidian-standalone"; // versions up to 0.19; its values move on first read
 export const idb = {
-  open() {
+  open(name = IDB_NAME) {
     return new Promise((res, rej) => {
-      const r = indexedDB.open("supsidian-standalone", 1);
+      const r = indexedDB.open(name, 1);
       r.onupgradeneeded = () => r.result.createObjectStore("kv");
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });
   },
-  async get(k) { try { const db = await this.open(); return await new Promise((res) => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } },
+  async read(name, k) { const db = await this.open(name); try { return await new Promise((res) => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } finally { db.close(); } },
+  async get(k) {
+    try {
+      const v = await this.read(IDB_NAME, k);
+      if (v !== undefined || !indexedDB.databases) return v;
+      if (!(await indexedDB.databases()).some((d) => d.name === OLD_IDB_NAME)) return undefined;
+      const old = await this.read(OLD_IDB_NAME, k);
+      if (old !== undefined) { await this.set(k, old); indexedDB.deleteDatabase(OLD_IDB_NAME); }
+      return old;
+    } catch { return undefined; }
+  },
   async set(k, v) { try { const db = await this.open(); await new Promise((res) => { const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(v, k); tx.oncomplete = res; tx.onerror = res; }); } catch { /* ignore */ } },
 };
 

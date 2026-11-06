@@ -7,7 +7,7 @@ use tauri::{
 use crate::{models::*, Result};
 
 #[cfg(target_os = "android")]
-const PLUGIN_IDENTIFIER: &str = "com.supsidian.vault";
+const PLUGIN_IDENTIFIER: &str = "com.supstack.vault";
 
 pub fn init<R: Runtime, C: DeserializeOwned>(_app: &AppHandle<R>, api: PluginApi<R, C>) -> Result<Vault<R>> {
     #[cfg(target_os = "android")]

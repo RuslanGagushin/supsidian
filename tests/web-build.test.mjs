@@ -44,7 +44,7 @@ test("the page's APP_VERSION (filled in from package.json) and the app's version
 
 test("the updater checks this repository's latest release and has a signing key", () => {
   const conf = JSON.parse(readFileSync(at("src-tauri/tauri.conf.json"), "utf8"));
-  assert.match(conf.plugins.updater.endpoints[0], /^https:\/\/github\.com\/RuslanGagushin\/supsidian\/releases\/latest\/download\/latest\.json$/);
+  assert.match(conf.plugins.updater.endpoints[0], /^https:\/\/github\.com\/RuslanGagushin\/supstack\/releases\/latest\/download\/latest\.json$/);
   assert.match(Buffer.from(conf.plugins.updater.pubkey, "base64").toString(), /minisign public key/);
 });
 

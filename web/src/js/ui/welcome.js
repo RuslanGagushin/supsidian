@@ -16,7 +16,7 @@ export async function pickVault() {
   if (IS_NATIVE) return nativePick();
   if (!hasFsApi) { $("#folder-input").click(); return; }
   try {
-    const handle = await window.showDirectoryPicker({ id: "supsidian-vault", mode: "readwrite" });
+    const handle = await window.showDirectoryPicker({ id: "supstack-vault", mode: "readwrite" });
     await idb.set("lastVault", handle);
     await loadVault(new HandleFS(handle));
   } catch (e) { if (e.name !== "AbortError") notice(String(e.message || e)); }

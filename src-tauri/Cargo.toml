@@ -1,12 +1,12 @@
 [package]
-name = "supsidian"
+name = "supstack"
 version = "0.19.0"
 description = "Supstack — a card board and Org-style agenda for folders of Markdown notes"
 edition = "2021"
 publish = false
 
 [lib]
-name = "supsidian_lib"
+name = "supstack_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

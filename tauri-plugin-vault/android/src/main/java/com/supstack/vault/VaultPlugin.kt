@@ -1,4 +1,4 @@
-package com.supsidian.vault
+package com.supstack.vault
 
 import android.app.Activity
 import android.content.Intent

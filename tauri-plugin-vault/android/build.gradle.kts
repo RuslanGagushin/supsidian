@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.supsidian.vault"
+    namespace = "com.supstack.vault"
     compileSdk = 36
 
     defaultConfig {

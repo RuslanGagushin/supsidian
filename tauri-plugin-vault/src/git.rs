@@ -20,7 +20,10 @@ use tauri::{AppHandle, Runtime};
 
 use crate::{Error, Result};
 
-const DEFAULT_IGNORE: &str = ".trash/\n.DS_Store\n*.supsidian-tmp\n";
+const DEFAULT_IGNORE: &str = ".trash/\n.DS_Store\n*.supstack-tmp\n";
+/// Section of the repository config that holds this app's settings, and the one versions up to 0.19 used.
+const SECTION: &str = "supstack";
+const OLD_SECTION: &str = "supsidian";
 const STAGE_MASK: u16 = 0x3000;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -36,7 +39,7 @@ pub struct GitConfig {
 
 /// The sync settings as the page edits them. They live in the repository's own config
 /// (.git/config, which is never pushed): the remote as `origin`, the author as `user.*`,
-/// the rest under `supsidian.*`.
+/// the rest under `supstack.*` (versions up to 0.19 used `supsidian.*`; it moves on the next save).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitSettings {
@@ -165,18 +168,19 @@ fn init(dir: &Path, branch: &str) -> Result<Repository> {
 
 pub(crate) fn read_settings(repo: &Repository) -> Option<GitSettings> {
     let cfg = repo.config().ok()?.open_level(ConfigLevel::Local).ok()?;
-    // `supsidian.auto` is always written, so it tells whether this app saved settings here
-    let auto = cfg.get_bool("supsidian.auto").ok()?;
+    // `<section>.auto` is always written, so it tells whether this app saved settings here
+    let (section, auto) = [SECTION, OLD_SECTION].into_iter().find_map(|s| Some((s, cfg.get_bool(&format!("{s}.auto")).ok()?)))?;
     let get = |key: &str| cfg.get_string(key).unwrap_or_default();
+    let ours = |key: &str| get(&format!("{section}.{key}"));
     Some(GitSettings {
         remote: get("remote.origin.url"),
-        branch: get("supsidian.branch"),
-        username: get("supsidian.username"),
-        token: get("supsidian.token"),
+        branch: ours("branch"),
+        username: ours("username"),
+        token: ours("token"),
         author_name: get("user.name"),
         author_email: get("user.email"),
         auto,
-        minutes: cfg.get_i64("supsidian.minutes").ok().and_then(|m| u32::try_from(m).ok()).unwrap_or(5),
+        minutes: cfg.get_i64(&format!("{section}.minutes")).ok().and_then(|m| u32::try_from(m).ok()).unwrap_or(5),
     })
 }
 
@@ -192,6 +196,8 @@ pub(crate) fn write_settings(repo: &Repository, s: &GitSettings) -> Result<()> {
         }
     }
     let mut cfg = repo.config()?.open_level(ConfigLevel::Local)?;
+    cfg.set_bool(&format!("{SECTION}.auto"), s.auto)?;
+    cfg.set_i64(&format!("{SECTION}.minutes"), i64::from(s.minutes.max(1)))?;
     let mut put = |key: &str, value: &str| -> Result<()> {
         let value = value.trim();
         if !value.is_empty() {
@@ -202,13 +208,14 @@ pub(crate) fn write_settings(repo: &Repository, s: &GitSettings) -> Result<()> {
             _ => Ok(()),
         }
     };
-    put("supsidian.branch", &s.branch)?;
-    put("supsidian.username", &s.username)?;
-    put("supsidian.token", &s.token)?;
+    put(&format!("{SECTION}.branch"), &s.branch)?;
+    put(&format!("{SECTION}.username"), &s.username)?;
+    put(&format!("{SECTION}.token"), &s.token)?;
     put("user.name", &s.author_name)?;
     put("user.email", &s.author_email)?;
-    cfg.set_bool("supsidian.auto", s.auto)?;
-    cfg.set_i64("supsidian.minutes", i64::from(s.minutes.max(1)))?;
+    for key in ["branch", "username", "token", "auto", "minutes"] {
+        put(&format!("{OLD_SECTION}.{key}"), "")?;
+    }
     Ok(())
 }
 
@@ -295,7 +302,9 @@ fn conflict_path(path: &str) -> String {
 
 fn commit_local(repo: &Repository, sig: &Signature) -> Result<bool> {
     let mut index = repo.index()?;
-    index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
+    // half-written files (`.name.supstack-tmp`) never go into a commit, even where an older .gitignore lists only the old suffix
+    let mut skip_tmp = |path: &Path, _: &[u8]| -> i32 { i32::from(path.to_string_lossy().ends_with(".supstack-tmp")) };
+    index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, Some(&mut skip_tmp))?;
     index.update_all(["*"].iter(), None)?;
     index.write()?;
     let tree_id = index.write_tree()?;
@@ -623,7 +632,7 @@ mod tests {
 
     #[test]
     fn settings_live_in_the_repository_config() {
-        let dir = std::env::temp_dir().join(format!("supsidian-settings-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("supstack-settings-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         let repo = init(&dir, "main").unwrap();
         assert_eq!(read_settings(&repo), None, "nothing saved yet");
@@ -654,8 +663,31 @@ mod tests {
     }
 
     #[test]
+    fn settings_saved_by_older_versions_are_read_and_moved() {
+        let dir = std::env::temp_dir().join(format!("supstack-old-settings-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let repo = init(&dir, "main").unwrap();
+        {
+            let mut cfg = repo.config().unwrap().open_level(ConfigLevel::Local).unwrap();
+            cfg.set_str(&format!("{OLD_SECTION}.branch"), "notes").unwrap();
+            cfg.set_str(&format!("{OLD_SECTION}.token"), "secret").unwrap();
+            cfg.set_bool(&format!("{OLD_SECTION}.auto"), true).unwrap();
+            cfg.set_i64(&format!("{OLD_SECTION}.minutes"), 7).unwrap();
+        }
+        let s = read_settings(&repo).expect("old settings are read");
+        assert_eq!((s.branch.as_str(), s.token.as_str(), s.auto, s.minutes), ("notes", "secret", true, 7));
+
+        write_settings(&repo, &s).unwrap();
+        let cfg = repo.config().unwrap().open_level(ConfigLevel::Local).unwrap();
+        assert!(cfg.get_bool(&format!("{OLD_SECTION}.auto")).is_err(), "the old section is cleared");
+        assert_eq!(cfg.get_string(&format!("{SECTION}.token")).unwrap(), "secret");
+        assert_eq!(read_settings(&repo).as_ref(), Some(&s));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn two_devices_converge_and_keep_both_sides_of_a_conflict() {
-        let tmp = std::env::temp_dir().join(format!("supsidian-git-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("supstack-git-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         let (remote, a, b) = (tmp.join("remote.git"), tmp.join("a"), tmp.join("b"));
         Repository::init_bare(&remote).unwrap();

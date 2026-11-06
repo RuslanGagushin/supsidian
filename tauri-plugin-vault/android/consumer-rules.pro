@@ -1,1 +1,1 @@
--keep class com.supsidian.vault.** { *; }
+-keep class com.supstack.vault.** { *; }

@@ -132,7 +132,7 @@ fn write(root: &str, path: &str, text: Option<String>, base64: Option<String>) -
         fs::create_dir_all(parent)?;
     }
     let file_name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    let tmp = p.with_file_name(format!(".{file_name}.supsidian-tmp"));
+    let tmp = p.with_file_name(format!(".{file_name}.supstack-tmp"));
     fs::write(&tmp, &bytes)?;
     if fs::rename(&tmp, &p).is_err() {
         let _ = fs::remove_file(&tmp);
@@ -174,7 +174,7 @@ mod tests {
     struct Tmp(PathBuf);
     impl Tmp {
         fn new(name: &str) -> Self {
-            let p = std::env::temp_dir().join(format!("supsidian-desktop-{name}-{}", std::process::id()));
+            let p = std::env::temp_dir().join(format!("supstack-desktop-{name}-{}", std::process::id()));
             let _ = fs::remove_dir_all(&p);
             fs::create_dir_all(&p).unwrap();
             Tmp(p)
@@ -206,7 +206,7 @@ mod tests {
         let mtime = write(t.root(), "Cards/New/Note.md", Some("hello".into()), None).unwrap();
         assert!(mtime > 0.0);
         assert_eq!(fs::read_to_string(t.0.join("Cards/New/Note.md")).unwrap(), "hello");
-        assert_eq!(list_dir(t.root(), "Cards/New").unwrap(), vec!["Note.md".to_string()], "no .supsidian-tmp left behind");
+        assert_eq!(list_dir(t.root(), "Cards/New").unwrap(), vec!["Note.md".to_string()], "no .supstack-tmp left behind");
         write(t.root(), "Cards/New/Note.md", Some("again".into()), None).unwrap();
         assert_eq!(fs::read_to_string(t.0.join("Cards/New/Note.md")).unwrap(), "again", "overwrites in place");
         assert!(write(t.root(), "../escape.md", Some("x".into()), None).is_err());

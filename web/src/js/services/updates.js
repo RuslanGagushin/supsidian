@@ -10,7 +10,7 @@ import { IS_ANDROID, IS_NATIVE, openExternal } from "./native.js";
 import { saveUI, UI } from "./state.js";
 
 export const APP_VERSION = "__APP_VERSION__"; // the page's own version (the apps ask Tauri for theirs); scripts/page.mjs puts package.json's here
-const REPO = "RuslanGagushin/supsidian";
+const REPO = "RuslanGagushin/supstack";
 export const RELEASES = `https://github.com/${REPO}/releases`;
 /** state: idle | checking | current | available | installing | restarting | error. `update` is the Tauri updater's handle (desktop only). */
 export const upd = { state: "idle", version: "", url: "", error: "", got: 0, total: 0, update: null, view: null };
