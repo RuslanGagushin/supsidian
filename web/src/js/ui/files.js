@@ -11,7 +11,7 @@ import { addAttachment, cardIcon, persistBoard } from "../services/vault.js";
 import { allAttachments, attachmentRefs, attachmentUrl, dropAttachment, FILE_MD_RE, FILE_WIKI_RE, fileExt, fileName, fileTarget, IMG_EXT, moveVaultFile, PDF_EXT, saveAttachment } from "../services/attachments.js";
 import { writeRaw } from "../services/save.js";
 import { syncHook } from "../services/sync.js";
-import { $, $$, h, ic, iconBtn, isMod } from "./dom.js";
+import { $, $$, h, ic, iconBtn, isMod, keyText } from "./dom.js";
 import { confirmModal, Menu, notice, promptModal } from "./ui.js";
 import { hasPdfViewer, pdfMessage, renderPdfPages } from "./markdown.js";
 import { masonries } from "./masonry.js";

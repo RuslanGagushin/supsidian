@@ -825,6 +825,18 @@ describe("sidebar", () => {
   });
 });
 
+describe("the app", () => {
+  test("starts in its last folder with the native parts on screen, without errors (0.21.0 showed a white screen)", async () => {
+    await H.openNativeApp();
+    assert.equal(await ev(() => !!window.__TAURI__ && SupstackApp.vault.fs.kind === "disk" && typeof keyText === "undefined"), true, "a native vault, and the exports are not globals");
+    assert.ok(await page().isVisible(".wb-files"), "the Files button");
+    assert.match(await page().textContent(".sn-board"), /Home/);
+    await page().keyboard.press("Control+p");
+    await page().waitForSelector(".prompt .prompt-input");
+    noErrors();
+  });
+});
+
 describe("phone layout", () => {
   beforeEach(() => openVault({ viewport: { width: 390, height: 800 } }));
 

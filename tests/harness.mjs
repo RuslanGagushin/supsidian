@@ -45,3 +45,39 @@ export const tick = (ms = 50) => new Promise((r) => setTimeout(r, ms));
 /** Wait for the page's requestAnimationFrame refresh to land. */
 export const settle = () => ev(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 export const SVG = { data: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="red"/></svg>', type: "image/svg+xml" };
+
+/**
+ * The page as the Tauri app runs it: window.__TAURI__ answers the vault plugin from `notes` in memory, and the page
+ * reopens the last folder on its own, the way the app starts. Native-only parts (the Files button, git sync) render.
+ * The modules' exports are not globals here; window.SupstackApp gives the vault.
+ */
+export async function openNativeApp({ notes = { "Home.md": "# Home\n\n- TODO Write" }, viewport = { width: 1280, height: 800 } } = {}) {
+  await page?.close();
+  page = await (await launch()).newPage({ viewport, locale: "en-US" });
+  errors = [];
+  page.setDefaultTimeout(15000);
+  page.on("pageerror", (e) => errors.push(e));
+  await page.addInitScript((notes) => {
+    // no __SN_EXPOSE__ here: it makes every export a global, which hides a missing import
+    const files = { ...notes };
+    const b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+    const vault = {
+      exists: (a) => a.path === "" || a.path in files,
+      list: () => Object.keys(files).map((path) => ({ path, mtime: 1, size: files[path].length })),
+      read: (a) => ({ data: a.binary ? b64(files[a.path]) : files[a.path], mtime: 1 }),
+      write: (a) => { files[a.path] = a.text ?? atob(a.base64); return null; },
+      remove: (a) => { delete files[a.path]; return null; },
+      list_dir: () => [], remove_dir: () => null, git_info: () => ({ repo: false }), git_save_settings: () => null,
+    };
+    window.__TAURI__ = { core: { invoke: async (cmd, a) => {
+      const [plugin, c] = cmd.split("|");
+      if (plugin !== "plugin:vault") return null;
+      if (!vault[c]) throw new Error("no vault command " + c);
+      return vault[c](a);
+    } } };
+    try { localStorage.clear(); localStorage.setItem("sn-ui", JSON.stringify({ lang: "en" })); localStorage.setItem("sn-native-last", JSON.stringify({ root: "/vault", name: "Vault" })); } catch { /* file:// storage */ }
+  }, notes);
+  await page.goto(PAGE);
+  await page.waitForSelector("#board", { state: "attached" });
+  return page;
+}

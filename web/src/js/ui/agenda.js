@@ -10,7 +10,7 @@ import { persistBoard } from "../services/vault.js";
 import { txn, writeRaw } from "../services/save.js";
 import { dailyNotePath } from "../services/daily-notes.js";
 import { orgAll, todoSet } from "../services/tasks.js";
-import { $, $$, h, ic, iconBtn, isMod } from "./dom.js";
+import { $, $$, h, ic, iconBtn, isMod, keyText } from "./dom.js";
 import { echo, Menu, openLayer, promptModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
 import { masonries } from "./masonry.js";

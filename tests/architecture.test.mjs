@@ -49,3 +49,28 @@ test("js/expose.js lists every module that exports anything", () => {
   const exporting = modules.filter((f) => layer(f) !== "entry" && /^export /m.test(readFileSync(join(JS, f), "utf8")));
   assert.deepEqual(exporting.filter((f) => !listed.has(f)), []);
 });
+
+// esbuild bundles a name that a module uses but never imports without complaint, and it only fails when that line
+// runs (0.21.0 showed a white screen in the app: files.js used keyText without importing it, on a path the browser
+// tests never take). So: a name another module exports must be imported, or declared, wherever it is used.
+test("every name exported by one module is imported where another uses it", () => {
+  const exported = new Map(); // name -> module
+  for (const f of modules) for (const m of readFileSync(join(JS, f), "utf8").matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)/gm)) exported.set(m[1], f);
+  const bad = [];
+  for (const f of modules) {
+    const src = readFileSync(join(JS, f), "utf8");
+    const body = code(src.replace(/^import\s[^;]*;/gm, "")) // and without regex literals
+      .replace(/(^|[=(,:;!&|?{}[]\s*)\/(?![*/])(?:[^/\\\n[]|\\.|\[(?:[^\]\\\n]|\\.)*\])+\/[dgimsuy]*/gm, '$1""');
+    const known = new Set();
+    for (const m of src.matchAll(/^import\s*\{([^}]*)\}/gm)) for (const part of m[1].split(",")) { const n = part.trim().split(/\s+as\s+/).pop(); if (n) known.add(n); }
+    for (const m of src.matchAll(/^import\s+\*\s+as\s+(\w+)/gm)) known.add(m[1]);
+    for (const m of body.matchAll(/\b(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/g)) known.add(m[1]);
+    for (const m of body.matchAll(/\b(?:const|let|var)\s*[{[]([^}\]=]*)[}\]]/g)) for (const n of m[1].split(/[\s,:]+/)) if (n) known.add(n);
+    for (const m of body.matchAll(/\(([^()]*)\)\s*=>|\bfunction\s*[\w$]*\s*\(([^()]*)\)|(?<![\w$.])([A-Za-z_$][\w$]*)\s*=>/g)) for (const n of (m[1] ?? m[2] ?? m[3]).split(/[\s,{}[\]=.]+/)) if (n) known.add(n);
+    for (const m of body.matchAll(/(?<![\w$.'"\\])([A-Za-z_$][\w$]*)\b(?!\s*:(?!:))/g)) {
+      const n = m[1];
+      if (exported.has(n) && exported.get(n) !== f && !known.has(n)) bad.push(`${f} uses ${n} (from ${exported.get(n)})`);
+    }
+  }
+  assert.deepEqual([...new Set(bad)], []);
+});
