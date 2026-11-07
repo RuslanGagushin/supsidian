@@ -10,7 +10,7 @@ export class Masonry {
     if (board.layout === "list") return 1;
     const w = this.el.clientWidth;
     if (!w) return 1;
-    return Math.max(1, Math.min(5, Math.floor((w + 16) / (280 + 16))));
+    return Math.max(1, Math.min(5, Math.floor((w + 12) / (280 + 12))));
   }
   add(el) { this.items.push(el); if (!this.colCount) this.relayout(true); else this.place(el); }
   relayout(force) {

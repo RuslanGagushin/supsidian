@@ -70,7 +70,6 @@ export function renderCard(path, via, depth = 1) {
   const card = h("div", { cls: "sn-card", tabindex: "-1" });
   card.dataset.path = path;
   card.dataset.via = via ?? "";
-  card.dataset.lv = String(((depth || 1) - 1) % 8 + 1);
   card.dataset.depth = String(depth || 1);
   if (board.selection.has(path)) card.classList.add("is-picked");
   if (editor.path === path) card.classList.add("is-editing");

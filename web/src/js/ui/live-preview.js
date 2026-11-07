@@ -282,7 +282,7 @@ function lpInline(view) {
         const a = at(m.index), b = a + m[0].length;
         if (inSkip(a, b)) continue;
         const nr = lpNear(state, a, b);
-        if (m[1]) { mark(a, b - 1, "org-plan k-" + m[1].slice(0, -1).toLowerCase()); fmt(b - 1, b, nr); continue; }
+        if (m[1]) { mark(a, b - 1, "org-plan k-" + m[1].slice(0, -1).toLowerCase() + (nr ? " is-near" : "")); fmt(b - 1, b, nr); continue; }
         mark(a, b, "org-ts" + (m[3] ? " is-inactive" : ""));
         fmt(a, a + 1, nr); fmt(b - 1, b, nr);
         const mid = m[0].indexOf(">--<");

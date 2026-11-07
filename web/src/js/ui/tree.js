@@ -107,7 +107,6 @@ function treeNode(path, chain, cmp, o) {
   const item = h("div", { cls: "tree-item" });
   const row = h("div", { cls: "tree-item-self is-clickable sn-tree-row" + (open ? " is-open" : "") + (board.target === path ? " is-active" : "") + (isCycle ? " is-cycle" : "") });
   row.dataset.path = path;
-  row.dataset.lv = String((chain.length - 1) % 8 + 1);
   const toggle = h("span", { cls: "sn-tree-toggle" + (kids.length ? "" : " is-leaf") });
   setIcon(toggle, "chevron-down");
   toggle.addEventListener("click", (e) => { e.stopPropagation(); if (tree.expanded.has(key)) tree.expanded.delete(key); else tree.expanded.add(key); persistBoard(); renderTree(); });

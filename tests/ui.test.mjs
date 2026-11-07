@@ -396,11 +396,11 @@ describe("planning lines", () => {
   beforeEach(async () => { await openVault({ demo: false, notes: { "cards/P.md": NOTE } }); await ev(() => openEditor("cards/P.md", { focus: false })); });
   const shown = (sel) => ev((s) => [...document.querySelectorAll(s)].map((x) => x.innerText.trim()), sel);
 
-  test("SCHEDULED, DEADLINE and CLOSED are pills without their colon, dates pills without their brackets", async () => {
-    assert.deepEqual(await shown("#editor .sn-live .org-plan"), ["DEADLINE", "SCHEDULED", "CLOSED"]);
+  test("SCHEDULED, DEADLINE and CLOSED are lowercase pills without their colon, dates pills without their brackets", async () => {
+    assert.deepEqual(await shown("#editor .sn-live .org-plan"), ["deadline", "scheduled", "closed"]);
     assert.deepEqual(await shown("#editor .sn-live .org-ts"), ["2026-11-07 Sat", "2026-11-05 Thu", "2026-11-03 Tue 18:20"]);
     await ev(() => { editor.mode = "read"; renderEditor(); });
-    assert.deepEqual(await shown("#editor .sn-reading .org-plan"), ["DEADLINE", "SCHEDULED", "CLOSED"]);
+    assert.deepEqual(await shown("#editor .sn-reading .org-plan"), ["deadline", "scheduled", "closed"]);
     assert.deepEqual(await shown("#editor .sn-reading .org-ts"), ["2026-11-07 Sat", "2026-11-05 Thu", "2026-11-03 Tue 18:20"]);
     assert.equal(await ev(() => document.querySelector("#editor .sn-reading .org-ts").title), "<2026-11-07 Sat>", "the full timestamp in the tooltip");
     assert.equal(await raw("cards/P.md"), NOTE, "the note's text is unchanged");

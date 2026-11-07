@@ -3,13 +3,14 @@ html, body { margin: 0; height: 100%; }
 body {
   --shade: var(--fg); /* dims and shadows; black in dark themes, where --fg is light and would glow */
   /* The palette, the one source of colour: white notes on warm grey, neutral ink, one blue accent.
-     --l1..--l8 and --todo/--next/--done are the semantic colours (callouts, task states, levels). */
-  --bg:#f6f5f4; --win:#ffffff; --panel:#e7e6e5; --fg:#212121; --muted:#696564; --faint:#9c9897; --line:#e6e4e2;
-  --accent:#4d64ff; --accent-soft:#ebeeff; --sel:#ebeae9; --flash:#fff1a8; --code-bg:#f4f3f2;
+     --l1..--l8, --todo/--next/--done and the agenda's --wait/--cancel/--pri-*/--now are the semantic colours. */
+  --bg:#f6f5f4; --win:#ffffff; --panel:#e7e6e5; --fg:#212121; --muted:#696564; --faint:#726e6c; --line:#d4d1ce;
+  --accent:#4d64ff; --accent-soft:#ebeeff; --sel:#dfddda; --flash:#fff1a8; --code-bg:#f4f3f2;
   --ink:#141414; --cta:#4d64ff; --cta-hover:#3245bb; --hover-bg:#edeceb; --sb-avatar:#7c5cdb;
-  --tag:#3e3e3e; --tbl-head:#f4f3f2; --tbl-head-line:#e6e4e2;
+  --tag:#3e3e3e; --tbl-head:#f4f3f2; --tbl-head-line:#d4d1ce;
   --l1:#2f4fb5; --l2:#9a5524; --l3:#7a3fb0; --l4:#b02b2b; --l5:#2d7a3a; --l6:#9a4f93; --l7:#946500; --l8:#1d7385;
   --todo:#c42f27; --next:#b25f06; --done:#2d7a3a;
+  --wait:#7457ad; --cancel:#8a8685; --pri-a:#c42f27; --pri-b:#b25f06; --pri-c:#696564; --now:#c42f27;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --font-inter: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-ui: var(--font-inter);
@@ -17,12 +18,13 @@ body {
 }
 body.theme-dark {
   --shade: #000;
-  --bg:#1b1b1b; --win:#262626; --panel:#333333; --fg:#e8e8e8; --muted:#a8a4a3; --faint:#7d7978; --line:#353535;
+  --bg:#1b1b1b; --win:#262626; --panel:#333333; --fg:#e8e8e8; --muted:#a8a4a3; --faint:#908c8b; --line:#444444;
   --accent:#7c8eff; --accent-soft:#1f2547; --sel:#383838; --flash:#4a3f12; --code-bg:#2e2e2e;
   --ink:#f2f2f2; --cta:#4d64ff; --cta-hover:#7c8eff; --hover-bg:#2c2c2c;
   --tag:#d6d6d6; --tbl-head:#2e2e2e; --tbl-head-line:#3a3a3a;
   --l1:#8fa6ff; --l2:#e3a46f; --l3:#c39cf0; --l4:#f07f78; --l5:#8ccb90; --l6:#dca2df; --l7:#e2c162; --l8:#78c6d4;
   --todo:#ff7c70; --next:#f0a650; --done:#8ccb90;
+  --wait:#b9a0ef; --cancel:#7d7978; --pri-a:#ff7c70; --pri-b:#f0a650; --pri-c:#a8a4a3; --now:#ff7c70;
   color-scheme: dark;
 }
 body {
@@ -194,19 +196,9 @@ button.task-box:focus-visible { outline: 2px solid var(--accent); outline-offset
 .markdown-rendered th { font-weight: var(--font-semibold); }
 .markdown-rendered img { max-width: 100%; border-radius: var(--radius-s); }
 .markdown-rendered .internal-embed { display: block; padding: var(--size-2-3) var(--size-4-3); border-inline-start: 2px solid var(--interactive-accent); background: var(--background-primary-alt); border-radius: 0 var(--radius-s) var(--radius-s) 0; margin-block: 0 1em; }
-.markdown-rendered .callout {
-  --callout-color: var(--color-blue-rgb); --callout-icon: pencil;
-  margin: 0 0 1em; padding: var(--size-4-3) var(--size-4-3) var(--size-4-3) var(--size-4-6);
-  border-radius: var(--radius-s); background: rgba(var(--callout-color), .1); overflow: hidden;
-}
-.markdown-rendered .callout-title { display: flex; align-items: center; gap: var(--size-4-1); color: rgb(var(--callout-color)); font-weight: var(--font-semibold); margin-inline-start: calc(-1 * var(--size-4-3)); }
+.markdown-rendered .callout { overflow: hidden; } /* the frame and colours are in frame.css */
+.markdown-rendered .callout-title { display: flex; align-items: center; gap: var(--size-4-1); font-weight: var(--font-semibold); margin-inline-start: calc(-1 * var(--size-4-3)); }
 .markdown-rendered .callout-title svg { width: var(--icon-s); height: var(--icon-s); }
 .markdown-rendered .callout-content { margin-top: var(--size-2-3); }
 .markdown-rendered .callout-content > :last-child { margin-bottom: 0; }
-.markdown-rendered .callout[data-callout="tip"], .markdown-rendered .callout[data-callout="hint"], .markdown-rendered .callout[data-callout="important"] { --callout-color: var(--color-cyan-rgb); }
-.markdown-rendered .callout[data-callout="success"], .markdown-rendered .callout[data-callout="check"], .markdown-rendered .callout[data-callout="done"] { --callout-color: var(--color-green-rgb); }
-.markdown-rendered .callout[data-callout="question"], .markdown-rendered .callout[data-callout="help"], .markdown-rendered .callout[data-callout="faq"], .markdown-rendered .callout[data-callout="warning"], .markdown-rendered .callout[data-callout="caution"], .markdown-rendered .callout[data-callout="attention"] { --callout-color: var(--color-orange-rgb); }
-.markdown-rendered .callout[data-callout="failure"], .markdown-rendered .callout[data-callout="fail"], .markdown-rendered .callout[data-callout="missing"], .markdown-rendered .callout[data-callout="danger"], .markdown-rendered .callout[data-callout="error"], .markdown-rendered .callout[data-callout="bug"] { --callout-color: var(--color-red-rgb); }
-.markdown-rendered .callout[data-callout="example"] { --callout-color: var(--color-purple-rgb); }
-.markdown-rendered .callout[data-callout="quote"], .markdown-rendered .callout[data-callout="cite"] { --callout-color: 158, 158, 158; }
 

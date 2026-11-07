@@ -217,7 +217,13 @@ export function settingsModal(tab) {
   const item = (name, desc, control) => h("div", { cls: "setting-item" }, h("div", { cls: "setting-item-info" }, h("div", { cls: "setting-item-name", text: name }), desc ? h("div", { cls: "setting-item-description", text: desc }) : null), h("div", { cls: "setting-item-control" }, control));
   const select = (value, options, onChange) => { const s = h("select", {}, options.map(([v, l]) => h("option", { value: v, text: l, selected: String(v) === String(value) }))); s.addEventListener("change", () => onChange(s.value)); return s; };
   const text = (value, ph, onChange, type = "text") => { const i = h("input", { type, value: String(value ?? ""), placeholder: ph || "" }); i.addEventListener("change", () => onChange(i.value)); return i; };
-  const toggle = (value, onChange) => { const c = h("div", { cls: "checkbox-container" + (value ? " is-enabled" : "") }); c.addEventListener("click", () => { c.classList.toggle("is-enabled"); onChange(c.classList.contains("is-enabled")); }); return c; };
+  const toggle = (value, onChange) => {
+    const c = h("div", { cls: "checkbox-container" + (value ? " is-enabled" : ""), role: "switch", tabindex: "0", "aria-checked": String(!!value) });
+    const flip = () => { const on = c.classList.toggle("is-enabled"); c.setAttribute("aria-checked", String(on)); onChange(on); };
+    c.addEventListener("click", flip);
+    c.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); } });
+    return c;
+  };
   const save = () => { saveSettings(); setGraph(buildGraph()); };
   const storedIn = () => h("p", { cls: "modal-text sn-set-note", text: vault.fs.kind === "disk" ? t("settingsShared") : t("settingsLocal") });
   const tabs = [

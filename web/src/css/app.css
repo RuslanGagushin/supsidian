@@ -76,9 +76,9 @@ body.sn-app .sn-tree-section, body.sn-app .sn-tree-section:first-child {
 body.sn-app .sn-tree-section:first-child { margin-top: 4px; }
 body.sn-app .sn-outline .tree-item-self.sn-tree-row { min-height: 32px; padding: 4px 8px 4px 2px; border-radius: 6px; font-family: var(--font-inter); font-size: 14px; gap: 8px; margin-bottom: 0; color: var(--fg); }
 body.sn-app .sn-outline .tree-item-self.sn-tree-row:hover { background: var(--hover-bg); }
-body.sn-app .sn-outline .tree-item-self.sn-tree-row.is-active { background: var(--panel); }
+body.sn-app .sn-outline .tree-item-self.sn-tree-row.is-active { background: var(--sel); }
 body.sn-app .sn-outline .tree-item-self.sn-tree-row.is-active .sn-tree-label { color: var(--ink); }
-body.sn-app .sn-tree-row[data-lv] .sn-tree-label { color: var(--fg); font-weight: 400; }
+body.sn-app .sn-tree-row .sn-tree-label { color: var(--fg); font-weight: 400; }
 body.sn-app .sn-tree-icon { color: var(--muted); }
 body.sn-app .sn-tree-icon svg { width: 16px; height: 16px; }
 body.sn-app .tree-item-flair { font-family: var(--font-inter); font-size: 12px; color: var(--faint); }
@@ -155,7 +155,7 @@ body.sn-app .sn-group-count::before, body.sn-app .sn-group-count::after { conten
 body.sn-app .sn-empty, body.sn-app .sn-footnote { font-family: var(--font-inter); font-size: 13px; }
 body.sn-app .sn-filterbar { padding: 8px 24px; border-bottom: 0; }
 body.sn-app .sn-search { height: 34px; border-radius: 8px; background: var(--win); border-color: var(--line); }
-body.sn-app .sn-search:focus-within { border-color: #5b7cf0; box-shadow: 0 0 0 1px #5b7cf0; }
+body.sn-app .sn-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 body.sn-app .sn-board .sn-search-input { font-family: var(--font-inter); font-size: 13px; }
 body.sn-app .sn-board .sn-filter-btn, body.sn-app .sn-board .sn-filterbar > .clickable-icon { height: 32px; border-radius: 48px; font-family: var(--font-inter); font-size: 12.5px; }
 body.sn-app .sn-board .sn-filter-btn.is-active { border-color: var(--line); background: var(--panel); color: var(--ink); }
@@ -190,8 +190,7 @@ body.sn-app .markdown-rendered :is(ul, ol) li::marker { color: var(--muted); }
 body.sn-app .markdown-rendered ol li::marker { font-family: var(--font-inter); }
 body.sn-app .markdown-rendered a { color: var(--accent); }
 body.sn-app .markdown-rendered input[type="checkbox"] { accent-color: var(--accent); }
-body.sn-app .markdown-rendered code { font-family: var(--font-code); color: #d13438; background: var(--code-bg); }
-body.sn-app.theme-dark .markdown-rendered code { color: #ff8a8d; }
+body.sn-app .markdown-rendered code { font-family: var(--font-code); color: var(--ink); background: var(--code-bg); }
 /* the grey chip is for inline code only: inside a code block the text sits on the block itself */
 body.sn-app .markdown-rendered pre code, body.sn-app .markdown-rendered .code-body code { color: inherit; background: none; padding: 0; border-radius: 0; }
 body.sn-app .markdown-rendered .code-body, body.sn-app .fv-text { font-family: var(--font-code); }

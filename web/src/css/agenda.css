@@ -10,8 +10,7 @@ button.wb-btn.wb-tasks.is-active { border-color: var(--accent); background: var(
 .sn-task-prog.is-complete { color: var(--done); }
 
 /* agenda (after Emacs's *Org Agenda* buffer) */
-body { --wait:#7457ad; --cancel:#8a948e; --pri-a:#c42f27; --pri-b:#b25f06; --pri-c:#5b6761; --now:#c42f27; }
-body.theme-dark { --wait:#b9a0ef; --cancel:#6f7a73; --pri-a:#ff7c70; --pri-b:#f0a650; --pri-c:#94a098; --now:#ff7c70; }
+/* its colours (--wait, --cancel, --pri-*, --now) are in the palette, base.css */
 /* priorities, tags and timestamps are pills, like the tags on cards */
 .pri { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 48px; background: color-mix(in srgb, currentColor 12%, transparent); line-height: 1.5; white-space: nowrap; }
 .pri.A { color: var(--pri-a); } .pri.B { color: var(--pri-b); } .pri.C { color: var(--pri-c); }
@@ -45,13 +44,13 @@ button.fchip.exc { background: color-mix(in srgb, var(--todo) 12%, transparent);
 .ag-card.is-empty > .ag-day { color: var(--muted); font-weight: 500; }
 .ag-day .num { font-weight: 400; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; text-transform: none; }
 .ag-day.weekend:not(.today) { color: var(--muted); }
-.today-pill { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; background: var(--accent); color: var(--text-on-accent, #fff); padding: 1px 8px; border-radius: 48px; font-weight: 600; }
+.today-pill { font-size: 11px; background: var(--accent); color: var(--text-on-accent, #fff); padding: 1px 8px; border-radius: 48px; font-weight: 600; }
 .ag-row, .ag-grid { display: grid; grid-template-columns: 10ch 11ch 13ch minmax(0, 1fr); align-items: baseline; column-gap: 8px; padding: 7px 14px; font-variant-numeric: tabular-nums; }
 .ag-meta { display: contents; }
 .ag-row { cursor: pointer; position: relative; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .ag-card > .ag-row:first-child { border-top: 0; }
 .ag-row:hover { background: var(--hover-bg, var(--panel)); }
-.ag-row.sel { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.ag-row.sel { background: var(--accent-soft); }
 .ag-cat { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ag-time { color: var(--fg); font-size: 12.5px; white-space: nowrap; }
 .ag-lab { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -97,9 +96,10 @@ button.fchip.exc { background: color-mix(in srgb, var(--todo) 12%, transparent);
 .markdown-rendered .pri { font-size: .8em; margin-right: .3em; }
 .markdown-rendered .org-tags { margin-left: .4em; font-size: .9rem; }
 .markdown-rendered .org-plan {
-  font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; line-height: 1.5; white-space: nowrap;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600; line-height: 1.5; white-space: nowrap; text-transform: lowercase;
   padding: 1px 7px; border-radius: 48px; background: color-mix(in srgb, currentColor 13%, transparent); color: var(--muted);
 }
+.markdown-rendered .org-plan.is-near { text-transform: none; } /* the caret is in it: show the Markdown as written */
 .markdown-rendered .org-plan.k-deadline { color: var(--todo); }
 .markdown-rendered .org-plan.k-scheduled { color: var(--next); }
 .markdown-rendered .org-plan.k-closed { color: var(--done); }
@@ -204,9 +204,9 @@ button.wb-btn.wb-files.is-active { border-color: var(--accent); background: var(
 .sn-board .fv-kinds .clickable-icon { height: 22px; padding: 0 8px; border: 0; border-radius: 5px; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
 .sn-board .fv-kinds .clickable-icon.is-active { background: var(--win); color: var(--fg); box-shadow: 0 0 0 1px var(--line); }
 .fv-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 0 40px; outline: none; }
-.fv-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-left: 3px solid transparent; cursor: pointer; }
+.fv-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 8px 8px 15px; cursor: pointer; }
 .fv-row:hover { background: var(--panel); }
-.fv-row.sel { background: var(--sel); border-left-color: var(--accent); }
+.fv-row.sel { background: var(--sel); }
 .fv-icon svg { width: 18px; height: 18px; color: var(--muted); display: block; }
 .fv-row.sel .fv-icon svg { color: var(--accent); }
 .fv-row-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }

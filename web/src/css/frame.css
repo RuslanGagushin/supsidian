@@ -64,11 +64,6 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .sn-outline .tree-item-self.sn-tree-row:hover { background: var(--panel); }
 .sn-outline .tree-item-self.sn-tree-row.is-active { background: var(--accent-soft); }
 .sn-outline .tree-item-self.sn-tree-row.is-active .sn-tree-label { color: var(--accent); }
-.sn-tree-row[data-lv="1"] .sn-tree-label { color: var(--l1); } .sn-tree-row[data-lv="2"] .sn-tree-label { color: var(--l2); }
-.sn-tree-row[data-lv="3"] .sn-tree-label { color: var(--l3); } .sn-tree-row[data-lv="4"] .sn-tree-label { color: var(--l4); }
-.sn-tree-row[data-lv="5"] .sn-tree-label { color: var(--l5); } .sn-tree-row[data-lv="6"] .sn-tree-label { color: var(--l6); }
-.sn-tree-row[data-lv="7"] .sn-tree-label { color: var(--l7); } .sn-tree-row[data-lv="8"] .sn-tree-label { color: var(--l8); }
-.sn-tree-row[data-lv="1"] .sn-tree-label { font-weight: 500; }
 .sn-tree-icon { color: var(--faint); }
 .tree-item-flair { font-family: var(--font-mono); font-size: 11px; color: var(--faint); }
 .tree-item-children { margin-inline-start: 9px; padding-inline-start: 4px; }
@@ -104,11 +99,9 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .sn-card:hover { box-shadow: 0 0 0 1px var(--sn-card-border-hover, var(--faint)), var(--shadow-s); }
 .sn-card.is-editing { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
 .sn-card-head { gap: 7px; min-height: 22px; align-items: baseline; }
-.sn-card-icon { align-self: center; color: var(--lvc, var(--muted)); }
+.sn-card-icon { align-self: center; }
 .sn-card-icon svg { width: 15px; height: 15px; }
-.sn-card[data-lv="1"] { --lvc: var(--l1); } .sn-card[data-lv="2"] { --lvc: var(--l2); } .sn-card[data-lv="3"] { --lvc: var(--l3); } .sn-card[data-lv="4"] { --lvc: var(--l4); }
-.sn-card[data-lv="5"] { --lvc: var(--l5); } .sn-card[data-lv="6"] { --lvc: var(--l6); } .sn-card[data-lv="7"] { --lvc: var(--l7); } .sn-card[data-lv="8"] { --lvc: var(--l8); }
-.sn-board .sn-card-title { font-family: var(--font-mono); font-size: 13.5px; font-weight: 600; line-height: 1.35; color: var(--lvc, var(--fg)); }
+.sn-board .sn-card-title { font-family: var(--font-mono); font-size: 13.5px; font-weight: 600; line-height: 1.35; }
 .sn-board .sn-card-title:hover { text-decoration-color: currentColor; }
 .sn-board .sn-kids { padding: 0; background: none; color: var(--l5); font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; line-height: 1; }
 .sn-board .sn-kids::before { content: "["; } .sn-board .sn-kids::after { content: "]"; }
@@ -147,7 +140,7 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .sn-board .sn-filter-btn.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .sn-board .sn-filter-chip { height: 22px; border: 1px solid var(--l5); border-radius: 10px; background: transparent; color: var(--l5); font-family: var(--font-mono); font-size: 11px; padding: 0 7px; }
 .sn-board .sn-filter-chip:hover { background: color-mix(in srgb, var(--l5) 10%, transparent); color: var(--l5); }
-.sn-selbar { bottom: 36px; border-color: var(--line); border-radius: 8px; background: var(--win); box-shadow: 0 10px 30px color-mix(in srgb, var(--fg) 14%, transparent); }
+.sn-selbar { bottom: 36px; border-color: var(--line); border-radius: 8px; background: var(--win); box-shadow: 0 10px 30px color-mix(in srgb, var(--shade) 14%, transparent); }
 .sn-selbar-count { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
 .sn-board .sn-selbar-btn { font-size: 12px; font-family: var(--font-mono); }
 .sn-card.is-picked { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); background: color-mix(in srgb, var(--sel) 55%, var(--win)); }
@@ -256,7 +249,7 @@ button.clickable-icon.wb-icon:hover { border-color: var(--faint); color: var(--f
 .sn-fm-error { font-family: var(--font-mono); background: color-mix(in srgb, var(--todo) 10%, transparent); color: var(--todo); }
 
 /* ---------- Menus, panels, pickers */
-.menu { background: var(--win); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 10px 30px color-mix(in srgb, var(--fg) 14%, transparent); padding: 4px; font-family: var(--font-mono); font-size: 12px; }
+.menu { background: var(--win); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 10px 30px color-mix(in srgb, var(--shade) 14%, transparent); padding: 4px; font-family: var(--font-mono); font-size: 12px; }
 .menu-item { padding: 4px 8px; border-radius: 4px; gap: 8px; }
 .menu-item:hover, .menu-item.is-selected { background: var(--sel); }
 .menu-item-icon svg, .menu-item-check svg { width: 14px; height: 14px; }
