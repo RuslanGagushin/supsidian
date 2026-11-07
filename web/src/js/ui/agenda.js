@@ -184,6 +184,18 @@ export function renderTasksView(root) {
   if (AG.view === "agenda") {
     const days = AG.span === "day" ? [AG.anchor] : Array.from({ length: 7 }, (_, i) => AG.anchor - ((oymd(AG.anchor).w + 6) % 7) + i);
     body.append(h("div", { cls: "ag-title" }, h("b", { text: tt(AG.span === "week" ? "weekAgenda" : "dayAgenda") }), ` (W${opad(oisoWeek(days[0]))})`, AG.log ? h("span", { cls: "ag-flag", text: " · " + tt("log") }) : null));
+    // on a phone: the week as a strip of days (a dot where something is on), a tap opens that day; the month is one more tap
+    const week0 = AG.anchor - ((oymd(AG.anchor).w + 6) % 7);
+    const strip = h("div", { cls: "ag-strip", role: "toolbar", "aria-label": tt("week") });
+    for (let i = 0; i < 7; i++) {
+      const dn = week0 + i, has = orgDayEntries(dn, all, T, { log: AG.log }).some((x) => !x.grid && pass(x.e));
+      const b = h("button", { type: "button", cls: "ag-strip-day" + (dn === T ? " is-today" : "") + (AG.span === "day" && dn === AG.anchor ? " is-on" : ""), "aria-label": oFmt(dn, "dddd D MMMM") },
+        h("span", { cls: "wd", text: oFmt(dn, "ddd") }), h("span", { cls: "dn", text: String(oymd(dn).d) }), h("span", { cls: "dot" + (has ? " has" : "") }));
+      b.addEventListener("click", () => { AG.span = "day"; AG.anchor = dn; saveAG(); renderBoard(); });
+      strip.append(b);
+    }
+    strip.append(h("button", { type: "button", cls: "ag-strip-month", title: tt("month"), "aria-label": tt("month"), onClick: () => orgNav("jump") }, ic("", "calendar-days")));
+    body.append(strip);
     for (const dn of days) {
       const o = oymd(dn);
       let ents = orgDayEntries(dn, all, T, { log: AG.log }).filter((x) => pass(x.e));

@@ -69,12 +69,7 @@ button.sn-table-add-row:hover, button.sn-table-add-col:hover { background: color
 .ac-empty { padding: 6px 8px; color: var(--faint); }
 
 /* Link hover preview */
-.hp-pop {
-  position: fixed; z-index: 74; width: min(420px, calc(100vw - 16px)); max-height: 360px; overflow: hidden; display: flex; flex-direction: column;
-  background: var(--win); border: 1px solid color-mix(in srgb, var(--line) 35%, var(--line)); border-radius: 8px;
-  box-shadow: 0 14px 40px color-mix(in srgb, var(--shade) 18%, transparent); cursor: pointer; animation: hp-in 120ms ease-out;
-}
-.hp-pop { --sn-surface: var(--win); }
+.hp-pop { position: fixed; z-index: 74; width: min(420px, calc(100vw - 16px)); max-height: 360px; overflow: hidden; display: flex; flex-direction: column; background: var(--win); border: 1px solid color-mix(in srgb, var(--line) 35%, var(--line)); border-radius: 8px; box-shadow: 0 14px 40px color-mix(in srgb, var(--shade) 18%, transparent); cursor: pointer; animation: hp-in 120ms ease-out; --sn-surface: var(--win); }
 @keyframes hp-in { from { opacity: 0; transform: translateY(-3px); } }
 .hp-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 6px; border-bottom: 1px solid var(--line); }
 .hp-icon { display: inline-flex; align-self: center; color: var(--l1); }
@@ -125,11 +120,11 @@ button.sn-tag-pill .n { color: var(--faint); font-size: var(--fs-xs); }
 }
 .sn-hero.is-tag .sn-hero-badge { color: var(--tag); }
 /* Toolbar fits its pane: tighter spacing, then fewer labels, then fewer buttons — never sideways scrolling on desktop */
-.sn-editor { container-type: inline-size; container-name: editor; }
-.sn-ed-toolbar { gap: 1px; padding: 0 6px; }
-.sn-tb-group { gap: 1px; }
-button.sn-tb-btn, button.sn-tb-btn:not(.clickable-icon) { width: 29px; }
-.sn-tb-sep { margin: 0 5px; }
+.sn-editor { flex: 0 0 var(--editor-w, 540px); container-type: inline-size; container-name: editor; }
+.sn-ed-toolbar { flex: 0 0 auto; display: flex; align-items: center; min-height: 40px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; gap: 1px; padding: 0 6px; }
+.sn-tb-group { display: flex; align-items: center; flex: none; gap: 1px; }
+button.sn-tb-btn, button.sn-tb-btn:not(.clickable-icon) { flex: none; height: 28px; padding: 0; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; width: 29px; }
+.sn-tb-sep { flex: none; width: 1px; height: 18px; background: var(--line); margin: 0 5px; }
 @container editor (max-width: 760px) {
   .sn-tb-insert .sn-tb-insert-label { display: none !important; }
   button.sn-tb-insert, button.sn-tb-insert:not(.clickable-icon) { padding: 0 6px; gap: 4px; }

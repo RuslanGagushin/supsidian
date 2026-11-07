@@ -570,7 +570,7 @@ describe("rendering", () => {
     assert.match(html, /class="tag"[^>]*>#tag</);
     assert.match(html, /<mark>hi<\/mark>/);
     assert.match(html, /callout/);
-    assert.match(html, /<li class="task-list-item is-state-todo[^"]*"><button type="button" class="task-box s-todo"/);
+    assert.match(html, /<li class="task-list-item is-state-todo[^"]*" data-task=" "><button type="button" class="task-box s-todo"/);
     await H.page.waitForFunction(() => [...document.querySelectorAll("img")].some((i) => i.src.startsWith("blob:") && i.naturalWidth === 40));
   });
 

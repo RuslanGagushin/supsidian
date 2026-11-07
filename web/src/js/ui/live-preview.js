@@ -114,7 +114,7 @@ class LpBox extends CM.WidgetType {
   constructor(ch) { super(); this.ch = ch; }
   eq(o) { return o.ch === this.ch; }
   toDOM(view) {
-    const el = taskBox(this.ch);
+    const el = taskBox(this.ch, {}, { square: true });
     el.addEventListener("mousedown", (e) => e.preventDefault());
     el.addEventListener("click", (e) => { e.preventDefault(); lpSetState(view, view.posAtDOM(el), (cur) => (taskState(cur)?.open ? "x" : " ")); });
     el.addEventListener("contextmenu", async (e) => {
@@ -177,7 +177,7 @@ function lpInline(view) {
   const add = (from, to, deco) => { if (to >= from) out.push(deco.range(from, to)); };
   const hide = (from, to) => { if (to > from) add(from, to, CM.Decoration.replace({})); };
   const mark = (from, to, cls, attributes) => { if (to > from) add(from, to, CM.Decoration.mark({ class: cls, attributes })); };
-  const line = (pos, cls) => out.push(CM.Decoration.line({ class: cls }).range(state.doc.lineAt(pos).from));
+  const line = (pos, cls, attributes) => out.push(CM.Decoration.line({ class: cls, attributes }).range(state.doc.lineAt(pos).from));
   const fmt = (from, to, near) => (near ? mark(from, to, "cm-sn-fmt") : hide(from, to));
   const tree = CM.syntaxTree(state);
   for (const { from, to } of view.visibleRanges) {
@@ -224,6 +224,8 @@ function lpInline(view) {
         const bm = /^([ \t]+)\[([ xX\/<>-])\](?=[ \t]|$)/.exec(state.sliceDoc(n.to, Math.min(lineTo, n.to + 12)));
         const st = bm && taskState(bm[2]);
         if (st) {
+          // the line carries its state as data-task, the attribute themes and snippets for Obsidian use ("x", "/", "<"…)
+          line(n.from, "cm-sn-taskline", { "data-task": st.ch });
           const boxTo = n.to + bm[0].length;
           if (st.id !== "todo" && boxTo < lineTo) mark(boxTo, lineTo, "cm-sn-task s-" + st.id);
           if (!lpNear(state, n.from, boxTo)) add(n.from, boxTo, CM.Decoration.replace({ widget: new LpBox(st.ch) }));

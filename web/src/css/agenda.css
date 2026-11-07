@@ -261,3 +261,17 @@ audio.fv-media { width: min(520px, 100%); }
   .fv-ptools { margin-left: auto; }
   .fv-pbody { padding: 10px; }
 }
+
+/* the week strip: phones only */
+.ag-strip { display: none; }
+@media (max-width: 820px) {
+  .ag-strip { display: flex; align-items: stretch; gap: 2px; padding: 2px; border-radius: 12px; background: var(--panel); }
+  button.ag-strip-day, button.ag-strip-month { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; height: 52px; padding: 5px 0 4px; border: 0; border-radius: 10px; background: none; box-shadow: none; color: var(--muted); font-family: var(--font-ui); }
+  button.ag-strip-month { flex: 0 0 40px; justify-content: center; }
+  .ag-strip-day .wd { font-size: var(--fs-xs); text-transform: capitalize; }
+  .ag-strip-day .dn { font-size: var(--fs-text); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .ag-strip-day .dot { width: 4px; height: 4px; border-radius: 50%; }
+  .ag-strip-day .dot.has { background: var(--muted); }
+  .ag-strip-day.is-today .dn { color: var(--accent); }
+  .ag-strip-day.is-on { background: var(--win); box-shadow: 0 1px 2px color-mix(in srgb, var(--shade) 10%, transparent); }
+}

@@ -67,7 +67,9 @@ function highlight(root, tokens) {
   }
 }
 export function renderCard(path, via, depth = 1) {
-  const face = S.cardFace === "title" || S.cardFace === "compact" ? S.cardFace : "full";
+  // "auto" follows the depth switch: one level shows whole cards, two levels compact ones, all levels titles only
+  const face = S.cardFace === "auto" ? (board.depth === 0 ? "title" : board.depth >= 2 ? "compact" : "full")
+    : S.cardFace === "title" || S.cardFace === "compact" ? S.cardFace : "full";
   const card = h("div", { cls: "sn-card face-" + face, tabindex: "-1" });
   card.dataset.path = path;
   card.dataset.via = via ?? "";
@@ -116,6 +118,13 @@ export function renderCard(path, via, depth = 1) {
     wireRendered(body, path);
     const len = expanded ? 0 : face === "compact" ? (S.previewLength ? Math.min(S.previewLength, 160) : 160) : S.previewLength;
     renderBody(body, path, len);
+    // a full card whose preview stops before the note's first image still shows it, small, as the notes layout does
+    const img = face === "full" && !expanded && !body.querySelector("img") ? firstImage(path) : null;
+    if (img) {
+      const cover = h("img", { cls: "sn-card-cover", alt: "", draggable: "false", loading: "lazy" });
+      attachmentUrl(img).then((u) => { cover.src = u; }).catch(() => cover.remove());
+      card.append(cover);
+    }
     card.append(body);
   }
 

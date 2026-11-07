@@ -260,7 +260,7 @@ export function settingsModal(tab) {
       item(t("setDefaultDepth"), null, select(normDepth(S.defaultDepth), DEPTHS.map((d) => [d, d ? String(d) : "∞"]), (v) => { S.defaultDepth = Number(v); save(); })),
       item(t("setDefaultLayout"), null, select(S.defaultLayout, LAYOUTS().map(([v, , l]) => [v, l]), (v) => { S.defaultLayout = v; save(); })),
       item(t("setDefaultSort"), null, select(S.defaultSort, [["manual", t("sortManual")], ["name", t("sortName")], ["modified", t("sortModified")], ["created", t("sortCreated")]], (v) => { S.defaultSort = v; save(); })),
-      item(t("setCardFace"), t("setCardFaceDesc"), select(S.cardFace || "full", [["full", t("faceFull")], ["compact", t("faceCompact")], ["title", t("faceTitle")]], (v) => { S.cardFace = v; save(); })),
+      item(t("setCardFace"), t("setCardFaceDesc"), select(S.cardFace || "full", [["full", t("faceFull")], ["compact", t("faceCompact")], ["title", t("faceTitle")], ["auto", t("faceAuto")]], (v) => { S.cardFace = v; save(); })),
       item(t("setPreview"), t("setPreviewDesc"), text(S.previewLength, "600", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.previewLength = Math.floor(n); save(); } }, "number")),
       item(t("setCardHeight"), t("setCardHeightDesc"), text(S.cardMaxHeight, "360", (v) => { const n = Number(v); if (Number.isFinite(n) && n >= 0) { S.cardMaxHeight = Math.floor(n); save(); } }, "number")),
       item(t("setMaxCards"), null, text(S.maxCards, "1000", (v) => { const n = Number(v); if (Number.isFinite(n) && n > 0) { S.maxCards = Math.floor(n); save(); } }, "number")),
@@ -320,6 +320,8 @@ export async function loadVault(fs) {
   showLoading(true);
   try {
     await readVault(fs);
+    // a phone opens the list of notes rather than a squeezed board, unless the vault's settings chose another layout
+    if (board.fresh && S.defaultLayout === "columns" && matchMedia("(pointer: coarse) and (max-width: 820px)").matches) board.layout = "notes";
     applyLanguage();
     closeEditor(true);
     $("#welcome")?.remove();

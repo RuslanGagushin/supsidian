@@ -155,6 +155,7 @@ export async function readVault(fs) {
   const moved = await gatherNotes();
   const saved = lsGet(boardKey(), null);
   Object.assign(board, {
+    fresh: !saved, // nothing remembered for this vault on this device yet (ui/shell.js picks a phone's first layout)
     target: null, depth: normDepth(S.defaultDepth), layout: S.defaultLayout, sort: S.defaultSort, grouped: S.defaultGrouped,
     filter: { query: "", tags: [] }, searchOpen: false, history: [], selection: new Set(), selectMode: false, expanded: new Set(), rendered: 60,
   });
