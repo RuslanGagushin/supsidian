@@ -22,11 +22,12 @@ import { openEditorAtLine, orgAskDate, orgCalendar, orgDateText } from "./org-ed
 import { taskBox, taskIcon } from "./task-icons.js";
 
 /* ---------- agenda state */
-export const AG = Object.assign({ view: "agenda", span: "week", log: false, todoKw: "ALL", match: "", search: "" }, lsGet("sn-agenda", {}), { anchor: null, filter: {}, sel: null });
+// log is on by default: a task closed on a day stays on that day, struck through
+export const AG = Object.assign({ view: "agenda", span: "week", log: true, overOpen: true, todoKw: "ALL", match: "", search: "" }, lsGet("sn-agenda", {}), { anchor: null, filter: {}, sel: null });
 /** The task list's state filter: all open tasks, or one open state. */
 const TODO_FILTERS = ["ALL", ...TASK_STATES.filter((x) => x.open).map((x) => x.id)];
 if (!TODO_FILTERS.includes(AG.todoKw)) AG.todoKw = "ALL";
-const saveAG = () => lsSet("sn-agenda", { view: AG.view, span: AG.span, log: AG.log, todoKw: AG.todoKw, match: AG.match });
+const saveAG = () => lsSet("sn-agenda", { view: AG.view, span: AG.span, log: AG.log, overOpen: AG.overOpen, todoKw: AG.todoKw, match: AG.match });
 export let AGROWS = [];
 export function openTasksView(push = true, view) {
   if (view) { AG.view = view; saveAG(); }
@@ -186,10 +187,22 @@ export function renderTasksView(root) {
     for (const dn of days) {
       const o = oymd(dn);
       let ents = orgDayEntries(dn, all, T, { log: AG.log }).filter((x) => pass(x.e));
+      // what is overdue is carried into today (as Org does) and gathered above it, in a section of its own
+      const late = dn === T ? ents.filter((x) => x.overdue) : [];
+      if (late.length) {
+        ents = ents.filter((x) => !x.overdue);
+        const head = h("button", { cls: "ag-over-head", type: "button", "aria-expanded": String(!!AG.overOpen) }, ic("ag-over-chev", "chevron-down"), h("span", { text: tt("overdue") }), h("span", { cls: "ag-over-n", text: String(late.length) }));
+        head.addEventListener("click", () => { AG.overOpen = !AG.overOpen; saveAG(); renderBoard(); });
+        const sec = h("section", { cls: "ag-card ag-overdue" + (AG.overOpen ? "" : " is-closed") }, h("div", { cls: "ag-day" }, head));
+        if (AG.overOpen) for (const x of late) sec.append(orgRow(x));
+        body.append(sec);
+      }
+      const sum = daySummary(ents);
       const card = h("section", { cls: "ag-card" + (dn === T ? " is-today" : "") + (ents.length ? "" : " is-empty") });
       card.append(h("div", { cls: "ag-day" + (dn === T ? " today" : "") + (o.w === 0 || o.w === 6 ? " weekend" : "") },
         h("span", { text: oFmt(dn, "dddd") }), h("span", { cls: "num", text: oFmt(dn, "D MMMM YYYY") + (o.w === 1 || AG.span === "day" ? ` · W${opad(oisoWeek(dn))}` : "") }),
-        dn === T ? h("span", { cls: "today-pill", text: tt("today").toLowerCase() }) : null));
+        dn === T ? h("span", { cls: "today-pill", text: tt("today").toLowerCase() }) : null,
+        sum ? h("span", { cls: "ag-sum", text: sum }) : null));
       if (dn === T) ents = orgWithGrid(ents);
       for (const x of ents) card.append(orgRow(x));
       body.append(card);
@@ -248,22 +261,50 @@ export function renderTasksView(root) {
   renderTasksButton();
 }
 const orgRowKey = (x) => `${x.e.key}\u0000${x.kind}\u0000${x.dn ?? ""}`;
+/** A day's line under its date: open and done tasks, and the time its timed entries take ("3 tasks · 1 done · 1h 30m"). */
+function daySummary(ents) {
+  const open = new Set(), done = new Set();
+  let min = 0;
+  for (const x of ents) {
+    if (x.grid) continue;
+    if (x.e.isTodo) (x.e.done ? done : open).add(x.e.key);
+    if (x.time != null && x.end != null && x.end > x.time) min += x.end - x.time;
+  }
+  for (const k of done) open.delete(k);
+  const h_ = Math.floor(min / 60), m_ = min % 60;
+  return [open.size ? tt("sumTasks", { n: open.size }) : "", done.size ? tt("sumDone", { n: done.size }) : "",
+    min ? (h_ && m_ ? tt("hm", { h: h_, m: m_ }) : h_ ? tt("hOnly", { h: h_ }) : tt("mOnly", { m: m_ })) : ""].filter(Boolean).join(" · ");
+}
+/** A date said the short way when it is close: today, tomorrow, in 3 d., 2 d. ago; else "5 Nov". */
+function relDay(dn) {
+  const d = dn - onow().dn;
+  return d === 0 ? tt("relToday") : d === 1 ? tt("relTomorrow") : d === -1 ? tt("relYesterday") : d > 1 && d <= 7 ? tt("relIn", { n: d }) : d < -1 && d >= -7 ? tt("relAgo", { n: -d }) : oFmt(dn, "D MMM");
+}
+const LAB_ICON = { dead: "flag", sched: "calendar", closed: "check" };
+/** The label of a row as a chip: a deadline is a flag (red when due or overdue, amber in its warning days), a scheduled date a calendar. */
+function labelChip(kind, text, tone) {
+  if (!text) return "";
+  const k = kind.split(" ")[0];
+  return h("span", { cls: "ag-chip" + (tone ? " is-" + tone : "") }, LAB_ICON[k] ? ic("", LAB_ICON[k]) : null, h("span", { text: text.replace(/:$/, "") }));
+}
 function orgRow(x) {
   if (x.grid) return h("div", { cls: "ag-grid" + (x.now ? " now" : "") }, h("span", { cls: "ag-cat" }), h("span", { cls: "ag-time", text: ohm(x.time) }), h("span", { cls: "dots", text: x.now ? (LANG === "ru" ? "сейчас " : "now ") : "" }));
   const i = AGROWS.push(x) - 1;
   const e = x.e;
   let label = x.label;
   let kindCls = x.kind;
+  let tone = x.kind === "dead" ? (x.soon ? "soon" : x.dn != null && x.dn > onow().dn ? "" : "due") : ""; // red only on its day or after it
   if (!x.dn && x.dn !== 0 && !label) {
-    if (e.dead?.active && !e.done) { label = `${tt("lDl")} ${oFmt(e.dead.dn, "D MMM")}`; kindCls = "dead" + (e.dead.dn < onow().dn ? " overdue" : ""); }
-    else if (e.sched?.active && !e.done) { label = `${tt("lSch")} ${oFmt(e.sched.dn, "D MMM")}`; kindCls = "sched"; }
+    if (e.dead?.active && !e.done) { label = relDay(e.dead.dn); kindCls = "dead" + (e.dead.dn < onow().dn ? " overdue" : ""); tone = e.dead.dn <= onow().dn ? "due" : ""; }
+    else if (e.sched?.active && !e.done) { label = relDay(e.sched.dn); kindCls = "sched"; }
   }
   const time = x.time != null ? ohm(x.time) + (x.end != null ? "–" + ohm(x.end) : "") : "";
   const row = h("div", { cls: `ag-row k-${kindCls}` + (x.overdue ? " overdue" : "") + (e.done ? " is-done" : ""), role: "option", dataset: { i: String(i), path: e.path, line: String(e.line) } });
   const cat = h("span", { cls: "ag-cat", title: e.path, text: e.category + ":" });
   const main = h("span", { cls: "ag-main" });
-  if (e.isTodo) main.append(taskBox(e.state, { dataset: { act: "tick" } }));
-  if (e.pri) main.append(h("span", { cls: `pri ${e.pri}`, text: `[#${e.pri}]` }));
+  // a task's priority colours its box; only the top one also gets a letter, so it does not rest on colour alone
+  if (e.isTodo) { const b = taskBox(e.state, { dataset: { act: "tick" } }); if (e.pri) { b.classList.add("pri-" + e.pri); b.title += ` · ${tt("priority")} ${e.pri}`; } main.append(b); }
+  if (e.pri && (!e.isTodo || e.pri === "A")) main.append(h("span", { cls: `pri ${e.pri}`, text: e.isTodo ? e.pri : `[#${e.pri}]`, title: `${tt("priority")} ${e.pri}` }));
   main.append(renderInline(e.title, e.path));
   if (e.cbTotal) main.append(h("span", { cls: "ag-cookie", text: `[${e.cbDone}/${e.cbTotal}]` }));
   const shown = e.alltags.filter((x) => !(e.title || "").toLowerCase().includes("#" + x.toLowerCase()));
@@ -272,7 +313,7 @@ function orgRow(x) {
   if (e.kind !== "event") act.append(h("button", { type: "button", dataset: { act: "state" }, text: tt("actState"), title: "T" }));
   if (x.kind === "sched" || x.kind === "dead" || x.kind === "ts") act.append(h("button", { type: "button", dataset: { act: "later" }, text: tt("actLater"), title: "Shift+→" }));
   act.append(h("button", { type: "button", dataset: { act: "goto" }, text: tt("actOpen"), title: "Enter" }));
-  row.append(h("span", { cls: "ag-meta" }, cat, h("span", { cls: "ag-time", text: time }), h("span", { cls: "ag-lab", text: label })), main, act);
+  row.append(h("span", { cls: "ag-meta" }, cat, h("span", { cls: "ag-time", text: time }), h("span", { cls: "ag-lab" }, labelChip(kindCls, label, tone))), main, act);
   return row;
 }
 function renderInline(text, path) {

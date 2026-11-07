@@ -67,7 +67,8 @@ function highlight(root, tokens) {
   }
 }
 export function renderCard(path, via, depth = 1) {
-  const card = h("div", { cls: "sn-card", tabindex: "-1" });
+  const face = S.cardFace === "title" || S.cardFace === "compact" ? S.cardFace : "full";
+  const card = h("div", { cls: "sn-card face-" + face, tabindex: "-1" });
   card.dataset.path = path;
   card.dataset.via = via ?? "";
   card.dataset.depth = String(depth || 1);
@@ -85,14 +86,21 @@ export function renderCard(path, via, depth = 1) {
     if (isMod(e)) openEditor(path); else setTarget(path);
   });
   head.append(title);
+  const parents = graph.parentsOf(path).filter((p) => graph.has(p));
+  // a card that lives under several parents says so with a shape (as a mirror does), and lists them on a click
+  if (parents.length > 1) {
+    const places = h("button", { cls: "sn-places", type: "button", title: t("inPlaces", { n: parents.length }), "aria-label": t("inPlaces", { n: parents.length }) }, ic("", "copy"), h("span", { text: String(parents.length) }));
+    places.addEventListener("click", (e) => { e.stopPropagation(); const m = new Menu(); for (const p of parents) m.add(baseName(p), cardIcon(p) || "file-text", (ev) => (isMod(ev) ? openEditor(p) : setTarget(p))); m.showAtEvent(e); });
+    head.append(places);
+  }
+  // children: a board inside the card
   const kids = graph.childrenOf(path).length;
-  if (kids) head.append(h("button", { cls: "sn-kids", type: "button", text: String(kids), title: t("childCards", { n: kids }), onClick: (e) => { e.stopPropagation(); setTarget(path); } }));
+  if (kids) head.append(h("button", { cls: "sn-kids", type: "button", title: t("childCards", { n: kids }), "aria-label": t("childCards", { n: kids }), onClick: (e) => { e.stopPropagation(); setTarget(path); } }, ic("", "layers"), h("span", { text: String(kids) })));
   const add = iconBtn("plus", t("addChild"), async (e) => { e.stopPropagation(); const title = await promptModal(t("addChild") + " → " + baseName(path)); if (title) createCard(title, path); }, "sn-card-edit sn-card-add");
   const edit = iconBtn("pencil", t("edit"), (e) => { e.stopPropagation(); openEditor(path, { focus: true }); }, "sn-card-edit");
   head.append(add, edit);
   card.append(head);
 
-  const parents = graph.parentsOf(path).filter((p) => graph.has(p));
   if (via && parents.includes(via)) { parents.splice(parents.indexOf(via), 1); parents.unshift(via); }
   const unresolved = graph.unresolvedParentsOf(path);
   if (parents.length || unresolved.length) {
@@ -102,13 +110,16 @@ export function renderCard(path, via, depth = 1) {
     card.append(chips);
   }
 
-  const body = h("div", { cls: "sn-card-body markdown-rendered" });
-  wireRendered(body, path);
   const expanded = board.expanded.has(path);
-  renderBody(body, path, expanded ? 0 : S.previewLength);
-  card.append(body);
+  if (face !== "title" || expanded) {
+    const body = h("div", { cls: "sn-card-body markdown-rendered" });
+    wireRendered(body, path);
+    const len = expanded ? 0 : face === "compact" ? (S.previewLength ? Math.min(S.previewLength, 160) : 160) : S.previewLength;
+    renderBody(body, path, len);
+    card.append(body);
+  }
 
-  const tags = vault.notes.get(path)?.tags || [];
+  const tags = face === "title" ? [] : vault.notes.get(path)?.tags || [];
   if (tags.length) {
     const row = h("div", { cls: "sn-tags" });
     for (const tg of tags) row.append(h("span", { cls: "sn-tag", text: tg, onClick: (e) => { e.stopPropagation(); openTagView(tg); } }));
@@ -261,7 +272,7 @@ export function leaveRow() {
 export function setupClamp(card) {
   const body = $(".sn-card-body", card);
   const path = card.dataset.path;
-  const max = S.cardMaxHeight;
+  const max = card.classList.contains("face-compact") ? Math.min(S.cardMaxHeight || 110, 110) : S.cardMaxHeight; // a compact card keeps a few lines
   if (!body || body.classList.contains("is-empty")) return;
   const cutByLength = () => body.classList.contains("is-truncated");
   if (max <= 0 && !cutByLength()) return;

@@ -632,7 +632,7 @@ describe("rendering", () => {
     await H.page.waitForFunction(() => vault.notes.get("cards/A.md").raw === "- [ ] one\n- [x] two\n> - [x] quoted\n");
     await ev(() => document.querySelectorAll(".sn-reading .task-box")[0].dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
     await H.page.waitForSelector(".prompt .suggestion-item");
-    assert.deepEqual(await H.page.$$eval(".prompt .suggestion-title", (x) => x.map((e) => e.textContent)), ["To do", "In progress", "Waiting", "Done", "Cancelled", "Forwarded"]);
+    assert.deepEqual(await H.page.$$eval(".prompt .suggestion-title", (x) => x.map((e) => e.textContent)), ["To do", "In progress", "Waiting / scheduling", "Done", "Cancelled", "Forwarded"]);
     await H.page.keyboard.type("forw");
     await H.page.keyboard.press("Enter");
     await H.page.waitForFunction(() => vault.notes.get("cards/A.md").raw.startsWith("- [>] one\n"));
