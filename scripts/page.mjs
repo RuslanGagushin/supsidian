@@ -4,7 +4,7 @@
 // esbuild bundles the ES modules under web/src/js/ from that entry into one plain script, so the page still opens
 // straight from disk. __APP_VERSION__ becomes package.json's version.
 // npm test and npm run web build it first; on its own: npm run page
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildSync } from "esbuild";
@@ -29,7 +29,12 @@ export function buildPage() {
     .replace(/^<!-- include: (\S+) -->\n|<!-- include: (\S+) -->/gm, (_, line, inline) => readFileSync(join(src, line ?? inline), "utf8"))
     .replace(/<!-- bundle: (\S+) -->/g, (_, entry) => bundle(entry).js)
     .replace('"__APP_VERSION__"', () => JSON.stringify(version));
-  writeFileSync(PAGE, html);
+  // The page tests load this file in parallel while tests/web-build.test.mjs rebuilds it: leave an unchanged page
+  // alone, and swap a new one in whole (write beside it, then rename), so no test ever reads a half-written page.
+  if (existsSync(PAGE) && readFileSync(PAGE, "utf8") === html) return html;
+  const tmp = `${PAGE}.${process.pid}.tmp`;
+  writeFileSync(tmp, html);
+  renameSync(tmp, PAGE);
   return html;
 }
 
