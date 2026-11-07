@@ -74,7 +74,7 @@ function orgStamps(text) {
   while ((m = re.exec(text))) { if (m[1] === "<") out.push({ ts: orgMkTs(m[1], m[2], m[3], m[4], m[5]), endTs: m[7] ? orgMkTs(m[7], m[8], m[9], m[10], m[11]) : null }); }
   return out;
 }
-/** The date reader (minibuffer and capture): today, +3, -1w, ++2 (from the current date), fri, 2fri, 11-05, 5, 2026-11-05,
+/** The date reader (date prompts and capture): today, +3, -1w, ++2 (from the current date), fri, 2fri, 11-05, 5, 2026-11-05,
  *  nov 5, 5 nov, plus 14:00 or 2pm or 14:00-15:30, and a trailing repeater (+1w ++1m .+2d) or warning (-3d). */
 const OMON = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const ORU_MON = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];

@@ -22,7 +22,8 @@ import { pickVault, showWelcome } from "./welcome.js";
 import { syncButton, syncSettingsBody, syncSettingsModal } from "./sync-panel.js";
 import { openToday, outlineMenu, setFocusMode } from "./completion.js";
 import { orgFoldNote } from "./org-editing.js";
-import { openTasksView, orgCapture, renderTasksButton, tasksButton } from "./agenda.js";
+import { AG, openTasksView, orgCapture, renderTasksButton, tasksButton } from "./agenda.js";
+import { onow } from "../core/org.js";
 import { filesButton, openFilesView } from "./files.js";
 import { aboutBody } from "./about.js";
 
@@ -189,11 +190,35 @@ function renderAll() {
   const ed = h("div", { cls: "sn-editor win", id: "editor" });
   const scrim = h("div", { cls: "sn-side-scrim", onClick: () => setSide(false) });
   const frame = h("div", { cls: "wb-frame" }, side, scrim, sideRes, main, edRes, ed);
-  app.append(top, frame, h("div", { cls: "minibuf", id: "minibuf" }));
+  app.append(top, frame, tabBar());
   watchTopBar(top);
   echo(defaultEcho(), { keep: true });
   renderTree();
   renderBoard(true);
+}
+/** The phone's bottom bar (shown only on touch screens, see app.css): the board, the agenda (a second tap goes to today),
+   finding a card by name, and capture. It slides away while a list scrolls down and comes back when it scrolls up. */
+function tabBar() {
+  const tab = (id, icon, label, run) => h("button", { cls: "sn-tab", type: "button", dataset: { tab: id }, "aria-label": label, onClick: run }, ic("", icon), h("span", { text: label }));
+  const bar = h("nav", { cls: "sn-tabbar", "aria-label": t("tabbar") },
+    tab("board", "layout-grid", t("tabBoard"), () => { closeEditor(); setTarget(null); }),
+    tab("agenda", "calendar-check", t("tabAgenda"), () => {
+      if (board.view !== "tasks") { closeEditor(); openTasksView(); return; }
+      AG.view = "agenda"; AG.anchor = onow().dn; renderBoard();
+      setTimeout(() => $(".ag-day.today")?.scrollIntoView({ block: "start", behavior: "smooth" }), 0);
+    }),
+    tab("search", "search", t("tabSearch"), () => quickOpen()),
+    tab("capture", "plus", t("tabCapture"), () => orgCapture()));
+  const last = new WeakMap();
+  document.addEventListener("scroll", (e) => {
+    const el = e.target === document ? document.scrollingElement : e.target;
+    if (!(el instanceof Element)) return;
+    const y = el.scrollTop, prev = last.get(el) ?? y;
+    last.set(el, y);
+    if (Math.abs(y - prev) < 6) return;
+    bar.classList.toggle("is-hidden", y > prev && y > 40);
+  }, true);
+  return bar;
 }
 function makeResizer(el, onMove, getStart) {
   el.addEventListener("pointerdown", (e) => {

@@ -50,7 +50,7 @@ export function edSetHeading(ta, n) {
   edLines(ta, (lines) => lines.map((l) => { const body = l.replace(/^#{1,6} /, ""); return n ? "#".repeat(n) + " " + body : body; }));
   updateEdToolbar();
 }
-/** Pick a note in the minibuffer and insert a [[link]] at the caret. typedOpen — the user already typed "[[". */
+/** Pick a note in a popup and insert a [[link]] at the caret. typedOpen — the user already typed "[[". */
 async function linkPicker(ta, typedOpen) {
   const caret = ta.selectionStart, end = ta.selectionEnd;
   const sel = ta.value.slice(caret, end);

@@ -51,19 +51,29 @@ export function defaultEcho() {
   if (vault.fs?.kind === "copy") return t("volatileBanner");
   return ""; // the line stays hidden until there is a message
 }
+/** The toast: one message at a time, floating over the page (bottom centre; at the top on phones). A new message replaces
+   the last; it goes after a few seconds unless it keeps (o.keep) or offers an action. With nothing to say it shows the
+   vault's standing note (a demo or a copy) as a quiet pill, or nothing. */
+function toastBox() {
+  let box = $("#toast");
+  if (!box) document.body.append((box = h("div", { id: "toast", cls: "sn-toast is-blank", role: "status", "aria-live": "polite" })));
+  return box;
+}
 export function echo(text, o = {}) {
-  const mb = $("#minibuf");
-  if (!mb) return false;
-  text = keyText(text);
+  const box = toastBox();
+  text = keyText(text || "");
   clearTimeout(echoTimer);
-  const isHint = o.hint || text === defaultEcho();
-  mb.replaceChildren(h("span", { cls: "echo" + (isHint ? " is-hint" : ""), text, title: text }));
-  mb.classList.toggle("is-blank", !text && !o.undo && !o.action);
-  if (o.undo) mb.append(h("button", { cls: "wb-btn mini", type: "button", onClick: () => undo() }, t("undo"), h("kbd", { text: keyText("Ctrl+Z") })));
-  if (o.action) mb.append(h("button", { cls: "wb-btn mini", type: "button", text: o.action.label, onClick: () => { echo(defaultEcho(), { keep: true }); o.action.run(); } }));
-  if (!isHint) { mb.classList.remove("flash"); void mb.offsetWidth; mb.classList.add("flash"); }
-  if (o.hint) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), 7000);
-  else if (!o.keep && !isHint) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), o.undo ? 9000 : 6000);
+  const isDefault = text === defaultEcho();
+  const quiet = isDefault || !!o.hint;
+  box.replaceChildren();
+  box.classList.toggle("is-quiet", quiet);
+  box.classList.toggle("is-blank", !text && !o.undo && !o.action);
+  if (text) box.append(h("span", { cls: "sn-toast-text", text, title: text }));
+  if (o.undo) box.append(h("button", { cls: "sn-toast-btn", type: "button", onClick: () => { echo(defaultEcho(), { keep: true }); undo(); } }, t("undo"), h("kbd", { text: keyText("Ctrl+Z") })));
+  if (o.action) box.append(h("button", { cls: "sn-toast-btn", type: "button", text: o.action.label, onClick: () => { echo(defaultEcho(), { keep: true }); o.action.run(); } }));
+  if (text && !isDefault && (o.keep || o.action)) box.append(h("button", { cls: "sn-toast-x", type: "button", "aria-label": t("close"), title: t("close"), text: "×", onClick: () => echo(defaultEcho(), { keep: true }) }));
+  if (!quiet) { box.classList.remove("is-new"); void box.offsetWidth; box.classList.add("is-new"); }
+  if (!o.keep && !o.action && !isDefault && (text || o.undo)) echoTimer = setTimeout(() => echo(defaultEcho(), { keep: true }), o.undo ? 9000 : o.hint ? 12000 : 6000);
   return true;
 }
 /** The footer of a popup: key hints such as ↵ choose · esc dismiss */
@@ -79,17 +89,7 @@ export function promptPanel(label, { value = "", placeholder = "", extra = [], k
   const close = openLayer(panel, onClose);
   return { panel, input, close };
 }
-export function notice(text, o = {}) {
-  if (echo(String(text).replace(/\n/g, " · "), o)) return;
-  let box = $(".notice-container");
-  if (!box) document.body.append((box = h("div", { cls: "notice-container" })));
-  const n = h("div", { cls: "notice" }, h("span", { text }));
-  if (o.undo) n.append(h("button", { cls: "sn-undo-btn", text: t("undo"), onClick: () => { n.remove(); undo(); } }));
-  if (o.action) n.append(h("button", { cls: "sn-undo-btn", text: o.action.label, onClick: () => { n.remove(); o.action.run(); } }));
-  n.addEventListener("click", (e) => { if (e.target === n || e.target.tagName === "SPAN") n.remove(); });
-  box.append(n);
-  setTimeout(() => n.remove(), o.action ? 12000 : o.undo ? 6000 : 3500);
-}
+export function notice(text, o = {}) { echo(String(text).replace(/\n/g, " · "), o); }
 
 export let modalStack = 0;
 export function openLayer(panel, onClose) {

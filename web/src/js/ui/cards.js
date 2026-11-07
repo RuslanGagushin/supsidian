@@ -8,7 +8,7 @@ import { cardIcon, linkText } from "../services/vault.js";
 import { cardTaskProgress } from "../services/tasks.js";
 import { attachmentUrl, firstImage } from "../services/attachments.js";
 import { $, h, ic, iconBtn, isMod } from "./dom.js";
-import { echo, Menu, notice, promptModal } from "./ui.js";
+import { Menu, notice, promptModal } from "./ui.js";
 import { renderMarkdown, wireRendered } from "./markdown.js";
 import { createCard, deleteCards, promptAddParent, promptIcon, promptMove, promptRemoveParent, promptTemplate, removeParent, setChildTemplate, templateFor, togglePin } from "./actions.js";
 import { openTagView, setLastFocused, setTarget, toggleSelect } from "./board.js";
@@ -160,7 +160,7 @@ export function renderCard(path, via, depth = 1) {
     e.preventDefault();
     openEditor(path, { focus: true });
   });
-  card.addEventListener("focus", () => { setLastFocused(path); echo(t("cardHint", { name: baseName(path) }), { hint: true }); });
+  card.addEventListener("focus", () => setLastFocused(path));
   attachLongPress(card, (ev) => cardMenu(path, via).showAtEvent(ev));
   dnd.draggable(card, () => ({ child: path, from: via }));
   dnd.dropTarget(card, () => ({ path, parent: via }));
@@ -241,10 +241,7 @@ export function renderRow(path, via, depth = 1) {
     e.preventDefault();
     openEditor(path, { focus: true, wide: false });
   });
-  row.addEventListener("focus", () => {
-    setLastFocused(path);
-    echo(t("rowHint", { name: baseName(path) }), { hint: true });
-  });
+  row.addEventListener("focus", () => setLastFocused(path));
   attachLongPress(row, (ev) => cardMenu(path, via).showAtEvent(ev));
   if (!own) {
     dnd.draggable(row, () => ({ child: path, from: via }));
